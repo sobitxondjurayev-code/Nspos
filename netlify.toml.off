@@ -1,0 +1,9 @@
+# Netlify — Next.js ilovasini joylash sozlamasi.
+# @netlify/plugin-nextjs avtomatik aniqlanadi va SSR/dinamik marshrutlarni
+# (/data/[id], /reports/[id]) qo'llab-quvvatlaydi.
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

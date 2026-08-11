@@ -1,0 +1,163 @@
+"use client";
+import { t } from "@/lib/i18n";
+import { useMemo, useState } from "react";
+import { useTheme } from "@/components/ThemeProvider";
+import { ChevronDown, CalendarDays } from "lucide-react";
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis,
+  CartesianGrid, Tooltip,
+} from "recharts";
+import { demoStores, fmtUSD } from "@/lib/demoData";
+import { salesSeries, storeTotalsInRange, granularityFor, MONTHS_SHORT } from "@/lib/salesData";
+import { PERIODS, periodRange, fmtDate, MONTHS } from "@/lib/dates";
+import DateRangePicker from "@/components/DateRangePicker";
+
+function ChartTooltip({ active, payload, label, granularity, combined, brand }) {
+  if (!active || !payload?.length) return null;
+
+  // Sarlavha bo'linishga qarab: soat / kun.oy.yil / oy yil
+  const year = new Date().getFullYear();
+  const monthIdx = MONTHS_SHORT.indexOf(label);
+  const head =
+    granularity === "hour" ? label
+    : granularity === "day" ? `${label}.${year}`
+    : `${monthIdx >= 0 ? MONTHS[monthIdx] : label} ${year}`;
+
+  return (
+    <div className="bg-panel rounded-2xl shadow-pop px-5 py-4 min-w-[16.25rem]">
+      <div className="bg-surface rounded-xl text-center py-2 font-bold mb-3">{head}</div>
+      <div className="space-y-3">
+        {payload.map((p) => {
+          const store = demoStores.find((s) => s.id === p.dataKey);
+          const name = combined ? t("Barcha do'konlar") : store?.name;
+          const color = combined ? brand : store?.color;
+          return (
+            <div key={p.dataKey} className="flex items-start gap-3">
+              <span className="w-3.5 h-3.5 rounded-full mt-1" style={{ background: color }} />
+              <div>
+                <p className="font-bold leading-tight">{name}</p>
+                <p className="font-bold" style={{ color }}>{fmtUSD(p.value)}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export default function Dashboard() {
+  const [period, setPeriod] = useState("Oy");
+  const [range, setRange] = useState(() => periodRange("Oy"));
+  const [combined, setCombined] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const { chart } = useTheme();
+
+  const data = useMemo(() => salesSeries(range.from, range.to), [range]);
+  const totals = useMemo(() => storeTotalsInRange(range.from, range.to), [range]);
+  const granularity = granularityFor(range.from, range.to);
+  const grandTotal = +demoStores.reduce((a, s) => a + (totals[s.id] || 0), 0).toFixed(2);
+
+  function choosePeriod(p) {
+    setPeriod(p);
+    setRange(periodRange(p));
+  }
+
+  function applyCustom(from, to) {
+    setPeriod(null); // qo'lda tanlangan oraliq
+    setRange({ from, to });
+    setPickerOpen(false);
+  }
+
+  return (
+    <div>
+      <button className="flex items-center gap-3 text-4xl font-extrabold tracking-tight mb-8">
+        {t("Barcha do'konlar")} <ChevronDown size={30} className="text-muted" />
+      </button>
+
+      {/* Davr tanlash + sana */}
+      <div className="flex items-center justify-between gap-4 mb-8">
+        <div className="bg-track rounded-2xl p-1.5 flex">
+          {PERIODS.map((p) => (
+            <button key={p} onClick={() => choosePeriod(p)}
+              className={`tab-btn ${period === p ? "active" : ""}`}>{t(p)}</button>
+          ))}
+        </div>
+
+        <div className="relative">
+          <button onClick={() => setPickerOpen((v) => !v)}
+            className="card flex items-center gap-4 px-5 py-3 font-bold">
+            <CalendarDays size={20} className="text-brand" />
+            <span className="text-right leading-tight">
+              {fmtDate(range.from)}<br />{fmtDate(range.to)}
+            </span>
+          </button>
+          {pickerOpen && (
+            <DateRangePicker from={range.from} to={range.to}
+              onApply={applyCustom} onClose={() => setPickerOpen(false)} />
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-[1fr_360px] gap-6 items-start">
+        {/* Grafik */}
+        <div className="card p-7">
+          <h2 className="text-2xl font-extrabold mb-6">{t("Sotuvlar")}</h2>
+          <div className="h-[27.5rem]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="0" stroke={chart.grid} vertical={false} />
+                <XAxis dataKey="date" tickLine={false} axisLine={false}
+                  tick={{ fill: chart.tick, fontSize: 13, fontWeight: 600 }}
+                  interval="preserveStartEnd" minTickGap={20} />
+                <YAxis tickLine={false} axisLine={false} width={44}
+                  tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)} K` : v)}
+                  tick={{ fill: chart.tick, fontSize: 13, fontWeight: 600 }} />
+                <Tooltip content={<ChartTooltip granularity={granularity} combined={combined} brand={chart.brand} />} />
+
+                {combined ? (
+                  <Line type="monotone" dataKey="all" stroke={chart.brand} strokeWidth={3.5} dot={false}
+                    activeDot={{ r: 7, strokeWidth: 3, stroke: chart.dot }} />
+                ) : (
+                  demoStores.map((s) => (
+                    <Line key={s.id} type="monotone" dataKey={s.id} stroke={s.color}
+                      strokeWidth={3.5} dot={false}
+                      activeDot={{ r: 7, strokeWidth: 3, stroke: chart.dot }} />
+                  ))
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* O'ng panel */}
+        <div className="card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <p className="text-lg font-bold">{t("Umumiy grafik")}</p>
+            <button onClick={() => setCombined(!combined)} aria-label={t("Umumiy grafik")}
+              className={`w-14 h-8 rounded-full p-1 transition-colors ${combined ? "bg-brand" : "bg-track2"}`}>
+              <span className={`block w-6 h-6 bg-panel rounded-full shadow transition-transform ${combined ? "translate-x-6" : ""}`} />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {demoStores.map((store) => (
+              <div key={store.id} className="bg-surface rounded-2xl px-5 py-4 flex items-start gap-3">
+                <span className="w-3.5 h-3.5 rounded-full mt-1.5" style={{ background: store.color }} />
+                <div>
+                  <p className="font-bold">{store.name}</p>
+                  <p className="font-extrabold text-brand">{fmtUSD(totals[store.id] || 0)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-dashed border-line mt-6 pt-5">
+            <p className="text-lg text-muted font-semibold">{t("Umumiy summa:")}</p>
+            <p className="text-3xl font-extrabold mt-1">{fmtUSD(grandTotal)}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
