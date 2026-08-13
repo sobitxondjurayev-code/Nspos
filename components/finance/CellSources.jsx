@@ -13,6 +13,9 @@ const fmtDay = (d) => {
 };
 const som = (n) => Math.round(n).toLocaleString("ru-RU");
 
+// Yig'ish kaliti: nomi + qopi + kirim/chiqim
+const keyOf = (r) => `${r.title}|${r.pot ?? ""}|${r.out ? "-" : "+"}`;
+
 // ══════════════════════════════════════════════════════════════
 // KATAK ORTIDAGI RO'YXAT
 // ══════════════════════════════════════════════════════════════
@@ -36,6 +39,16 @@ export default function CellSources({ from, to, colKey, label, dayLabel, kassa =
   // o'tadi. "Bu xarajat qayerdan chiqdi?" degan savoldan keyingi
   // savol doim "uni qanday tuzataman?" bo'ladi.
   const go = (r) => { if (r.link) { router.push(r.link); onClose?.(); } };
+
+  // Bitta turdagi yozuvlarni ko'rish. Guruh ustiga bosilganda: ichida
+  // bitta yozuv bo'lsa to'g'ridan-to'g'ri o'sha yozuvga o'tadi, ko'p
+  // bo'lsa ro'yxat o'sha tur bo'yicha filtrlanadi.
+  const [only, setOnly] = useState(null);
+  const openGroup = (g) => {
+    if (g.items?.length === 1 && g.items[0].link) return go(g.items[0]);
+    setOnly(g.key);
+    setView("list");
+  };
   const total = +rows.reduce((s, r) => s + (r.out ? -r.amount : r.amount), 0).toFixed(2);
   const totalSom = rows.some((r) => r.amountSom != null)
     ? rows.reduce((s, r) => s + (r.amountSom ?? 0), 0) : null;
@@ -49,12 +62,13 @@ export default function CellSources({ from, to, colKey, label, dayLabel, kassa =
   const groups = useMemo(() => {
     const m = new Map();
     for (const r of rows) {
-      const key = `${r.title}|${r.pot ?? ""}|${r.out ? "-" : "+"}`;
+      const key = keyOf(r);
       const g = m.get(key) ?? {
         key, title: r.title, pot: r.pot ?? null, out: !!r.out,
-        n: 0, amount: 0, amountSom: null, repeat: r.repeat,
+        n: 0, amount: 0, amountSom: null, repeat: r.repeat, items: [],
       };
       g.n += 1;
+      g.items.push(r);
       g.amount = +(g.amount + r.amount).toFixed(2);
       if (r.amountSom != null) g.amountSom = (g.amountSom ?? 0) + r.amountSom;
       m.set(key, g);
@@ -65,6 +79,7 @@ export default function CellSources({ from, to, colKey, label, dayLabel, kassa =
   // Yig'ish faqat foyda bersa (yozuv turlardan ko'p bo'lsa) o'zi yoqiladi
   const [view, setView] = useState(() => (rows.length > groups.length ? "group" : "list"));
   const grouped = view === "group";
+  const listRows = only ? rows.filter((r) => keyOf(r) === only) : rows;
 
   return (
     <div className="fixed inset-0 z-[60] bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
@@ -73,8 +88,14 @@ export default function CellSources({ from, to, colKey, label, dayLabel, kassa =
           <div>
             <h2 className="text-2xl font-extrabold">{t(label)}</h2>
             <p className="text-sm text-muted font-semibold">
-              {dayLabel} · {tt("{n} ta yozuv", { n: rows.length })}
-              {rows.length > groups.length && ` · ${tt("{n} xil tur", { n: groups.length })}`}
+              {dayLabel} · {tt("{n} ta yozuv", { n: only ? listRows.length : rows.length })}
+              {!only && rows.length > groups.length && ` · ${tt("{n} xil tur", { n: groups.length })}`}
+              {only && (
+                <button onClick={() => { setOnly(null); setView("group"); }}
+                  className="ml-2 text-brand font-bold hover:underline">
+                  {t("barchasini ko'rish")}
+                </button>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -114,7 +135,8 @@ export default function CellSources({ from, to, colKey, label, dayLabel, kassa =
             </thead>
             <tbody>
               {grouped && groups.map((g) => (
-                <tr key={g.key} className="border-b border-line last:border-0">
+                <tr key={g.key} onClick={() => openGroup(g)}
+                  className="border-b border-line last:border-0 cursor-pointer hover:bg-surface/70">
                   <td className="px-6 py-4">
                     <p className="font-bold">
                       {t(g.title)}
@@ -125,6 +147,9 @@ export default function CellSources({ from, to, colKey, label, dayLabel, kassa =
                   </td>
                   <td className="px-4 py-4 font-semibold text-muted whitespace-nowrap">
                     {tt("{n} ta", { n: g.n })}
+                    <span className="inline-flex items-center gap-1 ml-2 text-sm font-bold text-brand">
+                      {t(g.n === 1 ? "ochish" : "ko'rish")} <ChevronRight size={14} />
+                    </span>
                   </td>
                   {hasPot && (
                     <td className="px-4 py-4 font-semibold text-muted whitespace-nowrap">{t(g.pot ?? "—")}</td>
@@ -139,7 +164,7 @@ export default function CellSources({ from, to, colKey, label, dayLabel, kassa =
                   </td>
                 </tr>
               ))}
-              {!grouped && rows.map((r, i) => (
+              {!grouped && listRows.map((r, i) => (
                 <tr key={i} onClick={() => go(r)}
                   className={`border-b border-line last:border-0 ${
                     r.link ? "cursor-pointer hover:bg-surface/70" : ""}`}>
