@@ -18,6 +18,11 @@ export default function ColumnSettings({
   onSave,           // (prefs) => void
   onReset,          // () => void
   onClose,
+  // Bu oyna jadval ustunlari uchun ham, kartochkalar uchun ham ishlaydi —
+  // faqat nomi o'zgaradi ("ustun" o'rniga "ko'rsatkich" va h.k.)
+  title = "Ustunlarni sozlash",
+  countLabel = "{n} ta ustun ko'rinadi",
+  hint = "Ustunni ushlab tortsangiz joyi almashadi. Ko'z belgisini bossangiz jadvaldan yashirinadi — o'chib ketmaydi, xohlagan payt qaytarasiz.",
 }) {
   // Boshlang'ich tartib: sozlama bo'lsa o'shanikidek, bo'lmasa asliday
   const initial = useMemo(() => {
@@ -59,16 +64,16 @@ export default function ColumnSettings({
       <div className="card w-full max-w-lg my-8 p-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-1">
           <div>
-            <h2 className="text-2xl font-extrabold">{t("Ustunlarni sozlash")}</h2>
+            <h2 className="text-2xl font-extrabold">{t(title)}</h2>
             <p className="text-muted font-semibold">
-              {tt("{n} ta ustun ko'rinadi", { n: shownCount })}
+              {tt(countLabel, { n: shownCount })}
             </p>
           </div>
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>
         </div>
 
         <p className="text-sm text-muted font-semibold mt-4 mb-5">
-          {t("Ustunni ushlab tortsangiz joyi almashadi. Ko'z belgisini bossangiz jadvaldan yashirinadi — o'chib ketmaydi, xohlagan payt qaytarasiz.")}
+          {t(hint)}
         </p>
 
         <div className="space-y-2 mb-7">

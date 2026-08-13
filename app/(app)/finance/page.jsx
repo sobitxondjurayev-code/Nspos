@@ -14,13 +14,15 @@ import Link from "next/link";
 import {
   Wallet, ListChecks, Receipt, Users, Truck, Banknote, TrendingUp,
   Scale, Upload, Package, Clock, ArrowDownLeft, ArrowUpRight, PiggyBank,
-  ChevronRight,
+  ChevronRight, SlidersHorizontal,
 } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { periodRange } from "@/lib/dates";
 import { canOpen } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
 import StatCard from "@/components/finance/StatCard";
+import ColumnSettings from "@/components/ColumnSettings";
+import { useColumns } from "@/components/useColumns";
 import { kassaBalances, moneyFlow } from "@/lib/kassaData";
 import { payoutSummary } from "@/lib/payoutsData";
 import { overallDebtStats } from "@/lib/debtsData";
@@ -139,6 +141,37 @@ export default function FinanceHome() {
     },
   ].filter((s) => canOpen(s.href, user));
 
+  // —— Tepadagi ko'rsatkichlar ————————————————————————
+  // Tartibini va qaysi biri ko'rinishini rahbar o'zi belgilaydi
+  // (jadval ustunlaridagi kabi, sozlama shu brauzerda saqlanadi).
+  const ALL_STATS = useMemo(() => [
+    { key: "cash", label: "Hozir kassalarda", icon: Wallet,
+      value: fmtUSD(cash), hint: t("Do'konlar va kompaniya balansi") },
+    { key: "in", label: "Shu oyda kirgan", icon: ArrowDownLeft, tone: "green",
+      value: fmtUSD(flow.in) },
+    { key: "out", label: "Shu oyda chiqqan", icon: ArrowUpRight, tone: "red",
+      value: fmtUSD(flow.out) },
+    { key: "free", label: "To'lovlardan keyin qoladi", icon: PiggyBank,
+      tone: free >= 0 ? "green" : "red", value: fmtUSD(free),
+      hint: plan.planned > 0
+        ? tt("Berishim kerak: {n}", { n: fmtUSD(plan.planned) })
+        : t("Rejada to'lov yo'q") },
+    { key: "profit", label: "Shu oyda sof foyda", icon: TrendingUp,
+      tone: pnl.netProfit >= 0 ? "green" : "red", value: fmtUSD(pnl.netProfit) },
+    { key: "debt", label: "Mijozlar qarzi", icon: Clock, tone: "amber",
+      value: fmtUSD(debt.openAmount ?? 0), hint: t("Hali qaytmagan pul") },
+    { key: "expenses", label: "Shu oyda xarajat", icon: Receipt, tone: "red",
+      value: fmtUSD(exp) },
+    { key: "assets", label: "Jami aktiv", icon: Scale,
+      value: fmtUSD(sheet.totalAssets), hint: t("Kassa, ombor va qarzlar bilan") },
+  ], [cash, flow.in, flow.out, free, plan.planned, pnl.netProfit, debt.openAmount, exp, sheet.totalAssets]);
+
+  // Standart holat: dastlabki to'rttasi ko'rinadi, qolgani zaxirada —
+  // kerak bo'lsa rahbar "Ko'rsatkichlar" dan yoqadi
+  const statPrefs = useColumns("finance-stats", ALL_STATS,
+    { defaultHidden: ["profit", "debt", "expenses", "assets"] });
+  const stats = statPrefs.columns;
+
   return (
     <div>
       <h1 className="text-4xl font-extrabold tracking-tight mb-2">{t("Moliya")}</h1>
@@ -150,19 +183,20 @@ export default function FinanceHome() {
           Faqat rahbarga: bular butun kompaniya bo'yicha (hamma do'kon
           kassasi, oborot). Menejer o'z kassasidan boshqasini ko'rmasligi
           kerak — unga faqat pastdagi bo'lim kartochkalari chiqadi. */}
-      {isOwner && (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
-        <StatCard icon={Wallet} label="Hozir kassalarda" value={show(fmtUSD(cash))}
-          hint={t("Do'konlar va kompaniya balansi")} />
-        <StatCard icon={ArrowDownLeft} label="Shu oyda kirgan" tone="green" value={show(fmtUSD(flow.in))} />
-        <StatCard icon={ArrowUpRight} label="Shu oyda chiqqan" tone="red" value={show(fmtUSD(flow.out))} />
-        <StatCard icon={PiggyBank} label="To'lovlardan keyin qoladi"
-          tone={free >= 0 ? "green" : "red"} value={show(fmtUSD(free))}
-          hint={plan.planned > 0
-            ? tt("Berishim kerak: {n}", { n: fmtUSD(plan.planned) })
-            : t("Rejada to'lov yo'q")} />
-      </div>
-      )}
+      {isOwner && (<>
+        <div className="flex justify-end mb-3">
+          <button onClick={statPrefs.openSettings}
+            className="flex items-center gap-2 rounded-xl border border-line px-4 py-2 font-bold hover:border-brand hover:text-brand transition-colors">
+            <SlidersHorizontal size={16} /> {t("Ko'rsatkichlar")}
+          </button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+          {stats.map((s) => (
+            <StatCard key={s.key} icon={s.icon} label={s.label} tone={s.tone}
+              value={show(s.value)} hint={s.hint} />
+          ))}
+        </div>
+      </>)}
 
       {/* —— Bo'limlar —— */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -193,6 +227,13 @@ export default function FinanceHome() {
           </Link>
         ))}
       </div>
+
+      {statPrefs.open && (
+        <ColumnSettings {...statPrefs.dialogProps}
+          title="Ko'rsatkichlarni sozlash"
+          countLabel="{n} ta ko'rsatkich ko'rinadi"
+          hint="Ko'rsatkichni ushlab tortsangiz joyi almashadi. Ko'z belgisini bossangiz yashirinadi — o'chib ketmaydi, xohlagan payt qaytarasiz." />
+      )}
     </div>
   );
 }

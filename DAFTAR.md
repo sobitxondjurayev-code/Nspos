@@ -62,6 +62,11 @@ hozircha menejerlar qo'lda kiritadi — bu xato manbai (5-bo'limga qarang).
   shaffof bo'lsa tagidagi qatorlar ko'rinib, raqamlar ustma-ust tushadi.
 - **Ustunlar** tugmasi (Meta Ads Manager naqshi): tartibni surish va
   yashirish. Sozlama `localStorage` da, jadval id bo'yicha.
+  Xuddi shu mexanizm **kartochkalar** uchun ham ishlaydi (Moliya bosh
+  sahifasidagi ko'rsatkichlar — "Ko'rsatkichlar" tugmasi). `ColumnSettings`
+  ga `title/countLabel/hint` beriladi, `useColumns` ga esa `defaultHidden`
+  — qo'shimcha variant qo'shilganda sahifaning boshlang'ich ko'rinishi
+  o'zgarmasligi uchun.
 - Yangi ustun qo'shilsa — **jamisi, filtri va hisobotdagi o'rni** ham o'sha
   zahoti. Iloji bo'lsa umumiy yoziladi (jami qatori ustun ro'yxatidan
   avtomat yig'sin).
