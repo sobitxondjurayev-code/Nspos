@@ -49,6 +49,13 @@ export default function FinanceExpenses() {
   // Menejer faqat O'Z kassasining xarajatini ko'radi va kiritadi.
   // Rahbarning shaxsiy xarajati yoki boshqa do'kon raqami unga ochilmasin.
   const isOwner = user?.role === "owner";
+  // Menejer FAQAT bugungi xarajatni tuzata va o'chira oladi. Kechagi
+  // yozuvni o'zgartirish — hisobni orqadan tahrirlash degani, uni faqat
+  // rahbar qiladi. Doimiy (takrorlanuvchi) xarajat esa har oyga ta'sir
+  // qiladi, shuning uchun u ham faqat rahbarniki.
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const canTouch = (e) => isOwner || (e.source !== "recurring" && String(e.date).slice(0, 10) === todayKey);
   const myKassas = useMemo(() => kassasOf(user), [user]);
   const mineOnly = (list) => isOwner ? list : list.filter((e) => myKassas.includes(e.kassa));
   const [period, setPeriod] = useState("Yil");
@@ -216,6 +223,10 @@ export default function FinanceExpenses() {
   }
 
   function del(e) {
+    if (!canTouch(e)) {
+      alert(t("Bu xarajat boshqa kunga tegishli — uni faqat rahbar o'chira oladi."));
+      return;
+    }
     if (!confirm(t("Ushbu xarajat o'chirilsinmi?"))) return;
     if (e.source === "recurring") removeRecurring(e.recurringId);
     else removeExpense(e.id);
@@ -519,15 +530,26 @@ export default function FinanceExpenses() {
                             tahrirlanmaydi — u alohida yozuv emas, qoidaning
                             aksi. Qoidaning o'zi "Takrorlanuvchi to'lovlar"
                             bo'limida tuzatiladi. */}
-                        {e.source !== "recurring" && (
-                          <button onClick={() => setModal({ initial: e })}
-                            className="text-muted hover:text-brand mr-3">
-                            <Pencil size={18} />
-                          </button>
+                        {/* Menejerga faqat BUGUNGI yozuv ochiq. Eskisi
+                            uchun tugma umuman chiqmaydi — bosib, keyin
+                            "mumkin emas" degan javob olish yomon. */}
+                        {canTouch(e) ? (
+                          <>
+                            {e.source !== "recurring" && (
+                              <button onClick={() => setModal({ initial: e })}
+                                className="text-muted hover:text-brand mr-3">
+                                <Pencil size={18} />
+                              </button>
+                            )}
+                            <button onClick={() => del(e)} className="text-muted hover:text-danger">
+                              <Trash2 size={18} />
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-sm font-semibold text-muted whitespace-nowrap">
+                            {t("yopiq")}
+                          </span>
                         )}
-                        <button onClick={() => del(e)} className="text-muted hover:text-danger">
-                          <Trash2 size={18} />
-                        </button>
                       </td>
                     </tr>
                   ))}
@@ -571,12 +593,17 @@ export default function FinanceExpenses() {
                       <td className="px-4 py-4 font-semibold">{tt("{n}-kun", { n: r.day })}</td>
                       <td className="px-6 py-4 text-right font-extrabold">{money(r.amount, somOf(r))}</td>
                       <td className="px-4 py-4 text-right whitespace-nowrap">
+                        {!isOwner && (
+                          <span className="text-sm font-semibold text-muted">{t("faqat rahbar")}</span>
+                        )}
+                        {isOwner && (<>
                         <button onClick={() => setModal({ initial: r })} className="text-muted hover:text-brand mr-3">
                           <Pencil size={18} />
                         </button>
                         <button onClick={() => { removeRecurring(r.id); bump(); }} className="text-muted hover:text-danger">
                           <Trash2 size={18} />
                         </button>
+                        </>)}
                       </td>
                     </tr>
                   ))}

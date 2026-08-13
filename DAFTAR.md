@@ -47,6 +47,7 @@ hozircha menejerlar qo'lda kiritadi — bu xato manbai (5-bo'limga qarang).
 | Yopilgan kun `kassa_ops` da `kind='transfer', category='close'` bilan belgilanadi | Pul harakati bitta jadvalda qoladi. Topshiriladigan pul bo'lmasa 0 summali yozuv yoziladi — "bu kun tekshirildi" degani (shu sabab `amount > 0` cheklovi `>= 0` ga o'zgardi, `scripts/sql/kassa-close-day.sql`) |
 | Kunlik jadvaldagi "Kassada qoldi" tasdiqlanmagan pulni ham sanaydi | Kartochkadagi raqam ham shunday. Ikki joyda ikki xil qoldiq chiqmasligi uchun — yo'ldagi pul alohida ko'rsatiladi |
 | Menejer 2 kundan oldingi kunlik raqamni tahrirlay olmaydi | Rahbar tahrirlay oladi |
+| Menejer faqat BUGUNGI xarajatni tuzata/o'chira oladi | Eski yozuvni o'zgartirish — hisobni orqadan tahrirlash. Doimiy xarajat esa umuman faqat rahbarniki. Himoya ikki qavat: interfeysda tugma chiqmaydi, bazada esa `expense_update`/`expense_delete` siyosati (sana Toshkent vaqti bo'yicha) |
 | Ustaga pul 1, 5, 10, 15, 20, 25-kunlari beriladi | Oylik 1-sanada, keyin har 5 kunda. Menejer faqat shu kunlarga yoza oladi (`payDayCol`), rahbar esa istalgan kunga — favqulodda holat bo'lib turadi |
 | Ustalar reytingidagi ustun "Balans" — o'tgan oy qarzi ham ichida | Faqat shu oy hisoblansa "1,5 mln berishimiz kerak" degan yolg'on chiqadi, aslida usta iyulda oldindan olib bo'lgan. Formula: `carryIn + ishlab topgan − olgan` |
 | Davomat bonuslari oy oxirida qo'shiladi | Aks holda 1-avgustda xodim 1 500 000 "ishlab topgan" bo'lib ko'rinadi va oy davomida faqat kamayadi |
