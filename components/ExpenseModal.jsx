@@ -2,7 +2,7 @@
 import { t, tt } from "@/lib/i18n";
 import NumberField from "@/components/NumberField";
 import { useMemo, useState } from "react";
-import { X, Repeat, Calendar } from "lucide-react";
+import { X, Repeat, Calendar, Trash2 } from "lucide-react";
 import { EXPENSE_CATEGORIES, EXPENSE_METHODS, SERVICE_CATEGORIES, needsNote, STREET_INSTALLER } from "@/lib/expensesData";
 import { KASSAS, kassasOf, walletsOf, isB2bKassa, COMPANY } from "@/lib/kassaData";
 import { listStaff } from "@/lib/staffData";
@@ -20,7 +20,7 @@ const monthName = (v) => {
   return `${MONTHS[Number(m) - 1] ?? m} ${y}`;
 };
 
-export default function ExpenseModal({ initial = null, onClose, onSave }) {
+export default function ExpenseModal({ initial = null, onClose, onSave, onDelete = null }) {
   // Takrorlanuvchida "from" bor — shu bilan turini aniqlaymiz
   const [mode, setMode] = useState(initial?.from ? "recurring" : "one");
   // Menejer faqat o'z kassasidan xarajat qila oladi, rahbar — hammasidan.
@@ -64,10 +64,17 @@ export default function ExpenseModal({ initial = null, onClose, onSave }) {
   // saqlanmagan — ular uchun dollardan qaytarib hisoblanadi (yaxlitlash
   // sababli bir necha so'm farq qilishi mumkin).
   const rate = getUsdRate();
+  // So'm yoki dollar. Odatda xarajat so'mda kiritiladi (rahbar qoidasi),
+  // lekin import/tovar kabi chiqim dollarda o'ylanadi. Tur almashganda
+  // maydon TOZALANADI — aks holda "100 000" bir bosishda 100 000 so'mdan
+  // 100 000 dollarga aylanib ketardi (avval shunday xato bo'lgan).
+  const [cur, setCur] = useState(initial && initial.amountSom == null ? "usd" : "som");
+  const inSom = cur === "som";
+  // Tahrirlashda AYNAN kiritilgan raqam ko'rsatiladi: so'mda kiritilgan
+  // bo'lsa so'mda, dollarda bo'lsa dollarda. Dollardan so'mga qaytarib
+  // hisoblansa 10 000 → 9 985 bo'lib ketardi (companyData.fromSom qoidasi).
   const [amount, setAmount] = useState(
-    initial
-      ? String(initial.amountSom ?? (rate ? Math.round(initial.amount * rate) : initial.amount))
-      : ""
+    initial ? String(initial.amountSom ?? initial.amount) : ""
   );
   // Eski yozuvda endi ishlatilmaydigan hamyon bo'lsa (plastik/bank),
   // hech qaysi tugma yonmay qolmasligi uchun naqdga qaytariladi
@@ -113,12 +120,12 @@ export default function ExpenseModal({ initial = null, onClose, onSave }) {
   // Kurs yo'q bo'lsa umuman saqlanmaydi: so'mni dollarga o'girib
   // bo'lmaydi, raqamni shundoq yozib qo'yish esa hisobotni buzadi
   // Kiritilgan so'm ham saqlanadi — companyData.fromSom() qoidasi
-  const som = fromSom(raw);
-  const amt = som?.amount ?? 0;
+  const som = inSom ? fromSom(raw) : null;
+  const amt = inSom ? (som?.amount ?? 0) : +raw.toFixed(2);
   // "Boshqa xarajatlar"da tur hech narsa aytmaydi — nimaga ketgani
   // izohda yozilmasa saqlanmaydi
   const noteRequired = needsNote(category);
-  const valid = amt > 0 && !!rate && !!kassa && (mode === "one" ? !!date : !!from)
+  const valid = amt > 0 && (!inSom || !!rate) && !!kassa && (mode === "one" ? !!date : !!from)
     && (!noteRequired || !!note.trim());
 
   if (!allowedKassas.length) {
@@ -187,17 +194,32 @@ export default function ExpenseModal({ initial = null, onClose, onSave }) {
           ))}
         </select>
 
-        <label className="block text-sm font-bold mb-2">{t("Summa (so'm)")}</label>
+        <label className="block text-sm font-bold mb-2">{t("Summa")}</label>
+        <div className="flex gap-2 mb-2">
+          {[{ k: "som", lbl: "so'm" }, { k: "usd", lbl: "USD" }].map(({ k, lbl }) => (
+            <button key={k} onClick={() => { setCur(k); setAmount(""); }}
+              className={`px-4 py-2 rounded-xl text-sm font-bold border transition-colors ${
+                cur === k ? "border-brand bg-brand-soft text-brand" : "border-line hover:border-brand"}`}>
+              {t(lbl)}
+            </button>
+          ))}
+        </div>
         <NumberField value={amount === "" ? null : Number(amount)} allowEmpty autoFocus
           onChange={(v) => setAmount(v == null ? "" : String(v))}
           className="inp mb-1" placeholder="0.00" />
-        <p className={`text-sm font-semibold mb-4 ${rate ? "text-muted" : "text-danger"}`}>
-          {rate
-            ? (raw > 0
-                ? tt("≈ {n} USD · kurs {r} so'm", { n: amt.toFixed(2), r: Math.round(rate).toLocaleString("ru-RU") })
-                : tt("Kurs {r} so'm bo'yicha dollarga o'giriladi", { r: Math.round(rate).toLocaleString("ru-RU") }))
-            : t("Kurs olinmadi — xarajat saqlanmaydi. Sozlamalar bo'limida valyuta kursini yoqing.")}
-        </p>
+        {inSom ? (
+          <p className={`text-sm font-semibold mb-4 ${rate ? "text-muted" : "text-danger"}`}>
+            {rate
+              ? (raw > 0
+                  ? tt("≈ {n} USD · kurs {r} so'm", { n: amt.toFixed(2), r: Math.round(rate).toLocaleString("ru-RU") })
+                  : tt("Kurs {r} so'm bo'yicha dollarga o'giriladi", { r: Math.round(rate).toLocaleString("ru-RU") }))
+              : t("Kurs olinmadi — xarajat saqlanmaydi. Sozlamalar bo'limida valyuta kursini yoqing.")}
+          </p>
+        ) : (
+          <p className="text-sm font-semibold mb-4 text-muted">
+            {t("Summa dollarda saqlanadi — kurs kerak emas.")}
+          </p>
+        )}
 
         {/* Sanalar alohida yumshoq panelda — oldin uchta maydon bir qatorga
             siqilib, oy nomi kesilib qolardi. Endi kun tor maydonda, oylar esa
@@ -330,6 +352,16 @@ export default function ExpenseModal({ initial = null, onClose, onSave }) {
         )}
 
         <div className="flex gap-3">
+          {/* O'chirish shu yerda — xarajatni ochib, "bu keraksiz ekan"
+              deb qaror qilinadi. Ro'yxatga qaytib qidirish shart emas. */}
+          {onDelete && (
+            <button
+              onClick={() => { if (confirm(t("Ushbu xarajat o'chirilsinmi?"))) onDelete(); }}
+              className="rounded-xl border border-line font-bold px-4 py-3 text-danger hover:border-danger"
+              title={t("O'chirish")}>
+              <Trash2 size={18} />
+            </button>
+          )}
           <button onClick={onClose} className="flex-1 rounded-xl border border-line font-bold py-3 hover:bg-surface">
             {t("Bekor qilish")}
           </button>

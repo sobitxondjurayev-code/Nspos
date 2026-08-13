@@ -657,7 +657,20 @@ export default function FinanceExpenses() {
       {colPrefs.open && <ColumnSettings {...colPrefs.dialogProps} />}
 
       {modal && (
-        <ExpenseModal initial={modal.initial ?? null} onClose={() => setModal(null)} onSave={save} />
+        <ExpenseModal initial={modal.initial ?? null} onClose={() => setModal(null)} onSave={save}
+          // O'chirish tugmasi faqat huquqi borga chiqadi: doimiy
+          // xarajat — rahbarniki, bir martalik — bugungisi menejerga ham
+          onDelete={modal.initial && (modal.initial.day != null ? isOwner : canTouch(modal.initial))
+            ? () => {
+                if (modal.initial.day != null || modal.initial.source === "recurring") {
+                  removeRecurring(modal.initial.recurringId ?? modal.initial.id);
+                } else {
+                  removeExpense(modal.initial.id);
+                }
+                setModal(null);
+                bump();
+              }
+            : null} />
       )}
     </div>
   );
