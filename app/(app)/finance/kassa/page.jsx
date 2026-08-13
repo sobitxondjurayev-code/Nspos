@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Wallet, Send, Plus, Check, X as XIcon, Clock, Building2, Trash2, Scale, LockKeyhole,
+  CalendarDays, AlertTriangle, ChevronRight,
 } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import ControlDays from "@/components/finance/ControlDays";
@@ -19,10 +20,12 @@ import { getLedgerStart } from "@/lib/companyData";
 import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
 import KassaModal from "@/components/KassaModal";
+import CloseKassaModal from "@/components/CloseKassaModal";
 import {
   KASSAS, kassaIds, WALLETS, WALLET_IDS, walletsOf, categoryLabel,
   kassaBalances, listOps, addOp, removeOp,
-  requestTransfer, approveTransfer, rejectTransfer, pendingTransfers,
+  requestTransfer, pendingGroups, approveGroup, rejectGroup,
+  closeDay, cancelClose, unclosedDays, CLOSE,
   kassasOf, canOperate, kassaControl, COMPANY,
 } from "@/lib/kassaData";
 import { addExpense, expensesInRange, categoryLabel as expenseCategoryLabel } from "@/lib/expensesData";
@@ -54,6 +57,9 @@ const fmtDay = (d) => {
   const [y, m, dd] = String(d).split("-");
   return `${dd}.${m}.${y}`;
 };
+
+const iso = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 export default function KassaPage() {
   const { user } = useAuth();
@@ -96,7 +102,14 @@ export default function KassaPage() {
   // Kassa summasi bosilganda ochiladigan yozuvlar
   const [src, setSrc] = useState(null);
   const bal = useMemo(() => kassaBalances(new Date()), [tick, rowsTick, live]);
-  const pending = useMemo(() => pendingTransfers(), [tick, live]);
+  // Tasdiq kutayotganlar KUN bo'yicha guruhlanadi: bir kun yopilganda
+  // uchtagacha yozuv tug'iladi (naqd, Payme, servis), rahbar esa kunni
+  // tasdiqlaydi — hamyonni emas.
+  const pending = useMemo(() => pendingGroups(), [tick, live]);
+  // Qaysi kassada necha kun yopilmagan — kartochkada ogohlantirish
+  const openDays = useMemo(() => Object.fromEntries(
+    kassaIds().filter((k) => !KASSAS[k]?.main).map((k) => [k, unclosedDays(k)])
+  ), [tick, rowsTick, live]);
   // Harakatlar: kassa yozuvlari + xarajatlar birga. Menejer o'zi
   // kiritgan chiqimni shu yerda ko'rishi kerak — u Xarajatlar moduliga
   // yozilsa ham, pul aynan shu kassadan chiqqan.
@@ -116,25 +129,22 @@ export default function KassaPage() {
 
   const refresh = () => setTick((v) => v + 1);
 
-  // Kun oxirida kassani yopish: hamyonlardagi qolgan pulning HAMMASI
-  // bitta bosishda rahbarga uzatiladi (Billz'dagi "закрыть кассу" kabi).
-  // Har hamyon o'z turi bilan boradi — naqd naqdga, Payme Payme'ga,
-  // servis servisga tushadi.
-  function closeKassa(k) {
-    const b = bal[k];
-    const parts = walletsOf(k)
-      .map((w) => ({ w, amount: +(b[w] ?? 0).toFixed(2) }))
-      .filter((x) => x.amount > 0);
-    if (!parts.length) {
-      alert(t("Kassada o'tkaziladigan pul yo'q."));
-      return;
-    }
-    const list = parts.map((x) => `${t(WALLETS[x.w])}: ${fmtUSD(x.amount)}`).join("\n");
-    if (!confirm(`${t("Kassa yopiladi va quyidagi pul rahbarga o'tkaziladi:")}\n\n${list}\n\n${t("Rahbar tasdiqlaguncha pul \"yo'lda\" turadi.")}`)) return;
-    for (const x of parts) {
-      requestTransfer({ kassa: k, wallet: x.w, amount: x.amount, staffId: user?.id,
-        note: t("Kassa yopildi") });
-    }
+  // Kassa KUN bo'yicha yopiladi: qaysi kun yopilayotgani tanlanadi va
+  // aynan o'sha kunning qoldig'i rahbarga uzatiladi. Ilgari hisob
+  // boshidan yig'ilgan hamma pul bir bosishda ketardi — qaysi kunniki
+  // ekani yo'qolar, yopilmay qolgan kun esa ko'rinmasdi.
+  const [closing, setClosing] = useState(null);   // { kassa, date }
+
+  function confirmClose(day, note) {
+    closeDay({ kassa: closing.kassa, date: day, staffId: user?.id, note });
+    setClosing(null);
+    refresh();
+  }
+
+  function undoClose(day) {
+    if (!confirm(t("Yopish bekor qilinsinmi? Pul kassaga qaytadi."))) return;
+    cancelClose(closing.kassa, day);
+    setClosing(null);
     refresh();
   }
 
@@ -176,7 +186,7 @@ export default function KassaPage() {
     <div>
       <h1 className="text-4xl font-extrabold tracking-tight mb-2">{t("Kassalar va balans")}</h1>
       <p className="text-muted font-semibold mb-7 max-w-3xl">
-        {t("Kassa kirimi menejerlarning kunlik jadvalidan olinadi (KPI va oylik bo'limi), chiqim esa shu yerda va Xarajatlar bo'limida kiritiladi. Kun oxirida qolgan pul rahbarga o'tkaziladi va u tasdiqlagach asosiy balansga qo'shiladi.")}
+        {t("Kassa kirimi menejerlarning kunlik jadvalidan olinadi (KPI va oylik bo'limi), chiqim esa shu yerda va Xarajatlar bo'limida kiritiladi. Kassa har kun alohida yopiladi: o'sha kunning qoldig'i rahbarga topshiriladi va u tasdiqlagach asosiy balansga qo'shiladi. Qaysi kun yopilgani, qancha bilan yopilgani va yopilmay qolgani \"Kunlar\" ichida ko'rinadi.")}
       </p>
 
       {/* ДДС yuklanmagan bo'lsa kassa bo'sh ko'rinadi — sababini aytamiz */}
@@ -232,23 +242,28 @@ export default function KassaPage() {
           </div>
           <div className="space-y-3">
             {pending.map((p) => (
-              <div key={p.id} className="flex items-center gap-4 rounded-xl bg-surface px-5 py-4">
+              <div key={p.key} className="flex items-center gap-4 rounded-xl bg-surface px-5 py-4">
                 <div className="min-w-0 flex-1">
                   <p className="font-bold">
-                    {t(KASSAS[p.kassa].label)} → {t("Kompaniya")} · {t(WALLETS[p.wallet])}
+                    {t(KASSAS[p.kassa]?.label ?? p.kassa)} → {t("Kompaniya")}
+                    {p.close && (
+                      <span className="ml-2 text-sm font-bold text-brand">{t("kun yopildi")}</span>
+                    )}
                   </p>
                   <p className="text-sm text-muted font-semibold">
                     {fmtDay(p.date)}
                     {p.staffId && ` · ${getStaff(p.staffId)?.name ?? ""}`}
+                    {" · "}
+                    {p.items.map((i) => `${t(WALLETS[i.wallet])} ${fmtUSD(i.amount)}`).join(" · ")}
                     {p.note && ` · ${p.note}`}
                   </p>
                 </div>
-                <p className="text-xl font-extrabold shrink-0">{fmtUSD(p.amount)}</p>
-                <button onClick={() => { approveTransfer(p.id, user?.id); refresh(); }}
+                <p className="text-xl font-extrabold shrink-0">{fmtUSD(p.total)}</p>
+                <button onClick={() => { approveGroup(p, user?.id); refresh(); }}
                   className="flex items-center gap-1.5 rounded-xl bg-ok hover:opacity-90 text-white font-bold px-4 py-2.5">
                   <Check size={18} /> {t("Tasdiqlash")}
                 </button>
-                <button onClick={() => { rejectTransfer(p.id, user?.id); refresh(); }}
+                <button onClick={() => { rejectGroup(p, user?.id); refresh(); }}
                   className="flex items-center gap-1.5 rounded-xl border border-line font-bold px-4 py-2.5 hover:border-danger hover:text-danger">
                   <XIcon size={18} /> {t("Rad etish")}
                 </button>
@@ -298,6 +313,24 @@ export default function KassaPage() {
                 </p>
               )}
 
+              {/* Yopilmagan kunlar — kassaning eng muhim holati.
+                  Kunma-kun daftar shu yerdan ochiladi. */}
+              {!main && (
+                <Link href={`/finance/kassa/${k}`}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 mb-4 text-sm font-bold transition-colors ${
+                    openDays[k]?.length
+                      ? "bg-danger-soft text-danger hover:opacity-90"
+                      : "bg-ok-soft text-ok hover:opacity-90"}`}>
+                  {openDays[k]?.length ? <AlertTriangle size={16} /> : <Check size={16} />}
+                  <span className="flex-1">
+                    {openDays[k]?.length
+                      ? tt("{n} kun yopilmagan", { n: openDays[k].length })
+                      : t("Hamma kun yopilgan")}
+                  </span>
+                  <ChevronRight size={16} />
+                </Link>
+              )}
+
               {canOp && (
                 <div className="flex gap-2">
                   <button onClick={() => setModal({ kassa: k, mode: "in" })}
@@ -312,11 +345,26 @@ export default function KassaPage() {
                   )}
                 </div>
               )}
-              {canOp && !main && (
-                <button onClick={() => closeKassa(k)}
-                  className="mt-2 w-full flex items-center justify-center gap-2 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold py-2.5">
-                  <LockKeyhole size={17} /> {t("Kassani yopish")}
-                </button>
+              {!main && (
+                <div className="mt-2 flex gap-2">
+                  {canOp && (
+                    <button onClick={() => setClosing({ kassa: k, date: iso(new Date()) })}
+                      className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold py-2.5">
+                      <LockKeyhole size={17} /> {t("Kunni yopish")}
+                    </button>
+                  )}
+                  <Link href={`/finance/kassa/${k}`}
+                    className={`flex items-center justify-center gap-2 rounded-xl border border-line font-bold py-2.5 hover:border-brand ${
+                      canOp ? "px-4" : "flex-1"}`}>
+                    <CalendarDays size={17} /> {t("Kunlar")}
+                  </Link>
+                </div>
+              )}
+              {main && (
+                <Link href={`/finance/kassa/${k}`}
+                  className="mt-2 w-full flex items-center justify-center gap-2 rounded-xl border border-line font-bold py-2.5 hover:border-brand">
+                  <CalendarDays size={17} /> {t("Kunlar bo'yicha")}
+                </Link>
               )}
             </div>
           );
@@ -420,7 +468,9 @@ export default function KassaPage() {
                   <td className="px-4 py-4">
                     <p className="font-semibold">
                       {o.kind === "transfer"
-                        ? t("Rahbarga o'tkazma")
+                        ? (o.category === CLOSE
+                            ? tt("Kun yopildi · {d}", { d: fmtDay(o.date) })
+                            : t("Rahbarga o'tkazma"))
                         : o.expense
                           ? t(expenseCategoryLabel(o.category))
                           : t(categoryLabel(o.category))}
@@ -480,6 +530,13 @@ export default function KassaPage() {
           onClose={() => setModal(null)}
           onSave={save}
         />
+      )}
+
+      {closing && (
+        <CloseKassaModal kassa={closing.kassa} date={closing.date}
+          onClose={() => setClosing(null)}
+          onConfirm={confirmClose}
+          onCancelClose={undoClose} />
       )}
 
       {ctrlDays && (

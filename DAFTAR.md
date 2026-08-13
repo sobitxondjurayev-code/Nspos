@@ -43,6 +43,9 @@ hozircha menejerlar qo'lda kiritadi — bu xato manbai (5-bo'limga qarang).
 | Rahbarlar (owner) oylik olmaydi | Ular pulni NS (kassadan shaxsiy pul) orqali oladi. KPI, ish haqi, maosh hisoblarida ko'rinmaydi |
 | Menejer kursni o'zgartira oladi | Xarajat so'mda kiritiladi, kurssiz saqlab bo'lmaydi. Bazada `set_usd_rate()` SECURITY DEFINER + `is_manager()` |
 | Kassa: 3 ta (b2b, b2c, kompaniya), har birida naqd/payme/servis | B2B kassada servis YO'Q |
+| Kassa **kunlik** yopiladi, butunlay emas | Ilgari bir bosishda hisob boshidan yig'ilgan hamma pul ketardi: qaysi kunniki ekani yo'qolar, yopilmay qolgan kun esa umuman ko'rinmasdi. Endi har kunning o'z qoldig'i topshiriladi va yopilmagan kun qizarib turadi (`kassaDailyRows`, `closeDay`) |
+| Yopilgan kun `kassa_ops` da `kind='transfer', category='close'` bilan belgilanadi | Pul harakati bitta jadvalda qoladi. Topshiriladigan pul bo'lmasa 0 summali yozuv yoziladi — "bu kun tekshirildi" degani (shu sabab `amount > 0` cheklovi `>= 0` ga o'zgardi, `scripts/sql/kassa-close-day.sql`) |
+| Kunlik jadvaldagi "Kassada qoldi" tasdiqlanmagan pulni ham sanaydi | Kartochkadagi raqam ham shunday. Ikki joyda ikki xil qoldiq chiqmasligi uchun — yo'ldagi pul alohida ko'rsatiladi |
 | Menejer 2 kundan oldingi kunlik raqamni tahrirlay olmaydi | Rahbar tahrirlay oladi |
 | Ustaga pul 1, 5, 10, 15, 20, 25-kunlari beriladi | Oylik 1-sanada, keyin har 5 kunda. Menejer faqat shu kunlarga yoza oladi (`payDayCol`), rahbar esa istalgan kunga — favqulodda holat bo'lib turadi |
 | Ustalar reytingidagi ustun "Balans" — o'tgan oy qarzi ham ichida | Faqat shu oy hisoblansa "1,5 mln berishimiz kerak" degan yolg'on chiqadi, aslida usta iyulda oldindan olib bo'lgan. Formula: `carryIn + ishlab topgan − olgan` |
@@ -166,6 +169,21 @@ tortilmasdi — kassa "ДДС yuklang" deb turardi va kamomad yo'qolardi.
 **Yechim:** effekt `[live]` ga bog'landi (kassa va P&L sahifalarida).
 **Qoida:** remountga tayangan har qanday effektni tekshirish kerak —
 u endi o'zi qayta ishga tushishi shart.
+
+### Kassa butunlay yopilardi (2026-08-13)
+"Kassani yopish" bosilganda hisob boshidan yig'ilgan HAMMA pul bitta
+o'tkazma bo'lib ketardi. Natijada: qaysi kunning puli ekani yo'qolardi,
+bir kun unutilsa u hech qayerda ko'rinmasdi, rahbar esa "13-avgustda
+qancha topshirilgan edi?" degan savolga javob topolmasdi.
+**Yechim:** kun bo'yicha yopish. Har kassaning o'z sahifasi bor
+(`/finance/kassa/<id>`): kunma-kun kirim, chiqim, kun qoldig'i,
+topshirilgan va kassada qolgan pul; har kunning o'z "Yopish" tugmasi va
+holati (yopilgan — qancha bilan, yoki yopilmagan). Kartochkada esa
+"N kun yopilmagan" ogohlantirishi turadi.
+**Qoida:** yopilishning belgisi — `category='close'` bo'lgan transfer
+yozuvi. Tasdiq kutayotganlar rahbarga KUN bo'yicha guruhlanib ko'rinadi
+(bir kun yopilganda uchtagacha hamyon yozuvi tug'iladi, ular uchta qator
+bo'lib chiqmasligi kerak).
 
 ### Xato ekrani (2026-08-13)
 `app/(app)/error.jsx` qo'shildi: xato chiqsa Next.js'ning quruq

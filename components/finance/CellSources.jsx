@@ -20,8 +20,12 @@ const som = (n) => Math.round(n).toLocaleString("ru-RU");
 // Nega kerak: "5 419 dollar qayerdan chiqdi?" degan savolga jadvalning
 // o'zi javob bermaydi. Rahbar har safar Xarajatlar yoki KPI bo'limiga
 // borib qidirishi kerak bo'lardi.
-export default function CellSources({ from, to, colKey, label, dayLabel, kassa = null, onClose }) {
-  const rows = flowSources(from, to, colKey, { kassa });
+// `rows` berilsa yozuvlar tashqaridan keladi (kassaning kunlik daftari
+// o'z ro'yxatini o'zi beradi) — oyna ko'rinishi baribir bitta bo'lib
+// qoladi. Berilmasa, odatdagidek katak kalitidan hisoblanadi.
+export default function CellSources({ from, to, colKey, label, dayLabel, kassa = null,
+                                      rows: given = null, onClose }) {
+  const rows = given ?? flowSources(from, to, colKey, { kassa });
   const total = +rows.reduce((s, r) => s + (r.out ? -r.amount : r.amount), 0).toFixed(2);
   const totalSom = rows.some((r) => r.amountSom != null)
     ? rows.reduce((s, r) => s + (r.amountSom ?? 0), 0) : null;

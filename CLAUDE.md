@@ -36,6 +36,7 @@ quyidagi fidbek qoidalarini o'qing va so'ralmasdan qo'llang.
 - [2026-08-06] Rang mantiqi pul nuqtai nazaridan bo'lsin: pul kelmagani/qarz (nasiya musbat) — QIZIL, pul tushgani yoki qarz yopilgani — YASHIL.
 - [2026-08-06] Rejadagi to'lov to'liq to'lanmasligi mumkin. "To'ladim" bosilganda qancha berilgani so'raladi, qolgani esa yangi muddat bilan rejada turaveradi.
 - [2026-08-06] Yangi bo'lim/jadval qo'shilganda: davr tanlash (Kecha/Bugun/Hafta/Oy/Yil), filtr va Jami bo'lishi kutiladi.
+- [2026-08-13] Kassa KUNLIK yopiladi: har kun uchun alohida sana, o'sha kunning kirimi/chiqimi/qoldig'i va "qancha bilan yopilgan yoki yopilmagan" holati. Kassa ichiga kirilganda kunma-kun jadval turadi.
 - [2026-08-06] Yangi ustun/maydon qo'shilsa, uning JAMISI, filtri va hisobotdagi o'rni ham o'sha zahoti qo'shilsin — foydalanuvchi buni alohida aytib o'tirmasligi kerak. Iloji bo'lsa umumiy qilib yozilsin (masalan jami qatori ustun ro'yxatidan avtomat yig'sin), toki keyingi ustunda takrorlanmasin.
 
 ## Loyiha haqida
