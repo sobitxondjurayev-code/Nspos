@@ -154,6 +154,21 @@ kassada qolgan haqiqiy pulni yozadi.
 Tekshirildi: 01.08 da 2 886.11 → 2 866.11, menejer yozgan raqam bilan
 tiyinigacha teng. (P&L allaqachon shunday hisoblardi.)
 
+### Netto farq ikki muammoni yashiradi (2026-08-13)
+Kamomad jadvali faqat NETTO farqni ko'rsatardi. Bir kuni +1 000, boshqa
+kuni −1 000 bo'lsa yig'indi nol chiqadi va ikkala kun ham tekshiruvsiz
+qoladi. **Yechim:** kam topshirilgani va ko'p topshirilgani ALOHIDA
+yig'iladi va netto ostida ko'rsatiladi (necha kunligi bilan).
+**Qoida:** nazorat raqamlarida musbat va manfiy farqlarni bir-biriga
+qo'shib yubormaslik kerak.
+
+### Servis puli kamomad bo'lib ko'ringan (2026-08-13)
+Menejer servisni naqddan ayirib yozadi (731 → 700 naqd + 31 servis),
+Billz esa montajni oddiy sotuv deb naqdga qo'shadi. Solishtiruvda servis
+qaytarilmagani uchun har kuni aynan servis summasicha "kamomad" chiqqan.
+**Yechim:** KPI tomoni = naqd + Payme + **servis**. Namangan bo'yicha
+farq −4 938 dan −464 ga tushdi, 6 kun aniq nolga keldi.
+
 ### Ombor qoplamasi tugagan tovarni ko'rsatmagan
 `.filter(x => x.stock > 0)` — qoldig'i 0 bo'lgan pozitsiya butunlay
 tashlangan. Aslida aynan ular muhim (sotuv yo'qotilyapti). Haqiqiy

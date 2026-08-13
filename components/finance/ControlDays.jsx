@@ -23,6 +23,10 @@ export default function ControlDays({ kassaId, label, onClose }) {
   const totals = days.reduce((a, d) => ({
     billz: a.billz + d.billz, kpi: a.kpi + d.kpi, diff: a.diff + d.diff,
   }), { billz: 0, kpi: 0, diff: 0 });
+  // Netto farq aldamchi: bir kuni +1000, boshqa kuni −1000 bo'lsa
+  // yig'indi NOL chiqadi. Shuning uchun kam va ko'p alohida sanaladi.
+  const short = +days.filter((d) => d.diff < -0.01).reduce((a, d) => a + d.diff, 0).toFixed(2);
+  const over = +days.filter((d) => d.diff > 0.01).reduce((a, d) => a + d.diff, 0).toFixed(2);
   // Farq bo'lgan kunlar soni. Tiyinlik farq ham sanaladi: rahbar
   // "0.50 qayerdan chiqdi?" deb so'raganda javob ko'rinib turishi kerak.
   const bad = days.filter((d) => Math.abs(d.diff) >= 0.01).length;
@@ -58,8 +62,17 @@ export default function ControlDays({ kassaId, label, onClose }) {
                 <th className="px-6 py-4 text-left">{t("Jami")}</th>
                 <th className="px-4 py-4 text-right">{fmtUSD(+totals.billz.toFixed(2))}</th>
                 <th className="px-4 py-4 text-right">{fmtUSD(+totals.kpi.toFixed(2))}</th>
-                <th className={`px-6 py-4 text-right ${totals.diff < -1 ? "text-danger" : "text-ok"}`}>
-                  {totals.diff > 0 ? "+" : ""}{fmtUSD(+totals.diff.toFixed(2))}
+                <th className="px-6 py-4 text-right">
+                  <span className={totals.diff < -1 ? "text-danger" : "text-ok"}>
+                    {totals.diff > 0 ? "+" : ""}{fmtUSD(+totals.diff.toFixed(2))}
+                  </span>
+                  {(short < -0.01 || over > 0.01) && (
+                    <span className="block text-sm font-bold">
+                      {short < -0.01 && <span className="text-danger">{fmtUSD(short)}</span>}
+                      {short < -0.01 && over > 0.01 && <span className="text-muted"> · </span>}
+                      {over > 0.01 && <span className="text-ok">+{fmtUSD(over)}</span>}
+                    </span>
+                  )}
                 </th>
               </tr>
             </thead>
@@ -104,6 +117,8 @@ export default function ControlDays({ kassaId, label, onClose }) {
         </div>
 
         <p className="px-7 py-4 text-sm text-muted font-semibold border-t border-line">
+          {t("Pastdagi ikki raqam — kam topshirilgani va ko'p topshirilgani alohida. Ularni qo'shib yubormaslik kerak: bir kuni 1 000 kam, boshqa kuni 1 000 ko'p bo'lsa yig'indi nol chiqadi-yu, ikkala kun ham tekshiruvsiz qoladi.")}
+          {" "}
           {t("Servis puli ham qo'shib solishtiriladi: menejer uni naqddan ayirib yozadi, Billz esa montajni oddiy sotuv deb naqdga qo'shadi. 1 dollardan kam farq kulrang turadi — u yaxlitlash, kamomad emas. Farq manfiy bo'lsa menejer Billz ko'rsatgandan kam topshirgan, musbat bo'lsa ko'p.")}
         </p>
       </div>

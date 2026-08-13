@@ -357,9 +357,22 @@ export default function KassaPage() {
                         <button onClick={() => setCtrlDays({ kassa: r.kassa, label: r.label })}
                           className="rounded-lg px-2 -mx-2 py-1 hover:bg-brand-soft hover:text-brand transition-colors">
                           {r.diff > 0 ? "+" : ""}{fmtUSD(r.diff)}
-                          {r.pct != null && (
+                          {/* Netto farq aldamchi: kam va ko'p bir-birini
+                              yeb yuboradi. Shuning uchun ostida ikkalasi
+                              alohida turadi. */}
+                          {(r.short < -0.01 || r.over > 0.01) && (
                             <span className="block text-sm font-bold">
-                              {r.pct > 0 ? "+" : ""}{r.pct}%
+                              {r.short < -0.01 && (
+                                <span className="text-danger">
+                                  {fmtUSD(r.short)} <span className="text-muted">({r.shortDays} kun)</span>
+                                </span>
+                              )}
+                              {r.short < -0.01 && r.over > 0.01 && <span className="text-muted"> · </span>}
+                              {r.over > 0.01 && (
+                                <span className="text-ok">
+                                  +{fmtUSD(r.over)} <span className="text-muted">({r.overDays} kun)</span>
+                                </span>
+                              )}
                             </span>
                           )}
                         </button>
