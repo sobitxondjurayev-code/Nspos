@@ -311,6 +311,30 @@ Natijada `profiles` RLS'i avvalgidek qoldi: yozish faqat rahbarda.
 QATOR bo'yichami yoki USTUN bo'yicha. Ustun bo'yicha bo'lsa RLS emas,
 server yo'li kerak.
 
+### Ikki suhbat ishi bir kommitga aralashib ketdi (2026-08-13)
+Bir papkada ikki Claude suhbati baravar ishlagan. Biri "To'lov rejasi"
+ustida, ikkinchisi "Menejer ustaga login ochadi" ustida. Birinchisi
+`git add -A` bilan kommit qilganda ikkinchisining hali TUGALLANMAGAN
+fayllari ham (`api/staff/route.js`, `staffData.js`, `StaffModal.jsx`,
+`auth.js`, `settings/page.jsx`) o'sha kommitga tushib ketdi — kommit
+xabari esa faqat to'lov rejasi haqida. Ustiga sinov uchun yozilgan
+vaqtinchalik `.tmp-mgr.mjs` skripti ham repoga kirdi.
+
+Nima yomon: kommit endi "bitta ish" emas, kommit xabari yolg'on,
+orqaga qaytarish (revert) esa ikkinchi ishni ham o'chiradi.
+
+**Yechim ikki qavat:**
+1. `.gitignore` ga `.tmp`, `.tmp/`, `.tmp-*` qo'shildi — vaqtinchalik
+   fayl endi `git add -A` ga ham ilinmaydi.
+2. **Qoida:** `git add -A` / `git add .` / `git commit -a` ishlatilmaydi.
+   Faqat o'zim tekkan fayllar nomma-nom qo'shiladi. Kommit oldidan
+   `git status` ko'riladi; begona o'zgargan fayl bo'lsa unga tegilmaydi.
+   Vaqtinchalik fayl loyiha ildiziga emas, `.tmp/` ga yoziladi.
+
+**Eslatma:** `npx vercel --prod` ish papkasidagi HOLICHA yuboradi —
+ya'ni boshqa suhbatning yarim ishi ham saytga chiqib ketishi mumkin.
+Chiqarishdan oldin `git status` toza ekaniga ishonch hosil qiling.
+
 ### Xato ekrani (2026-08-13)
 `app/(app)/error.jsx` qo'shildi: xato chiqsa Next.js'ning quruq
 "Application error" ekrani emas, xatoning MATNI ko'rinadi (rasmga olib

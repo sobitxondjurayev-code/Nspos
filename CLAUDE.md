@@ -42,6 +42,7 @@ quyidagi fidbek qoidalarini o'qing va so'ralmasdan qo'llang.
 - [2026-08-13] Yuklamaga (Billz eksporti) tayanadigan sahifa qatorlarni `useUploadRows` bilan tortsin va qaytgan belgini BARCHA useMemo bog'lamlariga qo'shsin — aks holda ekranda 0 turadi. Sana taqqoslansa `ymd()` ishlatilsin, `String(sana).slice()` emas.
 - [2026-08-13] Moliya bo'limlari nomi yonida rasmiy buxgalteriya termini tursin (P&L, Cash flow, Balance sheet, OPEX, Payroll, AR/AP) — hisobchi bilan gaplashganda qaysi hisobot ekani aniq bo'lsin.
 - [2026-08-13] Menejer ustaga login/parolni Sozlamalardan o'zi ochadi va tiklaydi (faqat USTA roli). Xodimga rol berish kengaytirilsa cheklov ALBATTA serverda (`/api/staff`) bo'lsin — RLS ustunni yashira olmaydi, ya'ni qator ochilsa oylik va ruxsatlar ham ochilib ketadi.
+- [2026-08-13] Bir papkada bir necha suhbat ishlashi mumkin — ishlar ARALASHIB KETMASIN. `git add -A`, `git add .` va `git commit -a` ISHLATILMAYDI: faqat o'zim o'zgartirgan fayllar nomma-nom qo'shiladi. Vaqtinchalik fayl loyiha ildiziga yozilmaydi — `.tmp/` ichiga (u gitignore'da). Kommit oldidan `git status` ko'riladi: begona fayl ko'rinsa unga tegilmaydi.
 - [2026-08-13] Modul xotirasidan o'qiydigan har `useMemo` bog'lamiga `useLive()` qo'shilsin. Demo qiymatdan boshlanadigan modulda (masalan `staffData`) busiz ekranda soxta ro'yxat qotib qoladi — xato bo'sh ekran emas, ishonarli yolg'on bo'lib chiqadi.
 
 ## Loyiha haqida
