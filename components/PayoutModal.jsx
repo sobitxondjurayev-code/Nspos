@@ -6,7 +6,7 @@ import NumberField from "@/components/NumberField";
 import DateField from "@/components/DateField";
 import { fmtUSD } from "@/lib/demoData";
 import { KASSAS, WALLETS, kassaIds, walletsOf, COMPANY } from "@/lib/kassaData";
-import { PAYOUT_CATEGORIES, payeeNames } from "@/lib/payoutsData";
+import { PAYOUT_CATEGORIES, payeeNames, payeeCategory } from "@/lib/payoutsData";
 import { getUsdRate } from "@/lib/companyData";
 
 // Ro'yxatda yo'q oluvchi uchun maxsus qiymat
@@ -81,8 +81,15 @@ export default function PayoutModal({ initial = null, dueDate: preset = null, ba
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>
         </div>
 
-        <label className="block text-sm font-bold mb-2">{t("Kimga to'lanadi")} *</label>
-        <select value={payee} onChange={(e) => { setPayee(e.target.value); setTitle(""); }}
+        <label className="block text-sm font-bold mb-2">{t("Kimga va nima uchun")} *</label>
+        <select
+          value={payee}
+          onChange={(e) => {
+            const v = e.target.value;
+            setPayee(v); setTitle("");
+            // Tur nom ortida turadi — alohida so'ralmaydi
+            if (v && v !== OTHER) setCategory(payeeCategory(v));
+          }}
           autoFocus className={`inp ${isOther ? "mb-2" : "mb-4"}`}>
           <option value="" disabled>{t("Ro'yxatdan tanlang")}</option>
           {names.map((n) => (
@@ -127,12 +134,20 @@ export default function PayoutModal({ initial = null, dueDate: preset = null, ba
         <label className="block text-sm font-bold mb-2">{t("Qachon to'lanadi")} *</label>
         <DateField value={dueDate} onChange={setDueDate} className="mb-4" />
 
-        <label className="block text-sm font-bold mb-2">{t("Nima uchun")}</label>
-        <select value={category} onChange={(e) => setCategory(e.target.value)} className="inp mb-4">
-          {Object.entries(PAYOUT_CATEGORIES).map(([k, lbl]) => (
-            <option key={k} value={k}>{t(lbl)}</option>
-          ))}
-        </select>
+        {/* Tur alohida so'ralmaydi: u tanlangan nom ortida turadi
+            ("Hiside China" → tovar keltirish, "Import yo'lkira" →
+            import xarajati). Faqat "Boshqa" da so'raladi — o'shanda
+            nomdan turini bilib bo'lmaydi. */}
+        {isOther && (
+          <>
+            <label className="block text-sm font-bold mb-2">{t("Nima uchun")}</label>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="inp mb-4">
+              {Object.entries(PAYOUT_CATEGORIES).map(([k, lbl]) => (
+                <option key={k} value={k}>{t(lbl)}</option>
+              ))}
+            </select>
+          </>
+        )}
 
         <label className="block text-sm font-bold mb-2">{t("Qaysi kassadan")}</label>
         <select value={kassa} onChange={(e) => setKassa(e.target.value)} className="inp mb-3">
