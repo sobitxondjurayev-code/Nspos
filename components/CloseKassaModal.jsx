@@ -23,11 +23,10 @@ export default function CloseKassaModal({ kassa, date, onClose, onConfirm, onCan
   const rem = useMemo(() => dayRemainder(kassa, day), [kassa, day]);
   const closed = useMemo(() => closingOf(kassa, day), [kassa, day]);
   const wallets = walletsOf(kassa);
-  const parts = wallets.filter((w) => (rem.byWallet[w] ?? 0) > 0.004);
 
   return (
     <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-lg p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="card w-full max-w-xl p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-2xl font-extrabold">{t("Kunni yopish")}</h2>
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>
@@ -37,28 +36,56 @@ export default function CloseKassaModal({ kassa, date, onClose, onConfirm, onCan
         <label className="block text-sm font-bold mb-2">{t("Qaysi kun")}</label>
         <DateField value={day} onChange={setDay} className="mb-5" />
 
-        {/* O'sha kuni nima bo'lgani */}
-        <div className="rounded-xl bg-surface px-5 py-4 mb-5 space-y-2">
-          <div className="flex items-baseline justify-between gap-3 font-semibold">
-            <span className="text-muted">{t("Kirim")}</span>
-            <span className="font-bold tabular-nums text-ok">{fmtUSD(rem.in)}</span>
-          </div>
-          <div className="flex items-baseline justify-between gap-3 font-semibold">
-            <span className="text-muted">{t("Chiqim")}</span>
-            <span className="font-bold tabular-nums text-danger">
-              {rem.out > 0 ? "−" : ""}{fmtUSD(rem.out)}
-            </span>
-          </div>
-          <div className="border-t border-line pt-2 flex items-baseline justify-between gap-3">
-            <span className="font-bold">{t("Topshiriladigan pul")}</span>
-            <span className="text-xl font-extrabold tabular-nums">{fmtUSD(rem.total)}</span>
-          </div>
-          {parts.map((w) => (
-            <div key={w} className="flex items-baseline justify-between gap-3 text-sm font-semibold">
-              <span className="text-muted">{t(WALLETS[w])}</span>
-              <span className="font-bold tabular-nums">{fmtUSD(rem.byWallet[w])}</span>
-            </div>
-          ))}
+        {/* O'sha kuni har HAMYONDA nima bo'lgani. Servis ham shu jadvalda:
+            servis materiallari servis pulidan chiqadi, shuning uchun
+            topshiriladigani — servis kirimi minus servis chiqimi. */}
+        <div className="rounded-xl bg-surface px-5 py-4 mb-5">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-muted font-bold">
+                <th className="text-left pb-2">{t("Hamyon")}</th>
+                <th className="text-right pb-2">{t("Kirim")}</th>
+                <th className="text-right pb-2">{t("Chiqim")}</th>
+                {rem.givenTotal > 0.004 && (
+                  <th className="text-right pb-2 whitespace-nowrap">{t("Topshirilgan")}</th>
+                )}
+                <th className="text-right pb-2">{t("Qoldiq")}</th>
+              </tr>
+            </thead>
+            <tbody className="font-semibold">
+              {wallets.map((w) => (
+                <tr key={w}>
+                  <td className="py-1 text-muted">{t(WALLETS[w])}</td>
+                  <td className="py-1 text-right tabular-nums text-ok">
+                    {rem.inByWallet[w] > 0.004 ? fmtUSD(rem.inByWallet[w]) : <span className="text-muted">—</span>}
+                  </td>
+                  <td className="py-1 text-right tabular-nums text-danger">
+                    {rem.outByWallet[w] > 0.004 ? `−${fmtUSD(rem.outByWallet[w])}` : <span className="text-muted">—</span>}
+                  </td>
+                  {rem.givenTotal > 0.004 && (
+                    <td className="py-1 text-right tabular-nums text-muted">
+                      {rem.givenByWallet[w] > 0.004 ? `−${fmtUSD(rem.givenByWallet[w])}` : "—"}
+                    </td>
+                  )}
+                  <td className={`py-1 text-right tabular-nums font-bold ${
+                    rem.byWallet[w] < -0.004 ? "text-danger" : ""}`}>
+                    {fmtUSD(rem.byWallet[w])}
+                  </td>
+                </tr>
+              ))}
+              <tr className="border-t border-line">
+                <td className="pt-2 font-extrabold">{t("Topshiriladigan pul")}</td>
+                <td className="pt-2 text-right tabular-nums text-ok font-bold">{fmtUSD(rem.in)}</td>
+                <td className="pt-2 text-right tabular-nums text-danger font-bold">
+                  {rem.out > 0.004 ? `−${fmtUSD(rem.out)}` : "—"}
+                </td>
+                {rem.givenTotal > 0.004 && (
+                  <td className="pt-2 text-right tabular-nums text-muted font-bold">−{fmtUSD(rem.givenTotal)}</td>
+                )}
+                <td className="pt-2 text-right text-lg font-extrabold tabular-nums">{fmtUSD(rem.total)}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         {closed ? (

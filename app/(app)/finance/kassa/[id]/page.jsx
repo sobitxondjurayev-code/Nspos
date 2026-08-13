@@ -89,15 +89,21 @@ export default function KassaDays() {
     { key: "net", label: "Kun qoldig'i", tone: "split", total: "sum" },
     { key: "given", label: "Topshirilgan", tone: "split", total: "sum" },
     { key: "left", label: "Kassada qoldi", tone: "split", total: "last" },
-    // Quyidagilar boshida yashirin — kerak bo'lsa "Ustunlar" dan yoqiladi
-    { key: "inCash", label: "Naqd", tone: "in", total: "sum" },
-    { key: "inPayme", label: "Payme", tone: "in", total: "sum" },
-    { key: "inService", label: "Servis", tone: "in", total: "sum" },
+    // Quyidagilar boshida yashirin — kerak bo'lsa "Ustunlar" dan yoqiladi.
+    // Har hamyonning O'Z kirimi va chiqimi bor: servis materiallari
+    // servis pulidan chiqadi, ijara naqddan — shuning uchun ular yonma-yon.
+    { key: "inCash", label: "Naqd kirim", tone: "in", total: "sum" },
+    { key: "outCash", label: "Naqd chiqim", tone: "out", total: "sum" },
+    { key: "inPayme", label: "Payme kirim", tone: "in", total: "sum" },
+    { key: "outPayme", label: "Payme chiqim", tone: "out", total: "sum" },
+    { key: "inService", label: "Servis kirim", tone: "in", total: "sum" },
+    { key: "outService", label: "Servis chiqim", tone: "out", total: "sum" },
     { key: "billz", label: "Billz bo'yicha", tone: "split", total: "sum" },
     { key: "diff", label: "Farq", tone: "split", total: "sum" },
   ];
   const colPrefs = useColumns(`kassa-days-${kassa?.main ? "company" : "store"}`, ALL_COLS, {
-    defaultHidden: ["inCash", "inPayme", "inService", "billz", "diff"],
+    defaultHidden: ["inCash", "outCash", "inPayme", "outPayme", "inService", "outService",
+      "billz", "diff"],
   });
   const COLS = colPrefs.columns;
 
