@@ -340,7 +340,9 @@ export default function FinancePlan() {
       </div>
 
       <p className="text-sm text-muted font-semibold mb-8">
-        {t("Faqat pul harakati bo'lgan kunlar ko'rsatiladi. Payme va Naqd — o'sha kirimning to'lov turi bo'yicha bo'linishi, alohida pul emas.")}
+        {t("Faqat pul harakati bo'lgan kunlar ko'rsatiladi. Xarajat ustunlari pul QAYSI QOPDAN chiqqaniga qarab bo'lingan: servis pulidan chiqqani — \"Servis xarajatlar\", do'kon kassasidan chiqqani — \"Do'kon xarajatlari\". Shuning uchun kirimdan xarajatni ayirsangiz o'sha qopdagi pul chiqadi.")}
+        {" "}
+        {t("Naqd, Payme, \"Oylik maoshlar\" va \"NS\" — alohida pul emas, yuqoridagi ustunlarning ichidan ajratib ko'rsatilgani (masalan usta oyligi servis pulidan berilsa, u \"Servis xarajatlar\" ichida ham, \"Oylik maoshlar\"da ham turadi).")}
         {" "}
         {t("Rejadagi to'lovlar va kelasi muddatlar \"Berishim kerak\" oynasida, kunlar bo'yicha jadval bilan birga.")}
       </p>
