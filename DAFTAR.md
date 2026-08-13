@@ -170,6 +170,19 @@ chiqadi. Menejerga kompaniya bo'yicha umumiy raqamlar ko'rsatilmaydi.
 - **Faqat NSPOS'da yashaydigan ma'lumot:** KPI kunlari, xarajatlar, kassa
   yozuvlari, to'lov rejasi, NPS. Mijozlar va qarzlar Billz'dan qayta
   yuklanadi.
+- **Moliya raqamlari avgustdan ekani tasdiqlangan (2026-08-09):** ekrandagi
+  "Shu oyda kirgan 49 389.40" = bazadagi avgust KPI yig'indisi (naqd
+  34 660 + payme 10 255 + servis 4 474). Avgustdan oldingi 338 kunlik KPI
+  yozuvi (60 264 $) hisobga kirmaydi. KPI jadvallarida esa u ko'rinadi —
+  shunday kelishilgan.
+- **ДДС yuklamasi qisqartirildi (2026-08-09):** fayl 01.01–05.08 ni
+  qamragan edi (8 923 qator). Avgustdan oldingi 8 724 qator o'chirildi,
+  199 qator qoldi (01.08–05.08, kirim 17 179 $). Sabab: eski oy ma'lumoti
+  umuman turmasin. Asl fayl `~/Downloads` da va Billz'da bor.
+  **Qolgan yuklamalar tekshirildi** — `summary`, `transactions`, `pnl`
+  allaqachon faqat avgustdan; `clients` va `client_debts` — hozirgi holat
+  (davr emas); `efficiency` 20.06 dan boshlanadi va faqat ombor
+  tahlilida ishlatiladi (moliyaga tegmaydi).
 
 ---
 
