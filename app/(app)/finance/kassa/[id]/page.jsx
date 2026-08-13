@@ -29,7 +29,6 @@ import CloseKassaModal from "@/components/CloseKassaModal";
 import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
 import { getStaff } from "@/lib/staffData";
-import { getLedgerStart } from "@/lib/companyData";
 import {
   KASSAS, WALLETS, walletsOf, kassaBalances, kassaDailyRows, kassaSources, hasSources,
   closeDay, cancelClose, canOperate, kassasOf, unclosedDays,
@@ -89,7 +88,9 @@ export default function KassaDays() {
     { key: "out", label: "Chiqim", tone: "out", total: "sum" },
     { key: "net", label: "Kun qoldig'i", tone: "split", total: "sum" },
     { key: "given", label: "Topshirilgan", tone: "split", total: "sum" },
-    { key: "left", label: "Kassada qoldi", tone: "split", total: "last" },
+    // Shu kundan kassada qolib ketgan pul. Kun to'liq topshirilsa nol —
+    // jadvalda faqat muammoli kun ko'zga tashlanadi.
+    { key: "left", label: "Kassada qoldi", tone: "split", total: "sum" },
     // Quyidagilar boshida yashirin — kerak bo'lsa "Ustunlar" dan yoqiladi.
     // Har hamyonning O'Z kirimi va chiqimi bor: servis materiallari
     // servis pulidan chiqadi, ijara naqddan — shuning uchun ular yonma-yon.
@@ -111,31 +112,22 @@ export default function KassaDays() {
   const rows = daily.rows;
   const totals = useMemo(() => {
     const out = {};
-    for (const c of ALL_COLS) {
-      if (c.total === "last") {
-        out[c.key] = rows.length ? rows[rows.length - 1][c.key] : daily.carry;
-      } else {
-        out[c.key] = +rows.reduce((s, r) => s + (r[c.key] ?? 0), 0).toFixed(2);
-      }
-    }
+    for (const c of ALL_COLS) out[c.key] = +rows.reduce((s, r) => s + (r[c.key] ?? 0), 0).toFixed(2);
     return out;
-  }, [rows, daily.carry]);
+  }, [rows]);
 
   const closedCount = rows.filter((r) => r.close).length;
 
-  // Katak bosilganda qaysi davr ochilishi. "Kassada qoldi" — yugurib
-  // boradigan raqam: u BIR KUNNIKI emas, hisob boshidan o'sha kungacha
-  // yig'ilgani. Shuning uchun uning ortidagi ro'yxat ham shu davrni
-  // oladi — aks holda raqam ro'yxatga to'g'ri kelmasdi.
-  const srcFor = (c, date, from) => (c.key === "left"
-    ? { from: getLedgerStart(), to: date, key: c.key, label: c.label,
-        dayLabel: tt("Hisob boshidan {d} gacha", { d: fmtDay(date) }) }
-    : { from: from ?? date, to: date, key: c.key, label: c.label,
-        dayLabel: from && from !== date ? `${fmtDay(from)} — ${fmtDay(date)}` : fmtDay(date) });
+  // Katak bosilganda qaysi davr ochilishi
+  const srcFor = (c, date, from) => ({
+    from: from ?? date, to: date, key: c.key, label: c.label,
+    dayLabel: from && from !== date ? `${fmtDay(from)} — ${fmtDay(date)}` : fmtDay(date),
+  });
 
   // Qoldiq manfiy bo'lsa — kassaga tushganidan ko'p pul topshirilgan.
   // Bu odatda xarajat kun yopilgandan KEYIN kiritilganini bildiradi.
-  const short = rows.length ? rows[rows.length - 1].left : 0;
+  const badDays = rows.filter((r) => r.left < -0.01);
+  const badDay = badDays[0];
 
   function confirmClose(day, note) {
     closeDay({ kassa: id, date: day, staffId: user?.id, note });
@@ -282,8 +274,10 @@ export default function KassaDays() {
                     ) : (
                       <span className={cls}>{text}</span>
                     )}
-                    {c.total === "last" && (
-                      <span className="block text-sm text-muted font-semibold">{t("hozirgi qoldiq")}</span>
+                    {c.key === "left" && (
+                      <span className="block text-sm text-muted font-semibold">
+                        {t(v < -0.01 ? "ortiqcha topshirilgan" : v > 0.01 ? "topshirilmagan" : "hammasi topshirilgan")}
+                      </span>
                     )}
                   </td>
                 );
@@ -385,22 +379,25 @@ export default function KassaDays() {
 
       {/* "Kassada qoldi" ustuni eng ko'p savol tug'diradi: u har kuni bir
           xil turishi mumkin. Sababini shu yerda aytamiz. */}
-      {!kassa.main && short < -0.01 && (
+      {!kassa.main && badDay && (
         <div className="card p-5 mb-4 border border-danger flex items-start gap-3">
           <AlertTriangle size={18} className="text-danger shrink-0 mt-0.5" />
           <div>
             <p className="font-bold text-danger mb-1">
-              {tt("Kassa {n} minusda", { n: fmtUSD(Math.abs(short)) })}
+              {tt("{d} kuni {n} ortiqcha topshirilgan", {
+                d: fmtDay(badDay.date), n: fmtUSD(Math.abs(badDay.left)) })}
+              {badDays.length > 1 && ` · ${tt("yana {n} kun shunday", { n: badDays.length - 1 })}`}
             </p>
             <p className="text-sm text-muted font-semibold">
-              {t("Kassaga tushganidan ko'proq pul topshirilgan. Odatda bu xarajat kun yopilgandan KEYIN kiritilganini bildiradi — o'sha kunning qoldig'i topshirilgan, keyin esa xarajat qo'shilib qoldiq minusga tushgan. \"Kassada qoldi\" raqamining ustiga bossangiz, hisob boshidan beri qaysi yozuvlar shu raqamni chiqargani ochiladi.")}
+              {tt("O'sha kuni kassada {q} qolgan edi, topshirilgani esa {g}. Odatda bu xarajat kun yopilgandan KEYIN kiritilganini bildiradi: pul allaqachon berib yuborilgan, keyin esa o'sha kunga xarajat qo'shilgan.", {
+                q: fmtUSD(badDay.net), g: fmtUSD(badDay.given) })}
             </p>
           </div>
         </div>
       )}
 
       <p className="text-sm text-muted font-semibold mb-8">
-        {t("\"Kun qoldig'i\" — o'sha kundagi kirim minus chiqim, ya'ni topshirilishi kerak bo'lgan pul. \"Kassada qoldi\" esa bitta kunniki emas: u hisob boshidan yig'ilib keladigan qoldiq (kirim − chiqim − topshirilgan). Kun to'liq topshirilsa u o'zgarmaydi — shuning uchun bir necha kun ketma-ket bir xil turishi normal. Rahbar tasdiqlaguncha pul \"yo'lda\" turadi va qoldiqda sanalaveradi — kartochkadagi raqam bilan bir xil bo'lishi uchun.")}
+        {t("\"Kun qoldig'i\" — o'sha kundagi kirim minus chiqim, ya'ni topshirilishi kerak bo'lgan pul. \"Kassada qoldi\" esa o'sha kundan kassada qolib ketgani: kun to'liq topshirilsa u NOL bo'ladi. Ya'ni bu ustunda raqam turgan kunlarnigina tekshirish kerak — musbat bo'lsa pul hali kassada, manfiy bo'lsa kassada bo'lganidan ko'p topshirilgan.")}
         {" "}
         {t("Har raqamning ustiga bossangiz — u qaysi yozuvlardan yig'ilgani ochiladi.")}
       </p>
