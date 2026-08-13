@@ -13,13 +13,11 @@
 import { t, tt } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import {
-  CalendarDays, ArrowDownLeft, ArrowUpRight, Wallet, ChevronRight, SlidersHorizontal, Plus, Check,
-  ClipboardList,
+  CalendarDays, ArrowDownLeft, Wallet, ChevronRight, SlidersHorizontal, Plus, ClipboardList,
 } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
 import DateRangePicker from "@/components/DateRangePicker";
-import StatCard from "@/components/finance/StatCard";
 import PayoutModal from "@/components/PayoutModal";
 import PayoutsCard from "@/components/PayoutsCard";
 import PayModal from "@/components/PayModal";
@@ -28,7 +26,9 @@ import ColumnSettings from "@/components/ColumnSettings";
 import { useColumns } from "@/components/useColumns";
 import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
-import { KASSAS, kassaBalances, moneyFlow, summaryRow, dailyRows, COMPANY } from "@/lib/kassaData";
+import {
+  KASSAS, WALLETS, WALLET_IDS, kassaBalances, moneyFlow, summaryRow, dailyRows, COMPANY,
+} from "@/lib/kassaData";
 import {
   listPayouts, addPayout, updatePayout, removePayout, payPayout, unpayPayout,
   payoutSummary, plannedByKassa,
@@ -75,6 +75,11 @@ export default function FinancePlan() {
 
   const cashOnHand = useMemo(
     () => +Object.values(bal).reduce((s, b) => s + b.total, 0).toFixed(2), [bal]);
+
+  // Hamma kassadagi pul hamyon bo'yicha: naqd, Payme, servis
+  const walletTotals = useMemo(() => Object.fromEntries(
+    WALLET_IDS.map((w) => [w, +Object.values(bal).reduce((s, b) => s + (b[w] ?? 0), 0).toFixed(2)])
+  ), [bal]);
 
   // —— Ustunlar ————————————————————————————————————
   // Rahbarning o'z ro'yxati, o'sha tartibda. tone: kirimmi chiqimmi.
@@ -210,14 +215,48 @@ export default function FinancePlan() {
         </div>
       </div>
 
-      {/* —— Umumiy uchlik —— */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-7">
-        <StatCard icon={ArrowDownLeft} label="Kirgan pul" tone="green" value={fmtUSD(flow.in)} />
-        <StatCard icon={ArrowUpRight} label="Chiqqan pul" tone="red" value={fmtUSD(flow.out)} />
-        <StatCard icon={Wallet} label="Hozir kassalarda" value={fmtUSD(cashOnHand)}
-          hint={sum.planned > 0
-            ? tt("Berishim keraklari to'langach {n}", { n: fmtUSD(+(cashOnHand - sum.planned).toFixed(2)) })
-            : t("Rejada to'lov yo'q")} />
+      {/* —— Ikki kartochka —— */}
+      {/* Kirgan va chiqqan pul BITTA kartochkada: ular bir savolning ikki
+          tomoni ("davr ichida pul qanday yurdi"), alohida turgani joyni
+          egallardi va ko'z ikkalasini solishtirish uchun baribir birga
+          qaraydi. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-7">
+        <div className="card p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="w-10 h-10 rounded-xl bg-brand-soft text-brand flex items-center justify-center">
+              <ArrowDownLeft size={20} />
+            </span>
+            <p className="text-sm font-bold text-muted">{t("Kirgan va chiqqan pul")}</p>
+          </div>
+          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1">
+            <span className="text-3xl font-extrabold text-ok whitespace-nowrap">{fmtUSD(flow.in)}</span>
+            <span className={`text-3xl font-extrabold whitespace-nowrap ${
+              flow.out > 0.004 ? "text-danger" : "text-muted"}`}>
+              {flow.out > 0.004 ? "−" : ""}{fmtUSD(flow.out)}
+            </span>
+          </div>
+          <p className="text-sm text-muted font-semibold mt-1">
+            {tt("Kirgan · chiqqan · farqi {n}", { n: fmtUSD(flow.net) })}
+          </p>
+        </div>
+
+        {/* Kassalarda qancha pul bor — hamyon bo'yicha bo'lingan holda */}
+        <div className="card p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="w-10 h-10 rounded-xl bg-brand-soft text-brand flex items-center justify-center">
+              <Wallet size={20} />
+            </span>
+            <p className="text-sm font-bold text-muted">{t("Hozir kassalarda")}</p>
+          </div>
+          <p className="text-3xl font-extrabold">{fmtUSD(cashOnHand)}</p>
+          <div className="flex flex-wrap gap-x-6 gap-y-1 mt-1.5">
+            {WALLET_IDS.map((w) => (
+              <span key={w} className="text-sm font-semibold text-muted whitespace-nowrap">
+                {t(WALLETS[w])} <b className="text-ink">{fmtUSD(walletTotals[w])}</b>
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* —— Rahbar jadvali: har kun alohida qator —— */}
