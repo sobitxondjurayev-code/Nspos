@@ -181,16 +181,9 @@ export default function PayoutsCard({
           </p>
         </div>
 
-        {/* Pul zinapoyasi — kartochka ichida, chunki bu ham tafsilot.
-            Kun bo'yicha filtr yoqilganda ko'rsatilmaydi: zinapoya butun
-            reja uchun mantiqli, bitta kun uchun emas. */}
-        {!who && !day && tab === "open" && open.length > 0 && (
-          <div className="px-8 pt-6">
-            <PayoutWaterfall start={cashOnHand} items={open} bare />
-          </div>
-        )}
-
-        {/* Ko'rinishlar */}
+        {/* Ko'rinishlar — ENG TEPADA, sarlavha ostida. Ilgari ular
+            zinapoyadan keyin turardi va oynani pastga aylantirmasdan
+            ko'rinmasdi: qaysi ro'yxatga o'tishni tanlash birinchi ish. */}
         {!who && (
           <div className="px-8 pt-6">
             <div className="bg-track rounded-2xl p-1.5 flex w-fit">
@@ -205,6 +198,15 @@ export default function PayoutsCard({
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Pul zinapoyasi — kartochka ichida, chunki bu ham tafsilot.
+            Kun bo'yicha filtr yoqilganda ko'rsatilmaydi: zinapoya butun
+            reja uchun mantiqli, bitta kun uchun emas. */}
+        {!who && !day && tab === "open" && open.length > 0 && (
+          <div className="px-8 pt-6">
+            <PayoutWaterfall start={cashOnHand} items={open} bare />
           </div>
         )}
 
