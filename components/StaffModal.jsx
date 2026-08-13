@@ -17,11 +17,17 @@ const roleDefaults = (r) =>
 // Yangi xodimda EMAIL so'raladi — u taklif bo'lib yoziladi va xodim
 // o'sha email bilan ro'yxatdan o'tadi. Mavjud xodimda email
 // o'zgartirilmaydi (u auth hisobiga bog'langan).
-export default function StaffModal({ initial = null, busy = false, onClose, onSave }) {
+//
+// `lockRole` berilsa oyna faqat shu rol uchun ishlaydi: rol tanlash,
+// do'kon, ko'rish huquqlari va ish haqi shartlari umuman ko'rinmaydi.
+// Menejer ustaga login ochganda shu ko'rinish chiqadi — u faqat ism,
+// raqam, parol va kamera narxini belgilaydi.
+export default function StaffModal({ initial = null, busy = false, lockRole = null, onClose, onSave }) {
   const isEdit = !!initial;
+  const full = !lockRole;
   const [name, setName] = useState(initial?.name ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
-  const [role, setRole] = useState(initial?.role ?? "cashier");
+  const [role, setRole] = useState(lockRole ?? initial?.role ?? "cashier");
   const [storeId, setStoreId] = useState(initial?.storeId ?? "");
   const [salary, setSalary] = useState(initial?.salary ?? 0);
   const [salesPct, setSalesPct] = useState(initial?.salesPct ?? 0);
@@ -52,6 +58,12 @@ export default function StaffModal({ initial = null, busy = false, onClose, onSa
             : password.length >= 6);
 
   function save() {
+    // Cheklangan ko'rinishda faqat login ma'lumoti va kamera narxi
+    // yuboriladi — ish haqi va ruxsatlar rahbarnikiligicha qoladi.
+    if (!full) {
+      onSave({ name: name.trim(), phone: phone.trim(), role, cameraRate, password });
+      return;
+    }
     onSave({
       name: name.trim(), phone: phone.trim(),
       role, storeId: storeId || null, salary, salesPct, servicePct, cameraRate,
@@ -65,7 +77,8 @@ export default function StaffModal({ initial = null, busy = false, onClose, onSa
       <div className="card w-full max-w-lg p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-extrabold">
-            {t(isEdit ? "Xodimni tahrirlash" : "Yangi xodim")}
+            {full ? t(isEdit ? "Xodimni tahrirlash" : "Yangi xodim")
+                  : t(isEdit ? "Usta logini" : "Yangi usta")}
           </h2>
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>
         </div>
@@ -96,6 +109,7 @@ export default function StaffModal({ initial = null, busy = false, onClose, onSa
         </p>
 
         {/* Vakolat */}
+        {full && (<>
         <label className="block text-sm font-bold mb-2">{t("Rol va vakolat")}</label>
         <div className="grid grid-cols-1 gap-2 mb-4">
           {Object.entries(ROLES).map(([key, r]) => (
@@ -116,9 +130,10 @@ export default function StaffModal({ initial = null, busy = false, onClose, onSa
         <p className="text-sm text-muted font-semibold mb-4">
           {t("Do'kon tanlansa — xodim faqat o'sha do'kon ma'lumotini ko'radi.")}
         </p>
+        </>)}
 
         {/* Ko'rish huquqlari — har xodimga alohida bo'lim ruxsatlari */}
-        {role !== "owner" && (
+        {full && role !== "owner" && (
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-2">
               <Eye size={18} className="text-brand" />
@@ -210,7 +225,9 @@ export default function StaffModal({ initial = null, busy = false, onClose, onSa
           </div>
         )}
 
-        {/* Ish haqi shartlari */}
+        {/* Ish haqi shartlari — rahbarniki. Menejer ustaga login ochganda
+            bu bo'lim ko'rinmaydi (u boshqaning oyligini ko'rmaydi ham). */}
+        {full && (<>
         <p className="font-extrabold mb-3">{t("Ish haqi shartlari")}</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <label className="block">
@@ -226,6 +243,7 @@ export default function StaffModal({ initial = null, busy = false, onClose, onSa
             <NumberField value={servicePct} onChange={setServicePct} />
           </label>
         </div>
+        </>)}
 
         {/* Usta uchun: har kamera uchun to'lov (shu ustaga alohida) */}
         {role === "installer" && (
@@ -246,7 +264,7 @@ export default function StaffModal({ initial = null, busy = false, onClose, onSa
           </button>
           <button disabled={!valid || busy} onClick={save}
             className="flex-1 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold py-3 disabled:opacity-50">
-            {busy ? t("Ochilmoqda…") : t(isEdit ? "Saqlash" : "Xodim ochish")}
+            {busy ? t("Ochilmoqda…") : t(isEdit ? "Saqlash" : (full ? "Xodim ochish" : "Usta ochish"))}
           </button>
         </div>
       </div>

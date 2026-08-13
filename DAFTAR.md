@@ -49,6 +49,7 @@ hozircha menejerlar qo'lda kiritadi — bu xato manbai (5-bo'limga qarang).
 | Kunlik jadvaldagi har ustun KUNLIK bo'ladi, jamlanma emas | "Kassada qoldi" avval yugurib boradigan (jamlanma) raqam edi — hamma kunda BIR XIL turardi va foydalanuvchi ikki marta "tushunmadim" dedi (2026-08-13). Endi u o'sha kundan qolgani: `kirim − chiqim − topshirilgan`. Kun to'liq topshirilsa NOL — jadvalda faqat muammoli kun ko'zga tashlanadi. Jami esa yig'indi bo'lib, kassaning hozirgi qoldig'iga teng chiqadi. **Qoida:** kunlik jadvalda jamlanma raqam ko'rsatilmaydi — jamlanmaning joyi kartochka yoki "Jami" |
 | Manfiy "Kassada qoldi" — ortiqcha topshirilgan | O'sha kuni kassada bo'lganidan ko'p pul berilgan. Deyarli har doim sababi: xarajat kun yopilgandan KEYIN kiritilgan. Jadval ostida qizil izoh chiqadi — qaysi kun, qancha qolgan edi, qancha topshirilgan |
 | Kunlik jadvaldagi "Kassada qoldi" tasdiqlanmagan pulni ham sanaydi | Kartochkadagi raqam ham shunday. Ikki joyda ikki xil qoldiq chiqmasligi uchun — yo'ldagi pul alohida ko'rsatiladi |
+| Kompaniya balansidan chiqim Pul rejasida rejalashtiriladi | Asosiy ish shu — shuning uchun "Yangi to'lov" tugmasi sahifaning O'ZIDA turadi ("Berishim kerak" kartochkasi ichida yashirin emas). To'langach pul kassadan chiqadi va jadvalda "Kompaniya xarajatlari" ustuniga tushadi |
 | Menejer 2 kundan oldingi kunlik raqamni tahrirlay olmaydi | Rahbar tahrirlay oladi |
 | Menejer faqat BUGUNGI xarajatni tuzata/o'chira oladi | Eski yozuvni o'zgartirish — hisobni orqadan tahrirlash. Doimiy xarajat esa umuman faqat rahbarniki. Himoya ikki qavat: interfeysda tugma chiqmaydi, bazada esa `expense_update`/`expense_delete` siyosati (sana Toshkent vaqti bo'yicha) |
 | Ustaga pul 1, 5, 10, 15, 20, 25-kunlari beriladi | Oylik 1-sanada, keyin har 5 kunda. Menejer faqat shu kunlarga yoza oladi (`payDayCol`), rahbar esa istalgan kunga — favqulodda holat bo'lib turadi |
@@ -264,6 +265,21 @@ holati (yopilgan — qancha bilan, yoki yopilmagan). Kartochkada esa
 yozuvi. Tasdiq kutayotganlar rahbarga KUN bo'yicha guruhlanib ko'rinadi
 (bir kun yopilganda uchtagacha hamyon yozuvi tug'iladi, ular uchta qator
 bo'lib chiqmasligi kerak).
+
+### To'langan reja jadvalda ko'rinmasdi (2026-08-13)
+Pul rejasida "To'ladim" bosilganda `payPayout()` kassa chiqimi yozadi —
+pul kassadan (odatda **kompaniya balansidan**) chiqib ketardi. Lekin
+kunlik jadvalning `fillDays()` funksiyasi kassa chiqimlaridan faqat
+**maosh va NS** ni olardi: "Tovar keltirish", "Import xarajati" kabi
+to'lovlar hech qaysi ustunga tushmasdi. Natijada balans kamayardi-yu,
+jadval "qayerga ketdi?" degan savolga javob bermasdi (tepadagi "Chiqqan
+pul" kartochkasi esa uni sanardi — ikki raqam bir-biriga qarshi edi).
+**Yechim:** `opCol()` — kassa chiqimi ham xarajatlar bilan bir xil
+qoidada ustunga ajratiladi (maosh → Oylik, NS → NS, servis hamyoni →
+Servis xarajatlar, do'kon kassasi → Do'kon/B2B xarajatlari, qolgani →
+Kompaniya xarajatlari). `flowSources()` ham shu qoidada — ochilgan
+ro'yxat katakdagi raqamga teng chiqishi uchun.
+**Qoida:** pul kassadan chiqsa, u ALBATTA biror ustunda ko'rinishi kerak.
 
 ### Xato ekrani (2026-08-13)
 `app/(app)/error.jsx` qo'shildi: xato chiqsa Next.js'ning quruq

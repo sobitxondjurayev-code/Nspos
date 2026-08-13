@@ -17,8 +17,13 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// So'rovchi EGASI ekanini tekshiradi. { admin, prof } yoki { error } qaytaradi.
-async function authOwner(req) {
+// So'rovchini aniqlaydi. { admin, prof } yoki { error } qaytaradi.
+//
+// Egasi hamma rol bilan ishlaydi. Menejer esa faqat USTA hisobini
+// ocha/tiklay oladi — do'kon menejeri kundalik ishni ustalar bilan
+// yuritadi va yangi usta kelganda rahbarni kutib turmasligi kerak.
+// Cheklov shu yerda: `role` va nishon xodim har amalda tekshiriladi.
+async function authCaller(req) {
   if (!service) return { error: json({ error: "Server sozlanmagan (service kalit yo'q)" }, 500) };
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return { error: json({ error: "Avtorizatsiya yo'q" }, 401) };
@@ -32,21 +37,30 @@ async function authOwner(req) {
 
   const admin = createClient(url, service, { auth: { persistSession: false } });
   const { data: prof } = await admin
-    .from("profiles").select("company_id, role").eq("id", me.user.id).maybeSingle();
-  if (!prof || prof.role !== "owner") {
-    return { error: json({ error: "Faqat egasi bu amalni bajaradi" }, 403) };
+    .from("profiles").select("company_id, role, store_id").eq("id", me.user.id).maybeSingle();
+  if (!prof || (prof.role !== "owner" && prof.role !== "manager")) {
+    return { error: json({ error: "Bu amalni bajarishga huquqingiz yo'q" }, 403) };
   }
   return { admin, prof };
 }
 
-// Nishon xodim CHAQIRUVCHINING kompaniyasidami. Buni tekshirmaslik
-// jiddiy teshik edi: egalikni tasdiqlagach, `id` kimniki ekani
-// so'ralmasdi — ya'ni bir kompaniya egasi butun loyihadagi istalgan
-// hisobning parolini va login raqamini almashtira olardi.
-async function sameCompany(admin, prof, id) {
+// Nishon xodim CHAQIRUVCHINING kompaniyasidami va u bilan ishlashga
+// huquq bormi. Kompaniyani tekshirmaslik jiddiy teshik edi: egalikni
+// tasdiqlagach, `id` kimniki ekani so'ralmasdi — ya'ni bir kompaniya
+// egasi butun loyihadagi istalgan hisobning parolini va login raqamini
+// almashtira olardi. Menejer uchun esa yana bitta shart: nishon FAQAT
+// usta bo'lsin — aks holda u rahbarning parolini almashtirib,
+// hisobiga kirib olardi.
+async function canTouch(admin, prof, id) {
   const { data: target } = await admin
-    .from("profiles").select("company_id").eq("id", id).maybeSingle();
-  return !!target && target.company_id === prof.company_id;
+    .from("profiles").select("company_id, role").eq("id", id).maybeSingle();
+  if (!target || target.company_id !== prof.company_id) {
+    return { ok: false, msg: "Bu xodim sizning kompaniyangizda emas" };
+  }
+  if (prof.role !== "owner" && target.role !== "installer") {
+    return { ok: false, msg: "Siz faqat ustalar hisobini boshqarasiz" };
+  }
+  return { ok: true };
 }
 
 // Do'kon ham o'z kompaniyanikimi — xodimni begona do'konga biriktirib
@@ -60,18 +74,30 @@ async function ownStore(admin, prof, storeId) {
 
 // —— Yangi xodim ochish ————————————————————————————————
 export async function POST(req) {
-  const { admin, prof, error } = await authOwner(req);
+  const { admin, prof, error } = await authCaller(req);
   if (error) return error;
 
   let body;
   try { body = await req.json(); } catch { return json({ error: "Noto'g'ri so'rov" }, 400); }
-  const { phone, password, name, role, storeId, salary, salesPct, servicePct } = body;
+  const { phone, password, name, role } = body;
+  let { storeId, salary, salesPct, servicePct } = body;
   const digits = normalizePhone(phone);
   if (!digits || digits.length < 9 || !password || password.length < 6 || !name) {
     return json({ error: "Telefon raqami, parol (6+ belgi) va ism kerak" }, 400);
   }
   const allowed = ["owner", "manager", "cashier", "storekeeper", "installer"];
   if (!allowed.includes(role)) return json({ error: "Rol noto'g'ri" }, 400);
+  // Menejer faqat usta ocha oladi va pul shartlariga tegmaydi — ish haqi
+  // rahbarning ishi (u menejerga oylik ustunlarini umuman ko'rsatmaydi
+  // ham: staff_directory ularni null qaytaradi).
+  if (prof.role !== "owner") {
+    if (role !== "installer") return json({ error: "Siz faqat usta hisobini ocha olasiz" }, 403);
+    // Usta do'konga biriktirilmaydi: u ikkala do'kon buyurtmasiga ham
+    // chiqadi va reytingda kompaniya bo'yicha turadi (mavjud ustalarning
+    // hammasida store_id bo'sh). Ish haqi shartlari — rahbarning ishi.
+    storeId = null;
+    salary = 0; salesPct = 0; servicePct = 0;
+  }
   if (!(await ownStore(admin, prof, storeId))) {
     return json({ error: "Bu do'kon sizning kompaniyangizda emas" }, 403);
   }
@@ -108,20 +134,20 @@ export async function POST(req) {
   return json({ ok: true, id: created.user.id });
 }
 
-// —— Parolni yangilash (egasi xodim parolini tiklaydi) ————————————
+// —— Login ma'lumotini yangilash (parol tiklash, raqam/ism almashtirish) ——
 export async function PATCH(req) {
-  const { admin, prof, error } = await authOwner(req);
+  const { admin, prof, error } = await authCaller(req);
   if (error) return error;
 
   let body;
   try { body = await req.json(); } catch { return json({ error: "Noto'g'ri so'rov" }, 400); }
-  const { id, password, phone } = body;
+  const { id, password, phone, name } = body;
   if (!id) return json({ error: "ID kerak" }, 400);
-  if (!password && !phone) return json({ error: "Parol yoki telefon kiriting" }, 400);
-  // Egalik yetarli emas — xodim AYNAN shu kompaniyaniki bo'lishi shart
-  if (!(await sameCompany(admin, prof, id))) {
-    return json({ error: "Bu xodim sizning kompaniyangizda emas" }, 403);
-  }
+  if (!password && !phone && !name) return json({ error: "O'zgartirish uchun ma'lumot yo'q" }, 400);
+  // Egalik yetarli emas — xodim AYNAN shu kompaniyaniki bo'lishi shart,
+  // menejer uchun esa ustadan boshqasiga tegib bo'lmaydi
+  const touch = await canTouch(admin, prof, id);
+  if (!touch.ok) return json({ error: touch.msg }, 403);
 
   // Parol (ixtiyoriy)
   if (password) {
@@ -144,6 +170,15 @@ export async function PATCH(req) {
       return fail(eErr, "Telefon raqamini yangilab bo'lmadi.");
     }
     await admin.from("profiles").update({ phone: phone.trim() }).eq("id", id);
+  }
+
+  // Ism (ixtiyoriy). Menejer profiles ga to'g'ridan-to'g'ri yoza olmaydi
+  // (RLS faqat rahbarda), shuning uchun ustaning ismi ham shu yo'ldan
+  // o'tadi — bitta joyda tekshiriladi.
+  if (name && name.trim()) {
+    const { error: nErr } = await admin
+      .from("profiles").update({ full_name: name.trim() }).eq("id", id);
+    if (nErr) return fail(nErr, "Ismni yangilab bo'lmadi.");
   }
 
   return json({ ok: true });

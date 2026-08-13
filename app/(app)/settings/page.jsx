@@ -12,10 +12,10 @@ import { LANGS } from "@/lib/i18n";
 import { ROLES, can } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
 import { demoStores } from "@/lib/demoData";
-import { listStaff, updateStaff, removeStaff } from "@/lib/staffData";
+import { listStaff, updateStaff, removeStaff, reloadStaff } from "@/lib/staffData";
 import { listInvites, addInvite, removeInvite } from "@/lib/invitesData";
 import { supabase, DEMO_MODE } from "@/lib/db";
-import { setInstallerRate } from "@/lib/kpiData";
+import { setInstallerRate, getPlan, monthKey } from "@/lib/kpiData";
 import { saveRate } from "@/lib/ratesData";
 import { getUsdRate, isRateAuto, setRateAuto, refreshUsdRate, getRateDate,
   getServiceNames, setServiceNames, getLedgerStart, setLedgerStart } from "@/lib/companyData";
@@ -25,50 +25,77 @@ import StaffModal from "@/components/StaffModal";
 const MODE_ICONS = { light: Sun, dark: Moon, system: Monitor };
 const storeName = (id) => demoStores.find((s) => s.id === id)?.name ?? null;
 
-// Xodimlar boshqaruvi — faqat egasi ko'radi
-function StaffManager() {
+// Ustaning shu oydagi kamera narxi (so'm/dona). Oyliq shundan yig'iladi,
+// shuning uchun tahrir oynasi ham hozirgi narxni ko'rsatib turadi —
+// aks holda 0 chiqib, rahbar qo'ygan narx bekor qilinganday tuyulardi.
+const cameraRateOf = (id) =>
+  Number(getPlan(id, monthKey(new Date()), "installer")?.rate) || 0;
+
+// Xodimlar boshqaruvi.
+//
+// Egasi — barcha xodimlar, barcha rol va vakolat bilan.
+// Menejer — faqat USTALAR (`onlyInstallers`): do'kon menejeri kundalik
+// ishni ustalar bilan yuritadi, yangi usta kelganda unga login/parolni
+// o'zi ochadi va unutilgan parolni o'zi tiklaydi. Menejer ustaning
+// oyligini, ruxsatlarini va rolini ko'rmaydi ham, o'zgartira ham
+// olmaydi — cheklovning o'zi serverda (app/api/staff/route.js).
+function StaffManager({ onlyInstallers = false }) {
   const [modal, setModal] = useState(null);   // null | {} | {staff}
   const [tick, setTick] = useState(0);
-  const staff = useMemo(() => listStaff(), [tick]);
-  const invites = useMemo(() => listInvites(), [tick]);
+  const staff = useMemo(() => {
+    const list = listStaff();
+    return onlyInstallers ? list.filter((s) => s.role === "installer") : list;
+  }, [tick, onlyInstallers]);
+  const invites = useMemo(() => (onlyInstallers ? [] : listInvites()), [tick, onlyInstallers]);
   const bump = () => setTick((v) => v + 1);
 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
+  // Menejer `profiles` ga to'g'ridan-to'g'ri yoza olmaydi (RLS faqat
+  // rahbarda) — uning har qanday o'zgarishi server yo'lidan o'tadi.
+  const viaApi = onlyInstallers;
+
+  async function call(method, body) {
+    const { data: sess } = await supabase.auth.getSession();
+    const res = await fetch("/api/staff", {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${sess.session?.access_token ?? ""}`,
+      },
+      body: JSON.stringify(body),
+    });
+    return { res, out: await res.json() };
+  }
+
   async function save(data) {
     setErr("");
     if (modal?.staff) {
-      updateStaff(modal.staff.id, data);
+      if (!viaApi) updateStaff(modal.staff.id, data);
       // Usta bo'lsa kamera narxini KPI tizimiga ham yozamiz (0 bo'lsa tegmaymiz)
       if (data.role === "installer" && data.cameraRate > 0) {
         setInstallerRate(modal.staff.id, data.cameraRate);
       }
-      // Egasi xodim parolini yoki LOGIN (telefon) raqamini o'zgartirsa —
-      // auth hisobini ham yangilaymiz (server yo'li, service kalit bilan).
+      // Parol, LOGIN (telefon) yoki ism o'zgarsa — auth hisobini ham
+      // yangilaymiz (server yo'li, service kalit bilan).
       if (!DEMO_MODE) {
         const patch = { id: modal.staff.id };
         if (data.password && data.password.length >= 6) patch.password = data.password;
         const before = (modal.staff.phone || "").replace(/\D/g, "");
         const after = (data.phone || "").replace(/\D/g, "");
         if (after && after !== before) patch.phone = data.phone;
+        // Ismni ham shu yo'ldan yuboramiz — menejer profiles ga yoza olmaydi
+        if (viaApi && data.name && data.name !== modal.staff.name) patch.name = data.name;
 
-        if (patch.password || patch.phone) {
+        if (patch.password || patch.phone || patch.name) {
           setBusy(true);
           try {
-            const { data: sess } = await supabase.auth.getSession();
-            const res = await fetch("/api/staff", {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${sess.session?.access_token ?? ""}`,
-              },
-              body: JSON.stringify(patch),
-            });
-            const out = await res.json();
-            setBusy(false);
-            if (!res.ok) { setErr(out.error || t("Saqlanmadi")); return; }
+            const { res, out } = await call("PATCH", patch);
+            if (!res.ok) { setBusy(false); setErr(out.error || t("Saqlanmadi")); return; }
           } catch (e) { setBusy(false); setErr(e.message); return; }
+          if (viaApi) await reloadStaff();
+          setBusy(false);
         }
       }
       setModal(null); bump();
@@ -80,24 +107,16 @@ function StaffManager() {
 
     setBusy(true);
     try {
-      const { data: sess } = await supabase.auth.getSession();
-      const res = await fetch("/api/staff", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${sess.session?.access_token ?? ""}`,
-        },
-        body: JSON.stringify(data),
-      });
-      const out = await res.json();
+      const { res, out } = await call("POST", data);
       if (!res.ok) { setErr(out.error || t("Xodim ochilmadi")); setBusy(false); return; }
       // Usta uchun kamera narxini KPI tizimiga yozamiz
       if (out.id && data.role === "installer" && data.cameraRate > 0) {
         setInstallerRate(out.id, data.cameraRate);
       }
-      setModal(null); setBusy(false);
-      // Yangi profil realtime bilan keladi; darrov ko'rinishi uchun ham yangilaymiz
-      setTimeout(bump, 800);
+      // Yangi qator realtime bilan kelmasligi mumkin (menejer boshqaning
+      // profilini ko'rmaydi) — ro'yxatni o'zimiz qayta o'qiymiz.
+      await reloadStaff();
+      setModal(null); setBusy(false); bump();
     } catch (e) {
       setErr(e.message); setBusy(false);
     }
@@ -106,14 +125,18 @@ function StaffManager() {
   return (
     <div className="card p-7 mb-6">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-xl font-extrabold">{t("Xodimlar va vakolatlar")}</h2>
+        <h2 className="text-xl font-extrabold">
+          {t(onlyInstallers ? "Ustalar — login va parol" : "Xodimlar va vakolatlar")}
+        </h2>
         <button onClick={() => setModal({})}
           className="flex items-center gap-2 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold px-5 py-2.5">
-          <UserPlus size={18} /> {t("Xodim qo'shish")}
+          <UserPlus size={18} /> {t(onlyInstallers ? "Usta qo'shish" : "Xodim qo'shish")}
         </button>
       </div>
       <p className="text-sm text-muted font-semibold mb-5">
-        {t("Xodimga telefon raqami va parol berasiz — u darrov kira oladi. SMS/tasdiqlash kerak emas.")}
+        {t(onlyInstallers
+          ? "Ustaga telefon raqami va parol berasiz — u darrov kira oladi va o'z KPI'sini ko'radi. Parolni unutsa shu yerdan yangisini yozib berasiz."
+          : "Xodimga telefon raqami va parol berasiz — u darrov kira oladi. SMS/tasdiqlash kerak emas.")}
       </p>
 
       {/* Kutilayotgan takliflar */}
@@ -141,10 +164,12 @@ function StaffManager() {
         <table className="w-full text-[0.9375rem]">
           <thead>
             <tr className="[&>th]:sticky [&>th]:top-0 [&>th]:z-20 text-left text-muted text-sm border-b border-line [&>th]:bg-panel">
-              <th className="px-4 py-3 font-bold">{t("Xodim")}</th>
-              <th className="px-4 py-3 font-bold">{t("Rol")}</th>
-              <th className="px-4 py-3 font-bold">{t("Do'kon")}</th>
-              <th className="px-4 py-3 font-bold text-right">{t("Fiksa")}</th>
+              <th className="px-4 py-3 font-bold">{t(onlyInstallers ? "Usta" : "Xodim")}</th>
+              {!onlyInstallers && <th className="px-4 py-3 font-bold">{t("Rol")}</th>}
+              {!onlyInstallers && <th className="px-4 py-3 font-bold">{t("Do'kon")}</th>}
+              <th className="px-4 py-3 font-bold text-right">
+                {t(onlyInstallers ? "Kamera narxi" : "Fiksa")}
+              </th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -155,23 +180,36 @@ function StaffManager() {
                   <p className="font-bold">{s.name}</p>
                   {s.phone && <p className="text-sm text-muted">{s.phone}</p>}
                 </td>
-                <td className="px-4 py-3">
-                  <span className="bg-brand-soft text-brand text-sm font-bold px-3 py-1 rounded-lg">
-                    {t(ROLES[s.role]?.label ?? s.role)}
-                  </span>
-                </td>
-                <td className="px-4 py-3 font-semibold">
-                  {storeName(s.storeId) ?? <span className="text-muted">{t("Barchasi")}</span>}
-                </td>
+                {!onlyInstallers && (
+                  <td className="px-4 py-3">
+                    <span className="bg-brand-soft text-brand text-sm font-bold px-3 py-1 rounded-lg">
+                      {t(ROLES[s.role]?.label ?? s.role)}
+                    </span>
+                  </td>
+                )}
+                {!onlyInstallers && (
+                  <td className="px-4 py-3 font-semibold">
+                    {storeName(s.storeId) ?? <span className="text-muted">{t("Barchasi")}</span>}
+                  </td>
+                )}
                 <td className="px-4 py-3 text-right font-semibold">
-                  {s.salary ? `${s.salary} $` : "—"}
+                  {onlyInstallers
+                    ? (cameraRateOf(s.id)
+                        ? `${cameraRateOf(s.id).toLocaleString("ru-RU")} ${t("so'm")}`
+                        : "—")
+                    : (s.salary ? `${s.salary} $` : "—")}
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
-                  <button onClick={() => setModal({ staff: s })} className="text-muted hover:text-brand mr-3">
+                  <button onClick={() => setModal({ staff: { ...s, cameraRate: cameraRateOf(s.id) } })}
+                    className="text-muted hover:text-brand mr-3">
                     <Pencil size={18} />
                   </button>
-                  <button onClick={() => { if (confirm(t("Xodim o'chirilsinmi?"))) { removeStaff(s.id); bump(); } }}
-                    className="text-muted hover:text-danger"><Trash2 size={18} /></button>
+                  {/* O'chirish — faqat rahbar: yozuv ketsa KPI tarixi ham
+                      ketadi, bazada esa zaxiraga qaytarish yo'q */}
+                  {!onlyInstallers && (
+                    <button onClick={() => { if (confirm(t("Xodim o'chirilsinmi?"))) { removeStaff(s.id); bump(); } }}
+                      className="text-muted hover:text-danger"><Trash2 size={18} /></button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -183,6 +221,7 @@ function StaffManager() {
 
       {modal && (
         <StaffModal initial={modal.staff ?? null} busy={busy}
+          lockRole={onlyInstallers ? "installer" : null}
           onClose={() => { setModal(null); setErr(""); }} onSave={save} />
       )}
     </div>
@@ -518,6 +557,8 @@ export default function Settings() {
   // rol auth sessiyasidan keladi va foydalanuvchi uni o'zgartira olmaydi.
   const { user, setRole, demo } = useAuth();
   const isOwner = can("staff.manage", user);
+  // Menejer ustalar bilan ishlaydi — unga faqat usta logini bo'limi
+  const canInstallers = !isOwner && can("staff.installers", user);
 
   return (
     <div className="max-w-4xl">
@@ -529,8 +570,9 @@ export default function Settings() {
         </button>
       </div>
 
-      {/* Xodimlar — faqat egasi */}
+      {/* Xodimlar — egasi hammasini, menejer faqat ustalarni */}
       {isOwner && <StaffManager />}
+      {canInstallers && <StaffManager onlyInstallers />}
 
       {/* Zaxira nusxa — faqat egasi (butun bazani o'z ichiga oladi) */}
       {isOwner && !demo && <BackupCard />}

@@ -13,7 +13,7 @@
 import { t, tt } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import {
-  CalendarDays, ArrowDownLeft, ArrowUpRight, Wallet, ChevronRight, SlidersHorizontal,
+  CalendarDays, ArrowDownLeft, ArrowUpRight, Wallet, ChevronRight, SlidersHorizontal, Plus,
 } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
@@ -213,19 +213,28 @@ export default function FinancePlan() {
               className={`tab-btn ${period === p ? "active" : ""}`}>{t(p)}</button>
           ))}
         </div>
-        <div className="relative">
-          <button onClick={() => setPickerOpen((v) => !v)}
-            className="card flex items-center gap-4 px-5 py-3 font-bold">
-            <CalendarDays size={20} className="text-brand" />
-            <span className="text-right leading-tight">
-              {fmtDate(range.from)}<br />{fmtDate(range.to)}
-            </span>
+        <div className="flex items-center gap-3">
+          {/* To'lov shu sahifada rejalashtiriladi (asosan kompaniya
+              balansidan chiqim) — tugma "Berishim kerak" kartochkasi
+              ichida yashirin turmasin, asosiy ekranda tursin. */}
+          <button onClick={() => setForm({})}
+            className="flex items-center gap-2 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold px-5 py-3">
+            <Plus size={18} /> {t("Yangi to'lov")}
           </button>
-          {pickerOpen && (
-            <DateRangePicker from={range.from} to={range.to}
-              onApply={(f, to2) => { setPeriod(null); setRange({ from: f, to: to2 }); setPickerOpen(false); }}
-              onClose={() => setPickerOpen(false)} />
-          )}
+          <div className="relative">
+            <button onClick={() => setPickerOpen((v) => !v)}
+              className="card flex items-center gap-4 px-5 py-3 font-bold">
+              <CalendarDays size={20} className="text-brand" />
+              <span className="text-right leading-tight">
+                {fmtDate(range.from)}<br />{fmtDate(range.to)}
+              </span>
+            </button>
+            {pickerOpen && (
+              <DateRangePicker from={range.from} to={range.to}
+                onApply={(f, to2) => { setPeriod(null); setRange({ from: f, to: to2 }); setPickerOpen(false); }}
+                onClose={() => setPickerOpen(false)} />
+            )}
+          </div>
         </div>
       </div>
 
