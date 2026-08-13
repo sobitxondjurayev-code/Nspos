@@ -74,6 +74,7 @@ export default function ControlDays({ kassaId, label, onClose }) {
                       {d.kpi > 0 && (
                         <span className="block text-sm text-muted font-semibold">
                           {tt("naqd {c} · Payme {p}", { c: fmtUSD(d.kpiCash), p: fmtUSD(d.kpiPayme) })}
+                          {d.kpiService > 0 && ` · ${t("servis")} ${fmtUSD(d.kpiService)}`}
                         </span>
                       )}
                     </td>
@@ -94,7 +95,7 @@ export default function ControlDays({ kassaId, label, onClose }) {
         </div>
 
         <p className="px-7 py-4 text-sm text-muted font-semibold border-t border-line">
-          {t("1 dollargacha farq ko'rsatilmaydi — u yaxlitlash. Farq manfiy bo'lsa menejer Billz ko'rsatgandan kam topshirgan, musbat bo'lsa ko'p.")}
+          {t("Servis puli ham qo'shib solishtiriladi: menejer uni naqddan ayirib yozadi, Billz esa montajni oddiy sotuv deb naqdga qo'shadi. 1 dollargacha farq ko'rsatilmaydi — u yaxlitlash. Farq manfiy bo'lsa menejer Billz ko'rsatgandan kam topshirgan, musbat bo'lsa ko'p.")}
         </p>
       </div>
     </div>
