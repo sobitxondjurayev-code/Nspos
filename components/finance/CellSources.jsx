@@ -20,15 +20,15 @@ const som = (n) => Math.round(n).toLocaleString("ru-RU");
 // Nega kerak: "5 419 dollar qayerdan chiqdi?" degan savolga jadvalning
 // o'zi javob bermaydi. Rahbar har safar Xarajatlar yoki KPI bo'limiga
 // borib qidirishi kerak bo'lardi.
-export default function CellSources({ from, to, colKey, label, dayLabel, onClose }) {
-  const rows = flowSources(from, to, colKey);
+export default function CellSources({ from, to, colKey, label, dayLabel, kassa = null, onClose }) {
+  const rows = flowSources(from, to, colKey, { kassa });
   const total = +rows.reduce((s, r) => s + (r.out ? -r.amount : r.amount), 0).toFixed(2);
   const totalSom = rows.some((r) => r.amountSom != null)
     ? rows.reduce((s, r) => s + (r.amountSom ?? 0), 0) : null;
 
   return (
     <div className="fixed inset-0 z-[60] bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-2xl max-h-[88vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="card w-full max-w-5xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between p-7 pb-5 border-b border-line">
           <div>
             <h2 className="text-2xl font-extrabold">{t(label)}</h2>

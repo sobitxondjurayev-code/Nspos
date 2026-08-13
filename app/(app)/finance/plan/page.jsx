@@ -113,11 +113,16 @@ export default function FinancePlan() {
   const fromISO = isoOf(range.from), toISO = isoOf(range.to);
   const tableRows = useMemo(() => {
     const byDate = new Map(days.map((d) => [d.date, d]));
+    // To'lov muddati kelgan kun DOIM qator bo'ladi — davrdan tashqarida
+    // bo'lsa ham. Bu jadval "pul rejasi": kelasi to'lov qaysi kunga
+    // belgilangani ko'rinib turishi kerak, aks holda summa faqat "Jami"da
+    // qolib ketadi va rahbar uni qaysi kunga qo'yganini eslay olmaydi.
     for (const d of Object.keys(dueByDay)) {
-      if (d >= fromISO && d <= toISO && !byDate.has(d)) {
-        // Pul harakati bo'lmagan, faqat to'lov muddati kelgan kun —
-        // ustunlari bo'sh qator (ustun nomlari ALL_COLS dan olinadi)
-        byDate.set(d, Object.fromEntries([["date", d], ...ALL_COLS.map((c) => [c.key, 0])]));
+      if (!byDate.has(d)) {
+        byDate.set(d, Object.fromEntries([
+          ["date", d], ["outside", d < fromISO || d > toISO],
+          ...ALL_COLS.map((c) => [c.key, 0]),
+        ]));
       }
     }
     return [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -264,9 +269,13 @@ export default function FinancePlan() {
               const due = dueByDay[r.date] ?? 0;
               return (
                 <tr key={r.date} className="border-b border-line last:border-0 hover:bg-surface/60">
-                  <td className="px-4 py-4 font-bold whitespace-nowrap sticky left-0 bg-panel">
+                  <td className={`px-4 py-4 font-bold whitespace-nowrap sticky left-0 bg-panel ${
+                    r.outside ? "text-muted" : ""}`}>
                     {fmtDay(r.date)}
-                    <span className="block text-sm text-muted font-semibold">{t(weekday(r.date))}</span>
+                    <span className="block text-sm text-muted font-semibold">
+                      {t(weekday(r.date))}
+                      {r.outside && <span className="ml-2 text-warn">{t("reja")}</span>}
+                    </span>
                   </td>
                   {COLS.map((c) => (
                     <td key={c.key} className="px-3 py-4 text-right whitespace-nowrap">
@@ -312,8 +321,7 @@ export default function FinancePlan() {
       <p className="text-sm text-muted font-semibold mb-8">
         {t("Faqat pul harakati bo'lgan kunlar ko'rsatiladi. Payme va Naqd — o'sha kirimning to'lov turi bo'yicha bo'linishi, alohida pul emas.")}
         {sum.planned > dueInPeriod + 0.009 && (
-          <> {tt("\"Jami\" ustunidagi {a} dan {b} i shu davrga to'g'ri keladi, qolgani keyingi kunlarga.", {
-            a: fmtUSD(sum.planned), b: fmtUSD(dueInPeriod) })}</>
+          <> {t("Davrdan tashqaridagi to'lov muddatlari ham qator bo'lib turadi — ular \"reja\" deb belgilangan.")}</>
         )}
       </p>
 

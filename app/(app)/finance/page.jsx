@@ -21,6 +21,7 @@ import { periodRange } from "@/lib/dates";
 import { canOpen } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
 import StatCard from "@/components/finance/StatCard";
+import CellSources from "@/components/finance/CellSources";
 import ColumnSettings from "@/components/ColumnSettings";
 import { useColumns } from "@/components/useColumns";
 import { kassaBalances, moneyFlow } from "@/lib/kassaData";
@@ -45,6 +46,8 @@ const TEXT_TONES = {
 export default function FinanceHome() {
   const { user } = useAuth();
   const isOwner = user?.role === "owner";
+  // Ko'rsatkich bosilganda ochiladigan yozuvlar ro'yxati
+  const [src, setSrc] = useState(null);
   // Raqamlar brauzer xotirasidan va bazadan yig'iladi — serverda ular
   // yo'q. Shuning uchun chizilgunga qadar "—" turadi: aks holda server
   // nol chizadi, brauzer boshqa raqam chizadi va gidratsiya buziladi.
@@ -148,9 +151,9 @@ export default function FinanceHome() {
     { key: "cash", label: "Hozir kassalarda", icon: Wallet,
       value: fmtUSD(cash), hint: t("Do'konlar va kompaniya balansi") },
     { key: "in", label: "Shu oyda kirgan", icon: ArrowDownLeft, tone: "green",
-      value: fmtUSD(flow.in) },
+      value: fmtUSD(flow.in), src: "in" },
     { key: "out", label: "Shu oyda chiqqan", icon: ArrowUpRight, tone: "red",
-      value: fmtUSD(flow.out) },
+      value: fmtUSD(flow.out), src: "out" },
     { key: "free", label: "To'lovlardan keyin qoladi", icon: PiggyBank,
       tone: free >= 0 ? "green" : "red", value: fmtUSD(free),
       hint: plan.planned > 0
@@ -161,7 +164,7 @@ export default function FinanceHome() {
     { key: "debt", label: "Mijozlar qarzi", icon: Clock, tone: "amber",
       value: fmtUSD(debt.openAmount ?? 0), hint: t("Hali qaytmagan pul") },
     { key: "expenses", label: "Shu oyda xarajat", icon: Receipt, tone: "red",
-      value: fmtUSD(exp) },
+      value: fmtUSD(exp), src: "out" },
     { key: "assets", label: "Jami aktiv", icon: Scale,
       value: fmtUSD(sheet.totalAssets), hint: t("Kassa, ombor va qarzlar bilan") },
   ], [cash, flow.in, flow.out, free, plan.planned, pnl.netProfit, debt.openAmount, exp, sheet.totalAssets]);
@@ -193,7 +196,8 @@ export default function FinanceHome() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
           {stats.map((s) => (
             <StatCard key={s.key} icon={s.icon} label={s.label} tone={s.tone}
-              value={show(s.value)} hint={s.hint} />
+              value={show(s.value)} hint={s.hint}
+              onOpen={s.src ? () => setSrc({ key: s.src, label: s.label }) : undefined} />
           ))}
         </div>
       </>)}
@@ -233,6 +237,11 @@ export default function FinanceHome() {
           title="Ko'rsatkichlarni sozlash"
           countLabel="{n} ta ko'rsatkich ko'rinadi"
           hint="Ko'rsatkichni ushlab tortsangiz joyi almashadi. Ko'z belgisini bossangiz yashirinadi — o'chib ketmaydi, xohlagan payt qaytarasiz." />
+      )}
+
+      {src && (
+        <CellSources from={month.from} to={month.to} colKey={src.key} label={src.label}
+          dayLabel={t("Shu oyda")} onClose={() => setSrc(null)} />
       )}
     </div>
   );

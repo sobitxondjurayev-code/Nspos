@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import ControlDays from "@/components/finance/ControlDays";
+import CellSources from "@/components/finance/CellSources";
+import { getLedgerStart } from "@/lib/companyData";
 import { useAuth } from "@/components/AuthProvider";
 import KassaModal from "@/components/KassaModal";
 import {
@@ -85,6 +87,8 @@ export default function KassaPage() {
   const control = useMemo(() => kassaControl(), [rowsTick, tick]);
   // Farq ustiga bosilganda ochiladigan kunlik ro'yxat
   const [ctrlDays, setCtrlDays] = useState(null);
+  // Kassa summasi bosilganda ochiladigan yozuvlar
+  const [src, setSrc] = useState(null);
   const bal = useMemo(() => kassaBalances(new Date()), [tick, rowsTick]);
   const pending = useMemo(() => pendingTransfers(), [tick]);
   // Harakatlar: kassa yozuvlari + xarajatlar birga. Menejer o'zi
@@ -263,7 +267,12 @@ export default function KassaPage() {
               </div>
               <p className="text-sm text-muted font-semibold mb-4">{t(KASSAS[k].hint)}</p>
 
-              <p className="text-3xl font-extrabold mb-4">{fmtUSD(b.total)}</p>
+              {/* Ustiga bosilsa — shu kassaga qaysi yozuvlardan pul
+                  kirgani va chiqqani ochiladi */}
+              <button onClick={() => setSrc({ kassa: k, label: KASSAS[k].label })}
+                className="text-3xl font-extrabold mb-4 block rounded-lg px-2 -mx-2 hover:bg-brand-soft hover:text-brand transition-colors">
+                {fmtUSD(b.total)}
+              </button>
 
               <div className="space-y-1.5 mb-4">
                 {/* B2B kassada servis hamyoni ko'rsatilmaydi */}
@@ -457,6 +466,12 @@ export default function KassaPage() {
       {ctrlDays && (
         <ControlDays kassaId={ctrlDays.kassa} label={ctrlDays.label}
           onClose={() => setCtrlDays(null)} />
+      )}
+
+      {src && (
+        <CellSources from={getLedgerStart()} to={new Date()} colKey="all"
+          kassa={src.kassa} label={src.label} dayLabel={t("Hisob boshidan")}
+          onClose={() => setSrc(null)} />
       )}
     </div>
   );

@@ -77,7 +77,14 @@ hozircha menejerlar qo'lda kiritadi — bu xato manbai (5-bo'limga qarang).
   Kamomad jadvalidagi "Farq" ham shunday — qaysi kunlarda farq chiqqani
   kunma-kun ochiladi (`components/finance/ControlDays.jsx`). Ochilgan
   oynaning ko'rinishi bir xil: sarlavha, nechta yozuv, tepada Jami,
-  keyin qatorlar.
+  keyin qatorlar. Oyna keng (`max-w-5xl`) — raqamlar siqilib qolmasin.
+  Bosiladigan joylar: Pul rejasidagi har katak va Jami, Moliya bosh
+  sahifasidagi "Shu oyda kirgan/chiqqan/xarajat", Kassalar sahifasidagi
+  har kassa summasi, Kamomad "Farq".
+- To'lov muddati kelgan kun jadvalda DOIM qator bo'ladi — tanlangan
+  davrdan tashqarida bo'lsa ham ("reja" deb belgilanadi). Aks holda
+  summa faqat "Jami"da qolib ketadi va rahbar uni qaysi kunga
+  qo'yganini ko'rmaydi.
 - Rang mantiqi pul nuqtai nazaridan: qarz/pul kelmagani — **qizil**, pul
   tushgani yoki qarz yopilgani — **yashil**.
 - Bo'sh yoki ishlatilmaydigan bo'lim menyuda turmaydi.

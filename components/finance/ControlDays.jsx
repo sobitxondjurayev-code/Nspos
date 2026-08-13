@@ -28,7 +28,7 @@ export default function ControlDays({ kassaId, label, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[60] bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-3xl max-h-[88vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="card w-full max-w-5xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between p-7 pb-5 border-b border-line">
           <div>
             <h2 className="text-2xl font-extrabold">{t(label)}</h2>
