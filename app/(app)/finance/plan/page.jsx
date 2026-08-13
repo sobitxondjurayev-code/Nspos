@@ -141,19 +141,26 @@ export default function FinancePlan() {
 
   // payNow — reja qilib o'tirilmaydigan xarajat: bir bosishda yoziladi
   // ham, to'lanadi ham. Pul o'sha zahoti kassadan chiqadi.
-  function save(data, { payNow } = {}) {
+  async function save(data, { payNow } = {}) {
     if (form?.initial) {
       updatePayout(form.initial.id, data);
-    } else {
-      const p = addPayout(data);
-      if (payNow && p) {
-        payPayout(p.id, {
-          amount: data.amount, amountSom: data.amountSom,
-          date: data.dueDate, staffId: user?.id ?? null,
-        });
-      }
+      setForm(null);
+      bump();
+      return;
     }
+    const p = addPayout(data);
     setForm(null);
+    bump();
+    if (!payNow || !p) return;
+    // Yozuv bazaga tushib HAQIQIY id olgunicha kutamiz. Aks holda
+    // "to'landi" belgisi vaqtinchalik id bilan yozilib, bazada reja
+    // bo'lib qolardi — foydalanuvchi uni ikkinchi marta to'lardi va
+    // pul kassadan ikki marta chiqardi (2026-08-13).
+    const id = await (p.saved ?? Promise.resolve(p.id));
+    payPayout(id, {
+      amount: data.amount, amountSom: data.amountSom,
+      date: data.dueDate, staffId: user?.id ?? null,
+    });
     bump();
   }
 

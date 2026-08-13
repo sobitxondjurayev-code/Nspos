@@ -362,6 +362,25 @@ qo'shilardi). Turi bo'yicha yig'ilgan holda ochiladi, ya'ni "oylik
 **Qoida:** ustun va hamyon boshqa-boshqa kesim — biri mos kelmasa,
 avval "bu pul qaysi hamyondan chiqqan?" deb so'ralsin.
 
+### Pul ikki marta chiqib ketdi — vaqtinchalik id (2026-08-13)
+"Yangi to'lov" oynasidagi "To'lash" bosilganda yozuv bazaga tushib
+ulgurmasdan turib to'lanardi: `sync.changed()` HALI ALMASHMAGAN
+vaqtinchalik id bilan (`p-3-msrisgre`) UPDATE qilardi va baza
+`invalid input syntax for type uuid` deb rad etardi. Natijada:
+kassa chiqimi bazaga tushgan, to'lov esa "rejada" bo'lib qolgan.
+Sahifa yangilangach reja yana ko'rinib, foydalanuvchi uni ikkinchi
+marta to'lagan — **pul ikki marta kassadan chiqqan** (3 647 $ payme).
+**Yechim (ikki qavat):**
+1. `syncTable` endi hali yozilayotgan yozuvni kuzatadi (`creating`
+   map): shu paytda kelgan `changed`/`deleted` insert tugab, haqiqiy
+   id kelgach bajariladi. Bu butun ilova uchun ishlaydi.
+2. `addPayout()` haqiqiy id va'dasini qaytaradi (`p.saved`), sahifa
+   esa "To'lash" da o'shani KUTADI.
+Ikkilangan uchta yozuv bazadan o'chirildi (531ff6f7, 908ad5df,
+dc251892). Payme qoldig'i 1 798.26 dan 5 445.26 ga qaytdi.
+**Qoida:** yangi yozuv yaratilgan zahoti uni o'zgartirmang — avval
+`saved` (haqiqiy id) kutilsin.
+
 ### Xato ekrani (2026-08-13)
 `app/(app)/error.jsx` qo'shildi: xato chiqsa Next.js'ning quruq
 "Application error" ekrani emas, xatoning MATNI ko'rinadi (rasmga olib
