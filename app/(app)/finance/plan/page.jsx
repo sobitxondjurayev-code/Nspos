@@ -14,6 +14,7 @@ import { t, tt } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import {
   CalendarDays, ArrowDownLeft, ArrowUpRight, Wallet, ChevronRight, SlidersHorizontal, Plus, Check,
+  ClipboardList,
 } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
@@ -71,7 +72,6 @@ export default function FinancePlan() {
 
   const open = rows.filter((p) => p.status === "planned");
   const allPaid = rows.filter((p) => p.status === "paid");
-  const paid = allPaid.slice(0, 30);
 
   // "To'ladim" bosilganlar qaysi kunga tushgani. Jadvalda ular
   // xarajat ustuniga ham kiradi (qaysi kassadan chiqqaniga qarab),
@@ -218,6 +218,15 @@ export default function FinancePlan() {
     bump();
   }
 
+  // Rejaga qaytarish — pul kassaga qaytadi, ya'ni bu ham pul harakati.
+  // Tasodifan bosilib ketmasin: avval so'raladi.
+  function unpay(p) {
+    if (!confirm(tt("\"{name}\" to'lovi rejaga qaytarilsinmi?\n\n{n} kassaga qaytariladi va to'lov yana \"Berishim kerak\" bo'lib turadi.",
+      { name: p.title, n: fmtUSD(p.amount) }))) return;
+    unpayPayout(p.id);
+    bump();
+  }
+
   function drop(p) {
     if (!confirm(tt("\"{name}\" to'lovi o'chirilsinmi?", { name: p.title }))) return;
     removePayout(p.id);
@@ -246,6 +255,16 @@ export default function FinancePlan() {
           <button onClick={() => setForm({})}
             className="flex items-center gap-2 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold px-5 py-3">
             <Plus size={18} /> {t("Yangi to'lov")}
+          </button>
+          {/* Butun reja alohida oynada: kunlar bo'yicha jadval, rejadagi
+              va to'langanlar. Jadvaldagi katakni qidirib topish shart
+              emas — tugma shu yerda turadi. */}
+          <button onClick={() => setCard({ tab: "days" })}
+            className="flex items-center gap-2 rounded-xl border border-line font-bold px-5 py-3 hover:border-brand">
+            <ClipboardList size={18} /> {t("Berishim kerak")}
+            {sum.planned > 0 && (
+              <span className="text-warn">{fmtUSD(sum.planned)}</span>
+            )}
           </button>
           <div className="relative">
             <button onClick={() => setPickerOpen((v) => !v)}
@@ -418,13 +437,13 @@ export default function FinancePlan() {
 
       {card && (
         <PayoutsCard
-          open={open} paid={paid} total={sum.planned} cashOnHand={cashOnHand}
+          open={open} paid={allPaid} days={days} total={sum.planned} cashOnHand={cashOnHand}
           focusDate={card.date ?? null} focusTab={card.tab ?? null}
           onAdd={() => setForm({ dueDate: card.date ?? null })}
           onEdit={(p) => setForm({ initial: p })}
           onPay={pay}
           onRemove={drop}
-          onUnpay={(p) => { unpayPayout(p.id); bump(); }}
+          onUnpay={unpay}
           onClose={() => setCard(null)}
         />
       )}
