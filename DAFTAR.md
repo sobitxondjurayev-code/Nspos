@@ -154,6 +154,22 @@ kassada qolgan haqiqiy pulni yozadi.
 Tekshirildi: 01.08 da 2 886.11 → 2 866.11, menejer yozgan raqam bilan
 tiyinigacha teng. (P&L allaqachon shunday hisoblardi.)
 
+### Yuklama qatorlari tortilmay qolgan (2026-08-13)
+Yuklama (ДДС, Эффективность) QATORLARI ro'yxat bilan birga kelmaydi —
+sahifa ochilganda alohida tortiladi (`loadRows`). O'sha effekt `[]`
+bog'lami bilan faqat BIR MARTA ishlardi. Ilgari `key={version}` remount
+uni qayta ishga tushirar edi; remount olib tashlangach, ilova ochilganda
+yuklamalar ro'yxati hali kelmagan bo'lsa qatorlar hech qachon
+tortilmasdi — kassa "ДДС yuklang" deb turardi va kamomad yo'qolardi.
+**Yechim:** effekt `[live]` ga bog'landi (kassa va P&L sahifalarida).
+**Qoida:** remountga tayangan har qanday effektni tekshirish kerak —
+u endi o'zi qayta ishga tushishi shart.
+
+### Xato ekrani (2026-08-13)
+`app/(app)/error.jsx` qo'shildi: xato chiqsa Next.js'ning quruq
+"Application error" ekrani emas, xatoning MATNI ko'rinadi (rasmga olib
+yuborish mumkin) va "Qayta urinish" tugmasi turadi.
+
 ### Sahifa o'z-o'zidan oldingi ekranga tashlardi (2026-08-13)
 `DataProvider` da `<div key={version}>{children}</div>` turgan edi.
 `version` har realtime o'zgarishda o'sardi — ya'ni kimdir bir raqam

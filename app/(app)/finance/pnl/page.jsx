@@ -9,6 +9,7 @@ import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
 import DateRangePicker from "@/components/DateRangePicker";
 import { profitAndLoss, cashFlow, billzPnl, billzPnlTotals, billzCashflow, pnlSourceGap } from "@/lib/pnlData";
 import { listDatasets, loadRows } from "@/lib/datasets";
+import { useLive } from "@/components/DataProvider";
 import { demoStores } from "@/lib/demoData";
 import StatCard from "@/components/finance/StatCard";
 
@@ -148,6 +149,7 @@ function PnlView({ range }) {
 
 /* ——— Cash Flow ——————————————————————————————— */
 function CashFlowView({ range }) {
+  const live = useLive();
   // Servis kirimi Billz yuklamasidan olinadi, lekin yuklama qatorlari
   // ro'yxat bilan birga kelmaydi — shu sahifada kerak bo'lgani uchun
   // shu yerda tortiladi, kelgach hisob qayta yuriladi.
@@ -158,9 +160,12 @@ function CashFlowView({ range }) {
     let alive = true;
     loadRows(ds.id).then(() => { if (alive) setRowsTick((v) => v + 1); });
     return () => { alive = false; };
-  }, []);
+    // `live` bog'lamda: ilova ochilganda yuklamalar ro'yxati hali
+    // kelmagan bo'lishi mumkin — o'shanda `ds` topilmaydi va qatorlar
+    // hech qachon tortilmasdi (kassa "ДДС yuklang" deb turardi).
+  }, [live]);
 
-  const c = useMemo(() => cashFlow(range.from, range.to), [range, rowsTick]);
+  const c = useMemo(() => cashFlow(range.from, range.to), [range, rowsTick, live]);
 
   return (
     <div>

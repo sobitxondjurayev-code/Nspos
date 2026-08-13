@@ -76,7 +76,10 @@ export default function KassaPage() {
     let alive = true;
     loadRows(ds.id).then(() => { if (alive) setRowsTick((v) => v + 1); });
     return () => { alive = false; };
-  }, []);
+    // `live` bog'lamda: ilova ochilganda yuklamalar ro'yxati hali
+    // kelmagan bo'lishi mumkin — o'shanda `ds` topilmaydi va qatorlar
+    // hech qachon tortilmasdi (kassa "ДДС yuklang" deb turardi).
+  }, [live]);
 
   const flow = useMemo(() => billzKassaFlow(null, new Date()), [rowsTick, tick, live]);
   // Ma'lumot necha kun orqada qolgan. Yuklash unutilsa balans jimgina
