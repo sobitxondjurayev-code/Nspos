@@ -136,9 +136,20 @@ export default function FinancePlan() {
     </tr>
   );
 
-  function save(data) {
-    if (form?.initial) updatePayout(form.initial.id, data);
-    else addPayout(data);
+  // payNow — reja qilib o'tirilmaydigan xarajat: bir bosishda yoziladi
+  // ham, to'lanadi ham. Pul o'sha zahoti kassadan chiqadi.
+  function save(data, { payNow } = {}) {
+    if (form?.initial) {
+      updatePayout(form.initial.id, data);
+    } else {
+      const p = addPayout(data);
+      if (payNow && p) {
+        payPayout(p.id, {
+          amount: data.amount, amountSom: data.amountSom,
+          date: data.dueDate, staffId: user?.id ?? null,
+        });
+      }
+    }
     setForm(null);
     bump();
   }
