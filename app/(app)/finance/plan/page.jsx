@@ -26,6 +26,7 @@ import CellSources from "@/components/finance/CellSources";
 import ColumnSettings from "@/components/ColumnSettings";
 import { useColumns } from "@/components/useColumns";
 import { useAuth } from "@/components/AuthProvider";
+import { useLive } from "@/components/DataProvider";
 import { KASSAS, kassaBalances, moneyFlow, summaryRow, dailyRows, COMPANY } from "@/lib/kassaData";
 import {
   listPayouts, addPayout, updatePayout, removePayout, payPayout, unpayPayout,
@@ -56,15 +57,17 @@ export default function FinancePlan() {
   const [paying, setPaying] = useState(null);    // "To'ladim" bosilgan reja
   const [src, setSrc] = useState(null);          // bosilgan katak ortidagi ro'yxat
   const [tick, setTick] = useState(0);
+  // Boshqa xodim yozgan o'zgarish ham darrov ko'rinsin
+  const live = useLive();
   const bump = () => setTick((v) => v + 1);
 
-  const flow = useMemo(() => moneyFlow(range.from, range.to), [range, tick]);
-  const days = useMemo(() => dailyRows(range.from, range.to), [range, tick]);
-  const total = useMemo(() => summaryRow(range.from, range.to), [range, tick]);
-  const bal = useMemo(() => kassaBalances(new Date()), [tick]);
-  const rows = useMemo(() => listPayouts(), [tick]);
-  const sum = useMemo(() => payoutSummary(), [tick]);
-  const booked = useMemo(() => plannedByKassa(), [tick]);
+  const flow = useMemo(() => moneyFlow(range.from, range.to), [range, tick, live]);
+  const days = useMemo(() => dailyRows(range.from, range.to), [range, tick, live]);
+  const total = useMemo(() => summaryRow(range.from, range.to), [range, tick, live]);
+  const bal = useMemo(() => kassaBalances(new Date()), [tick, live]);
+  const rows = useMemo(() => listPayouts(), [tick, live]);
+  const sum = useMemo(() => payoutSummary(), [tick, live]);
+  const booked = useMemo(() => plannedByKassa(), [tick, live]);
 
   const open = rows.filter((p) => p.status === "planned");
   const paid = rows.filter((p) => p.status === "paid").slice(0, 30);

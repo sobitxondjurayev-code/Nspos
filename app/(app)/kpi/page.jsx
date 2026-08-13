@@ -1,6 +1,6 @@
 "use client";
 import { t, tt } from "@/lib/i18n";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import {
   Wallet, TrendingUp, Users, ShieldCheck, Clock, CalendarOff, Target,
@@ -20,6 +20,7 @@ import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
 import DateRangePicker from "@/components/DateRangePicker";
 import { listNps, npsForInstaller, npsDayCounts, productAvg, addNps, updateNps, removeNps } from "@/lib/npsData";
 import { useAuth } from "@/components/AuthProvider";
+import { useLive } from "@/components/DataProvider";
 import { can } from "@/lib/auth";
 import {
   computeMonth, computeDay, listDays, saveDay, savePlan, saveRules,
@@ -481,9 +482,10 @@ function editPatch(key, value, day) {
 // Bitta xodim — to'liq ko'rinish (karta + bonus + jadval)
 // ══════════════════════════════════════════════════════════════
 function StaffDetail({ staffId, month, canEdit, canRules, canEditPast = false, showSalary = false, tick, bump }) {
+  const live = useLive();   // boshqa xodim yozgani ham darrov ko'rinsin
   const [showRules, setShowRules] = useState(false);
-  const m = useMemo(() => computeMonth(staffId, month), [staffId, month, tick]);
-  const rows = useMemo(() => listDays(staffId, month), [staffId, month, tick]);
+  const m = useMemo(() => computeMonth(staffId, month), [staffId, month, tick, live]);
+  const rows = useMemo(() => listDays(staffId, month), [staffId, month, tick, live]);
 
   const edit = (date, patch) => { saveDay(staffId, date, patch); bump(); };
   const editPlan = (patch) => { savePlan(staffId, month, patch); bump(); };
@@ -783,6 +785,7 @@ function AdminOverview({ staff, month, tick, onOpen, bump }) {
 const MEDAL = ["text-[#F5B301]", "text-[#9AA4B2]", "text-[#CD7F32]"];
 
 function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen = true, canEditRate, canEditNps, showSalary = false, highlightId, bump }) {
+  const live = useLive();
   // Saralash uchun tekis maydonlar — SortTh shular bo'yicha ishlaydi
   const { sort, toggle, sortRows } = useSort("cameras", "desc");
   // Filtr — boshqa jadvallardagidek (qidiruv + oraliqlar)
@@ -832,7 +835,7 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
         qoldiq: fullMonth ? m.qoldiq : +(earned - taken).toFixed(0) };
     });
     return sortRows(base);
-  }, [installers, month, range?.from, range?.to, fullMonth, tick, sort]);
+  }, [installers, month, range?.from, range?.to, fullMonth, tick, sort, live]);
 
   // Qidiruv darhol, qolgan filtrlar FilterBar orqali
   const rows = useMemo(() => {
@@ -984,6 +987,7 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
 // (mijoz, telefon, usta, 1–10 baho, izoh)
 // ══════════════════════════════════════════════════════════════
 function NpsRecords({ installers, month, tick, bump }) {
+  const live = useLive();
   const [modal, setModal] = useState(null);   // null | {} | { rec }
   const { sort, toggle, sortRows } = useSort("createdAt", "desc");
   const recs = useMemo(() => {
@@ -991,8 +995,8 @@ function NpsRecords({ installers, month, tick, bump }) {
       usta: installers.find((s) => s.id === r.installerId)?.name || "—",
       filled: r.createdAt ? String(r.createdAt).slice(0, 10) : "" }));
     return sortRows(base);
-  }, [month, tick, sort, installers]);
-  const prod = useMemo(() => productAvg(month), [month, tick]);
+  }, [month, tick, sort, installers, live]);
+  const prod = useMemo(() => productAvg(month), [month, tick, live]);
   const nameOf = (id) => installers.find((s) => s.id === id)?.name || "—";
   const scoreCls = (n) => n == null ? "text-muted" : n >= 8 ? "text-ok" : n >= 6 ? "text-warn" : "text-danger";
 
@@ -1112,6 +1116,8 @@ export default function Kpi() {
   const [cursor, setCursor] = useState(() =>
     uiMonth ? new Date(+uiMonth.slice(0, 4), +uiMonth.slice(5, 7) - 1, 1) : new Date());
   const [tick, setTick] = useState(0);
+  // Boshqa xodim yozgan o'zgarish ham darrov ko'rinsin
+  const live = useLive();
   const bump = () => setTick((v) => v + 1);
 
   // Rahbar: "overview" yoki bitta xodim ochilgan. Xodim: doim o'zi.
@@ -1148,7 +1154,15 @@ export default function Kpi() {
   const pathname = usePathname();
   const view = pathname === "/installers" ? "installers" : pathname === "/nps" ? "nps" : "kpi";
   // Bo'lim o'zgarsa ochilgan xodim yopiladi (ro'yxatga qaytadi)
-  useEffect(() => { setOpenId(null); }, [view]);
+  // Faqat bo'lim HAQIQATDA almashganda yopiladi. Ilgari bu effekt har
+  // chizilganda ham ishlab ketardi va ochilgan xodim o'z-o'zidan
+  // yopilib, foydalanuvchi ro'yxatga qaytib qolardi.
+  const prevView = useRef(view);
+  useEffect(() => {
+    if (prevView.current === view) return;
+    prevView.current = view;
+    setOpenId(null);
+  }, [view]);
 
   // Ustalarga "installer" turini bir marta biriktiramiz (agar hali yo'q bo'lsa).
   // Faqat haqiqiy hisoblar (uuid) — demo seed id'lari (u4) bazaga yozilmasin.

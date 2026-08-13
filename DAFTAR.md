@@ -154,6 +154,24 @@ kassada qolgan haqiqiy pulni yozadi.
 Tekshirildi: 01.08 da 2 886.11 → 2 866.11, menejer yozgan raqam bilan
 tiyinigacha teng. (P&L allaqachon shunday hisoblardi.)
 
+### Sahifa o'z-o'zidan oldingi ekranga tashlardi (2026-08-13)
+`DataProvider` da `<div key={version}>{children}</div>` turgan edi.
+`version` har realtime o'zgarishda o'sardi — ya'ni kimdir bir raqam
+yozsa, kalit almashib **butun sahifa o'chib-yoqilardi**. Natijada
+ochilgan xodim, filtr, oyna, hatto yozilayotgan matn yo'qolardi va
+foydalanuvchi oldingi ekranga qaytib qolardi. Bu hamma bo'limda bo'lgan.
+**Yechim:** kalit endi faqat ikki holatda almashadi — birinchi yuklash
+tugaganda va foydalanuvchi almashganda. Jonli yangilanish uchun
+`useLive()` (DataProvider) qo'shildi: sahifa qayta CHIZILADI, lekin
+o'chirib-yoqilmaydi. U KPI, kassa, pul rejasi, xarajat va operatsiyalar
+sahifalarining memo bog'lamlariga qo'shilgan.
+**Qoida:** ma'lumot yangilanishi uchun `key` ni o'zgartirmang — bu
+foydalanuvchining ish holatini o'chiradi.
+
+### KPI: ochilgan xodim o'z-o'zidan yopilardi (2026-08-13)
+`useEffect(() => setOpenId(null), [view])` har chizilganda ham ishlab
+ketardi. Endi `useRef` bilan bo'lim HAQIQATDA almashgani tekshiriladi.
+
 ### Netto farq ikki muammoni yashiradi (2026-08-13)
 Kamomad jadvali faqat NETTO farqni ko'rsatardi. Bir kuni +1 000, boshqa
 kuni −1 000 bo'lsa yig'indi nol chiqadi va ikkala kun ham tekshiruvsiz

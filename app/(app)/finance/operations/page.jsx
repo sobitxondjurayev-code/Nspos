@@ -23,6 +23,7 @@ import StatCard from "@/components/finance/StatCard";
 import ColumnSettings from "@/components/ColumnSettings";
 import { useColumns } from "@/components/useColumns";
 import { useAuth } from "@/components/AuthProvider";
+import { useLive } from "@/components/DataProvider";
 import {
   KASSAS, WALLETS, listOps, kassasOf, kassaIds, categoryLabel, COMPANY,
 } from "@/lib/kassaData";
@@ -54,6 +55,8 @@ export default function FinanceOperations() {
   const [fKassa, setFKassa] = useState("all");
   const [fWallet, setFWallet] = useState("all");
   const [fKind, setFKind] = useState("all");
+  // Boshqa xodim yozgan o'zgarish ham darrov ko'rinsin
+  const live = useLive();
 
   // —— Jurnal: kassa yozuvlari + xarajatlar ————————————
   // Xarajat ham pul harakati: u kassadan chiqadi, faqat boshqa
@@ -80,7 +83,7 @@ export default function FinanceOperations() {
       }));
 
     return [...ops, ...exp].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-  }, [range, visible.join()]);
+  }, [range, visible.join(), live]);
 
   const shown = useMemo(() => rows.filter((r) => {
     if (fKassa !== "all" && r.kassa !== fKassa) return false;

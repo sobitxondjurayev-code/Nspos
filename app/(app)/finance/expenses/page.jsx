@@ -15,6 +15,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import ExpenseModal from "@/components/ExpenseModal";
 import StatCard from "@/components/finance/StatCard";
 import { useAuth } from "@/components/AuthProvider";
+import { useLive } from "@/components/DataProvider";
 import { kassasOf } from "@/lib/kassaData";
 import { storeTotalsInRange } from "@/lib/salesData";
 import {
@@ -64,15 +65,17 @@ export default function FinanceExpenses() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const [tick, setTick] = useState(0);
+  // Boshqa xodim yozgan o'zgarish ham darrov ko'rinsin
+  const live = useLive();
   const bump = () => setTick((v) => v + 1);
 
   const rows = useMemo(
-    () => mineOnly(expensesInRange(range.from, range.to)), [range, tick, isOwner, myKassas.join()]);
-  const byCat = useMemo(() => expensesByCategory(range.from, range.to), [range, tick]);
-  const byStore = useMemo(() => expensesByStore(range.from, range.to), [range, tick]);
-  const struct = useMemo(() => expenseStructure(range.from, range.to), [range, tick]);
-  const series = useMemo(() => expenseSeries(range.from, range.to), [range, tick]);
-  const recur = useMemo(() => mineOnly(listRecurring()), [tick, isOwner, myKassas.join()]);
+    () => mineOnly(expensesInRange(range.from, range.to)), [range, tick, isOwner, myKassas.join(), live]);
+  const byCat = useMemo(() => expensesByCategory(range.from, range.to), [range, tick, live]);
+  const byStore = useMemo(() => expensesByStore(range.from, range.to), [range, tick, live]);
+  const struct = useMemo(() => expenseStructure(range.from, range.to), [range, tick, live]);
+  const series = useMemo(() => expenseSeries(range.from, range.to), [range, tick, live]);
+  const recur = useMemo(() => mineOnly(listRecurring()), [tick, isOwner, myKassas.join(), live]);
 
   const revenue = useMemo(() => {
     const totals = storeTotalsInRange(range.from, range.to);

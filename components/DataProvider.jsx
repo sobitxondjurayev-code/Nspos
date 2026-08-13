@@ -37,6 +37,11 @@ import { loadLocal } from "@/lib/datasets";
 const DataCtx = createContext({ ready: DEMO_MODE, demo: DEMO_MODE, version: 0 });
 export const useData = () => useContext(DataCtx);
 
+// Jonli yangilanish uchun: sahifa shu qiymatni memo bog'lamiga qo'shsa,
+// boshqa xodim yozgan o'zgarish ham darrov ko'rinadi. Sahifa QAYTA
+// CHIZILADI, lekin o'chirib-yoqilmaydi — ochiq oyna va holat saqlanadi.
+export const useLive = () => useContext(DataCtx).version;
+
 // Ma'lumot bazadan bir marta yuklanadi va modullarning xotirasiga
 // tushadi — shundan keyin barcha sahifalar ilgarigidek sinxron ishlaydi.
 // Realtime hodisasi kelganda `version` o'zgaradi va daraxt qayta
@@ -107,7 +112,17 @@ export default function DataProvider({ children }) {
         </div>
       )}
 
-      <div key={version} className="contents">{children}</div>
+      {/* DIQQAT: bu yerda `key={version}` turgan edi — har realtime
+          o'zgarishda kalit almashib, BUTUN sahifa qaytadan chizilardi.
+          Natijada ochilgan xodim, filtr, oyna va yozayotgan matn
+          yo'qolib, foydalanuvchi oldingi ekranga tashlanardi.
+          Endi kalit faqat ikki holatda almashadi: birinchi yuklash
+          tugaganda va foydalanuvchi almashganda. Jonli yangilanish esa
+          `useLive()` orqali — u sahifani qayta chizadi, lekin
+          o'chirib-yoqmaydi. */}
+      <div key={`${ready ? "ready" : "load"}:${user?.id ?? "-"}`} className="contents">
+        {children}
+      </div>
     </DataCtx.Provider>
   );
 }

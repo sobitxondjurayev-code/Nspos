@@ -17,6 +17,7 @@ import ControlDays from "@/components/finance/ControlDays";
 import CellSources from "@/components/finance/CellSources";
 import { getLedgerStart } from "@/lib/companyData";
 import { useAuth } from "@/components/AuthProvider";
+import { useLive } from "@/components/DataProvider";
 import KassaModal from "@/components/KassaModal";
 import {
   KASSAS, kassaIds, WALLETS, WALLET_IDS, walletsOf, categoryLabel,
@@ -57,11 +58,13 @@ const fmtDay = (d) => {
 export default function KassaPage() {
   const { user } = useAuth();
   const [tick, setTick] = useState(0);
+  // Boshqa xodim yozgan o'zgarish ham darrov ko'rinsin
+  const live = useLive();
   const [modal, setModal] = useState(null);   // { kassa, mode }
   const [upload, setUpload] = useState(false);
 
   const isOwner = user?.role === "owner";
-  const mine = useMemo(() => kassasOf(user), [user, tick]);
+  const mine = useMemo(() => kassasOf(user), [user, tick, live]);
   const visible = isOwner ? kassaIds() : mine;
 
   // ДДС yuklamasining qatorlari ro'yxat bilan birga kelmaydi — kassa
@@ -75,7 +78,7 @@ export default function KassaPage() {
     return () => { alive = false; };
   }, []);
 
-  const flow = useMemo(() => billzKassaFlow(null, new Date()), [rowsTick, tick]);
+  const flow = useMemo(() => billzKassaFlow(null, new Date()), [rowsTick, tick, live]);
   // Ma'lumot necha kun orqada qolgan. Yuklash unutilsa balans jimgina
   // eskirib boradi — shuni ko'rsatib turamiz.
   const staleDays = useMemo(() => {
@@ -84,13 +87,13 @@ export default function KassaPage() {
     const now = new Date(); now.setHours(0, 0, 0, 0);
     return Math.max(0, Math.round((now - last) / 86400000));
   }, [flow]);
-  const control = useMemo(() => kassaControl(), [rowsTick, tick]);
+  const control = useMemo(() => kassaControl(), [rowsTick, tick, live]);
   // Farq ustiga bosilganda ochiladigan kunlik ro'yxat
   const [ctrlDays, setCtrlDays] = useState(null);
   // Kassa summasi bosilganda ochiladigan yozuvlar
   const [src, setSrc] = useState(null);
-  const bal = useMemo(() => kassaBalances(new Date()), [tick, rowsTick]);
-  const pending = useMemo(() => pendingTransfers(), [tick]);
+  const bal = useMemo(() => kassaBalances(new Date()), [tick, rowsTick, live]);
+  const pending = useMemo(() => pendingTransfers(), [tick, live]);
   // Harakatlar: kassa yozuvlari + xarajatlar birga. Menejer o'zi
   // kiritgan chiqimni shu yerda ko'rishi kerak — u Xarajatlar moduliga
   // yozilsa ham, pul aynan shu kassadan chiqqan.
@@ -106,7 +109,7 @@ export default function KassaPage() {
     return [...kassaOps, ...exp]
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
       .slice(0, 60);
-  }, [tick, visible.join()]);
+  }, [tick, visible.join(), live]);
 
   const refresh = () => setTick((v) => v + 1);
 
