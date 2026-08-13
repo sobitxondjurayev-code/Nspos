@@ -145,6 +145,15 @@ edi — foydalanuvchi "doimiy" deb qidirgan. **Yechim:** nom "Doimiy
 xarajatlar" ga o'zgardi va saqlangandan keyin tizim o'sha bo'limga o'zi
 o'tkazadi.
 
+### Billz raqami 20 $ ko'p chiqqan (2026-08-13)
+Kamomad nazoratida Billz tomoni faqat KIRIMni qo'shardi. Billz'da to'lov
+turi almashtirilsa uchta qator yoziladi: naqd chiqim 20, naqd kirim 20,
+Payme kirim 20. Faqat kirim olinsa naqd 20 ga ko'p chiqadi — menejer esa
+kassada qolgan haqiqiy pulni yozadi.
+**Yechim:** Billz tomoni ham **kirim − chiqim** (sof harakat).
+Tekshirildi: 01.08 da 2 886.11 → 2 866.11, menejer yozgan raqam bilan
+tiyinigacha teng. (P&L allaqachon shunday hisoblardi.)
+
 ### Ombor qoplamasi tugagan tovarni ko'rsatmagan
 `.filter(x => x.stock > 0)` — qoldig'i 0 bo'lgan pozitsiya butunlay
 tashlangan. Aslida aynan ular muhim (sotuv yo'qotilyapti). Haqiqiy
