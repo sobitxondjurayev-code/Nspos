@@ -29,6 +29,7 @@ import CloseKassaModal from "@/components/CloseKassaModal";
 import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
 import { getStaff } from "@/lib/staffData";
+import { getLedgerStart } from "@/lib/companyData";
 import {
   KASSAS, WALLETS, walletsOf, kassaBalances, kassaDailyRows, kassaSources, hasSources,
   closeDay, cancelClose, canOperate, kassasOf, unclosedDays,
@@ -121,6 +122,20 @@ export default function KassaDays() {
   }, [rows, daily.carry]);
 
   const closedCount = rows.filter((r) => r.close).length;
+
+  // Katak bosilganda qaysi davr ochilishi. "Kassada qoldi" — yugurib
+  // boradigan raqam: u BIR KUNNIKI emas, hisob boshidan o'sha kungacha
+  // yig'ilgani. Shuning uchun uning ortidagi ro'yxat ham shu davrni
+  // oladi — aks holda raqam ro'yxatga to'g'ri kelmasdi.
+  const srcFor = (c, date, from) => (c.key === "left"
+    ? { from: getLedgerStart(), to: date, key: c.key, label: c.label,
+        dayLabel: tt("Hisob boshidan {d} gacha", { d: fmtDay(date) }) }
+    : { from: from ?? date, to: date, key: c.key, label: c.label,
+        dayLabel: from && from !== date ? `${fmtDay(from)} — ${fmtDay(date)}` : fmtDay(date) });
+
+  // Qoldiq manfiy bo'lsa — kassaga tushganidan ko'p pul topshirilgan.
+  // Bu odatda xarajat kun yopilgandan KEYIN kiritilganini bildiradi.
+  const short = rows.length ? rows[rows.length - 1].left : 0;
 
   function confirmClose(day, note) {
     closeDay({ kassa: id, date: day, staffId: user?.id, note });
@@ -260,9 +275,7 @@ export default function KassaDays() {
                   <td key={c.key} className="px-3 py-5 text-right whitespace-nowrap">
                     {open ? (
                       <button
-                        onClick={() => setSrc({ from: daily.from, to: daily.to,
-                          key: c.key, label: c.label,
-                          dayLabel: `${fmtDay(range.from)} — ${fmtDay(range.to)}` })}
+                        onClick={() => setSrc(srcFor(c, daily.to, daily.from))}
                         className={`${cls} ${LINKY}`}>
                         {text}
                       </button>
@@ -313,8 +326,7 @@ export default function KassaDays() {
                         {v == null || v === 0 ? <span className="text-muted">—</span>
                           : open ? (
                             <button
-                              onClick={() => setSrc({ from: r.date, to: r.date, key: c.key,
-                                label: c.label, dayLabel: fmtDay(r.date) })}
+                              onClick={() => setSrc(srcFor(c, r.date))}
                               className={`${cls} ${LINKY}`}>
                               {c.tone === "out" ? "−" : ""}{fmtUSD(v)}
                             </button>
@@ -371,10 +383,26 @@ export default function KassaDays() {
         </table>
       </div>
 
+      {/* "Kassada qoldi" ustuni eng ko'p savol tug'diradi: u har kuni bir
+          xil turishi mumkin. Sababini shu yerda aytamiz. */}
+      {!kassa.main && short < -0.01 && (
+        <div className="card p-5 mb-4 border border-danger flex items-start gap-3">
+          <AlertTriangle size={18} className="text-danger shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold text-danger mb-1">
+              {tt("Kassa {n} minusda", { n: fmtUSD(Math.abs(short)) })}
+            </p>
+            <p className="text-sm text-muted font-semibold">
+              {t("Kassaga tushganidan ko'proq pul topshirilgan. Odatda bu xarajat kun yopilgandan KEYIN kiritilganini bildiradi — o'sha kunning qoldig'i topshirilgan, keyin esa xarajat qo'shilib qoldiq minusga tushgan. \"Kassada qoldi\" raqamining ustiga bossangiz, hisob boshidan beri qaysi yozuvlar shu raqamni chiqargani ochiladi.")}
+            </p>
+          </div>
+        </div>
+      )}
+
       <p className="text-sm text-muted font-semibold mb-8">
-        {t("\"Kun qoldig'i\" — o'sha kundagi kirim minus chiqim, ya'ni topshirilishi kerak bo'lgan pul. \"Kassada qoldi\" esa yugurib boradigan qoldiq: topshirilgan pul undan chiqadi. Rahbar tasdiqlaguncha pul \"yo'lda\" turadi va qoldiqda sanalaveradi — kartochkadagi raqam bilan bir xil bo'lishi uchun.")}
+        {t("\"Kun qoldig'i\" — o'sha kundagi kirim minus chiqim, ya'ni topshirilishi kerak bo'lgan pul. \"Kassada qoldi\" esa bitta kunniki emas: u hisob boshidan yig'ilib keladigan qoldiq (kirim − chiqim − topshirilgan). Kun to'liq topshirilsa u o'zgarmaydi — shuning uchun bir necha kun ketma-ket bir xil turishi normal. Rahbar tasdiqlaguncha pul \"yo'lda\" turadi va qoldiqda sanalaveradi — kartochkadagi raqam bilan bir xil bo'lishi uchun.")}
         {" "}
-        {t("Kirim va chiqim ustiga bossangiz — o'sha kundagi summa qaysi yozuvlardan yig'ilgani ochiladi.")}
+        {t("Har raqamning ustiga bossangiz — u qaysi yozuvlardan yig'ilgani ochiladi.")}
       </p>
 
       {colPrefs.open && <ColumnSettings {...colPrefs.dialogProps} />}

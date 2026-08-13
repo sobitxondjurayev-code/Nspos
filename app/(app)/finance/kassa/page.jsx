@@ -14,6 +14,7 @@ import {
   CalendarDays, AlertTriangle, ChevronRight,
 } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
+import { fmtDate } from "@/lib/dates";
 import ControlDays from "@/components/finance/ControlDays";
 import CellSources from "@/components/finance/CellSources";
 import { getLedgerStart } from "@/lib/companyData";
@@ -25,7 +26,7 @@ import {
   KASSAS, kassaIds, WALLETS, WALLET_IDS, walletsOf, categoryLabel,
   kassaBalances, listOps, addOp, removeOp,
   requestTransfer, pendingGroups, approveGroup, rejectGroup,
-  closeDay, cancelClose, unclosedDays, CLOSE,
+  closeDay, cancelClose, unclosedDays, negativeDays, CLOSE,
   kassasOf, canOperate, kassaControl, COMPANY,
 } from "@/lib/kassaData";
 import { addExpense, expensesInRange, categoryLabel as expenseCategoryLabel } from "@/lib/expensesData";
@@ -109,6 +110,11 @@ export default function KassaPage() {
   // Qaysi kassada necha kun yopilmagan — kartochkada ogohlantirish
   const openDays = useMemo(() => Object.fromEntries(
     kassaIds().filter((k) => !KASSAS[k]?.main).map((k) => [k, unclosedDays(k)])
+  ), [tick, rowsTick, live]);
+  // Qaysi kunda hamyon minusga tushgan — kirim kam yozilganmi yoki
+  // kassadagidan ortiq xarajat qilinganmi, rahbar tekshirsin
+  const minusDays = useMemo(() => Object.fromEntries(
+    kassaIds().filter((k) => !KASSAS[k]?.main).map((k) => [k, negativeDays(k)])
   ), [tick, rowsTick, live]);
   // Harakatlar: kassa yozuvlari + xarajatlar birga. Menejer o'zi
   // kiritgan chiqimni shu yerda ko'rishi kerak — u Xarajatlar moduliga
@@ -328,6 +334,29 @@ export default function KassaPage() {
                       : t("Hamma kun yopilgan")}
                   </span>
                   <ChevronRight size={16} />
+                </Link>
+              )}
+
+              {/* Minusda qolgan kunlar. Kun yopilganda faqat musbat
+                  qoldiq topshiriladi, minus esa kassada qotib qoladi —
+                  shuning uchun uni aytib turish kerak: kirim kam
+                  yozilganmi yoki ortiqcha xarajat qilinganmi. */}
+              {!main && minusDays[k]?.length > 0 && (
+                <Link href={`/finance/kassa/${k}`}
+                  className="flex items-start gap-2 rounded-lg px-3 py-2 mb-4 text-sm font-bold
+                    bg-warn-soft text-warn hover:opacity-90 transition-opacity">
+                  <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                  <span className="flex-1">
+                    {minusDays[k].map((d) => tt("{d} — {w} {n} minusda", {
+                      d: fmtDate(new Date(d.date + "T12:00:00")),
+                      w: t(WALLETS[d.wallet]),
+                      n: fmtUSD(Math.abs(d.amount)),
+                    })).join(" · ")}
+                    <span className="block font-semibold opacity-80">
+                      {t("O'sha kunning kirimi to'liq yozilganini tekshiring")}
+                    </span>
+                  </span>
+                  <ChevronRight size={16} className="shrink-0 mt-0.5" />
                 </Link>
               )}
 

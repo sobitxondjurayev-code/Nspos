@@ -46,6 +46,7 @@ hozircha menejerlar qo'lda kiritadi — bu xato manbai (5-bo'limga qarang).
 | Kassa **kunlik** yopiladi, butunlay emas | Ilgari bir bosishda hisob boshidan yig'ilgan hamma pul ketardi: qaysi kunniki ekani yo'qolar, yopilmay qolgan kun esa umuman ko'rinmasdi. Endi har kunning o'z qoldig'i topshiriladi va yopilmagan kun qizarib turadi (`kassaDailyRows`, `closeDay`) |
 | Yopilgan kun `kassa_ops` da `kind='transfer', category='close'` bilan belgilanadi | Pul harakati bitta jadvalda qoladi. Topshiriladigan pul bo'lmasa 0 summali yozuv yoziladi — "bu kun tekshirildi" degani (shu sabab `amount > 0` cheklovi `>= 0` ga o'zgardi, `scripts/sql/kassa-close-day.sql`) |
 | Kun yopilganda har hamyon O'Z kirim−chiqimi bilan topshiriladi | Servis ham hamyon: servis materiallari servis pulidan chiqadi, shuning uchun topshiriladigan servis = servis kirimi − servis chiqimi. Yopish oynasida har hamyon uchun kirim/chiqim/qoldiq qatori turadi, jadvalda esa "Naqd/Payme/Servis kirim" va "... chiqim" ustunlari (Ustunlar dan yoqiladi) |
+| "Kassada qoldi" — bir kunniki emas, hisob boshidan yig'ilgani | `kirim − chiqim − topshirilgan`. Kun to'liq topshirilsa u o'zgarmaydi, shuning uchun bir necha kun ketma-ket BIR XIL turishi normal (foydalanuvchi shundan hayron bo'ldi, 2026-08-13). Manfiy bo'lsa — tushganidan ko'p topshirilgan, odatda xarajat kun yopilgandan KEYIN kiritilgan. Raqam bosiladi: hisob boshidan beri qaysi yozuvlar shu raqamni bergani ochiladi, jadval ostida esa qizil izoh chiqadi |
 | Kunlik jadvaldagi "Kassada qoldi" tasdiqlanmagan pulni ham sanaydi | Kartochkadagi raqam ham shunday. Ikki joyda ikki xil qoldiq chiqmasligi uchun — yo'ldagi pul alohida ko'rsatiladi |
 | Menejer 2 kundan oldingi kunlik raqamni tahrirlay olmaydi | Rahbar tahrirlay oladi |
 | Menejer faqat BUGUNGI xarajatni tuzata/o'chira oladi | Eski yozuvni o'zgartirish — hisobni orqadan tahrirlash. Doimiy xarajat esa umuman faqat rahbarniki. Himoya ikki qavat: interfeysda tugma chiqmaydi, bazada esa `expense_update`/`expense_delete` siyosati (sana Toshkent vaqti bo'yicha) |
@@ -182,6 +183,71 @@ tortilmasdi — kassa "ДДС yuklang" deb turardi va kamomad yo'qolardi.
 **Yechim:** effekt `[live]` ga bog'landi (kassa va P&L sahifalarida).
 **Qoida:** remountga tayangan har qanday effektni tekshirish kerak —
 u endi o'zi qayta ishga tushishi shart.
+
+### "Foyda va zarar" bo'm-bo'sh: tushum 0 (2026-08-13)
+P&L sahifasida jami tushum 0.00, "0 ta sotuv" turardi, sof foyda esa
+faqat xarajatdan iborat edi. Ikkita mustaqil sabab bir joyda uchrashgan:
+
+1. **Sahifa "Сводный" qatorlarini umuman so'ramagan.** `loadRows` faqat
+   "Pul oqimi" tabidagi `efficiency` uchun chaqirilardi, holbuki tushum
+   va tannarx `summary` yuklamasidan keladi. Qator yo'q → `uploadedDaily`
+   `ready:false` → tushum 0. Ustiga useMemo bog'lami `[range]` edi,
+   ya'ni qatorlar kelganda ham hisob qayta yurilmasdi.
+2. **Sana taqqoslashda yana o'sha Date/String xatosi.**
+   `dailyTotals` da `String(from).slice(0,10)` → `"Sat Aug 01"`, va
+   `"2026-08-02" >= "Sat Aug 01"` yolg'on chiqadi ("2" < "S") — bitta
+   ham kun tanlanmasdi. Bir xil xato `pnlData` va `kassaIncome` da ham
+   bor edi (kassada `to` filtri tasodifan zararsiz ishlagan).
+
+**Yechim:** `lib/dates.js` ga umumiy `ymd()` qo'shildi (Date, "YYYY-MM-DD"
+va "01.08.2026" — hammasi bir ko'rinishga) va hamma taqqoslash o'shanga
+o'tkazildi. Yuklama qatorlarini tortish esa `components/useUploadRows.js`
+hookiga chiqarildi: kerakli hisobot ro'yxati beriladi, u `[live]` ga
+bog'lanadi va qaytargan belgisi useMemo bog'lamiga qo'shiladi.
+Moliya bosh sahifasi ham shu hookka o'tdi — u ham 0 tushum bilan
+hisoblab, "shu oyda zarar" ko'rsatib turgan edi.
+
+**Qoida:** yuklamaga tayanadigan yangi sahifa yozilsa — `useUploadRows`
+chaqirilsin va qaytgan qiymati BARCHA useMemo bog'lamlariga qo'shilsin;
+sana taqqoslansa — `ymd()` ishlatilsin, `String(sana).slice()` emas.
+
+**Eslatma:** yuklangan "Сводный" 01–05 avgustni qamraydi, shuning uchun
+tuzatishdan keyin ham 06-avgustdan keyingi kunlar tushumsiz turadi —
+Billz'dan yangi "Сводный отчет" chiqarib yuklash kerak.
+
+### Balansdagi mijoz qarzi ikki barobar katta chiqqan (2026-08-13)
+Balansda "Mijozlardan olinadigan qarz" 103 379.68 USD (659 ta qarz)
+turardi. Billz'ning "Долги клиентов" yuklamasida esa haqiqiy raqam:
+**366 ta ochiq qarz, 58 933.97 USD**.
+
+Sabab — yuqoridagi bilan bir xil: balans sahifasi yuklama qatorlarini
+tortmasdi, `uploadedDebts()` "ready emas" deb qaytarardi va hisob
+bazadagi ESKI, qisman modellashtirilgan qarzlarga tushib ketardi
+(`debts` jadvalida 659 qator, `debt_payments` da esa BITTA ham to'lov
+yo'q — shuning uchun hamma qarz "to'liq ochiq" bo'lib ko'ringan).
+
+**Yechim:** balans, qarzlar, yetkazib beruvchilar va rahbariyat
+sahifalari `useUploadRows(["client_debts", …])` ga o'tkazildi.
+**Qoida:** yuklama bor joyda baza nusxasi zaxira sifatida qoladi —
+zaxira ishlab ketgani bilinmaydi, chunki raqam "bor". Shuning uchun
+yuklamaga tayanadigan sahifa ro'yxatini kengaytirganda qatorlarni
+tortishni ham birga qo'shish shart.
+
+### Minusdagi kun kassada qotib qolardi (2026-08-13)
+Kassa kartochkasida "Naqd −28.69" turardi, lekin sababi ko'rinmasdi.
+Tekshiruv: 9-avgustda Optim kassasiga naqd 98.30 tushgan, xarajat esa
+126.98 qilingan. Kun yopilganda faqat MUSBAT qoldiq topshiriladi
+(o'sha kuni Payme 100.00 ketgan), minus esa kassada qolib ketadi va
+keyingi kunlarga ergashadi.
+
+**Yechim:** `negativeDays()` qo'shildi — o'tgan kunlar ichida qaysi
+hamyon minusga tushgani topiladi va kartochkada sariq ogohlantirish
+chiqadi ("9-avgust — Naqd 28.68 minusda · kirim to'liq yozilganini
+tekshiring"). BUGUN sanalmaydi: kirim odatda kechqurun yoziladi, aks
+holda har ertalab soxta ogohlantirish chiqardi. Xuddi shu holat
+rahbariyat dashboardidagi `alerts()` ga ham "danger" bo'lib chiqadi —
+menejer o'z kartochkasida ko'radi, rahbar esa ogohlantirishlar
+ro'yxatida.
 
 ### Kassa butunlay yopilardi (2026-08-13)
 "Kassani yopish" bosilganda hisob boshidan yig'ilgan HAMMA pul bitta

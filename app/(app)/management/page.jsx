@@ -17,6 +17,7 @@ import StatCard from "@/components/finance/StatCard";
 import { kpis, storeScoreboard, trend, breakEven, alerts } from "@/lib/managementData";
 import { balanceSheet } from "@/lib/balanceData";
 import { openPayouts, payoutSummary, daysLeft } from "@/lib/payoutsData";
+import useUploadRows from "@/components/useUploadRows";
 
 const fmtDay = (d) => {
   const [y, m, dd] = String(d).slice(0, 10).split("-");
@@ -35,14 +36,18 @@ export default function Management() {
   const [range, setRange] = useState(() => periodRange("Yil"));
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const k = useMemo(() => kpis(range.from, range.to), [range]);
-  const board = useMemo(() => storeScoreboard(range.from, range.to), [range]);
-  const series = useMemo(() => trend(range.from, range.to), [range]);
-  const be = useMemo(() => breakEven(range.from, range.to), [range]);
-  const warn = useMemo(() => alerts(range.from, range.to), [range]);
-  const bal = useMemo(() => balanceSheet(new Date()), []);
-  const plan = useMemo(() => payoutSummary(), []);
-  const upcoming = useMemo(() => openPayouts().slice(0, 5), []);
+  // Raqamlar Billz yuklamalaridan yig'iladi (tushum, tannarx, kassa
+  // harakati, mijoz qarzlari) — qatorlar kelmaguncha hisob bo'sh bo'ladi
+  const rows = useUploadRows(["summary", "cashflow", "efficiency", "client_debts"]);
+
+  const k = useMemo(() => kpis(range.from, range.to), [range, rows]);
+  const board = useMemo(() => storeScoreboard(range.from, range.to), [range, rows]);
+  const series = useMemo(() => trend(range.from, range.to), [range, rows]);
+  const be = useMemo(() => breakEven(range.from, range.to), [range, rows]);
+  const warn = useMemo(() => alerts(range.from, range.to), [range, rows]);
+  const bal = useMemo(() => balanceSheet(new Date()), [rows]);
+  const plan = useMemo(() => payoutSummary(), [rows]);
+  const upcoming = useMemo(() => openPayouts().slice(0, 5), [rows]);
 
   return (
     <div>

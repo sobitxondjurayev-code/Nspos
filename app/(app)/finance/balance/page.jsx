@@ -8,10 +8,15 @@ import { fmtUSD, demoStores } from "@/lib/demoData";
 import { fmtDate } from "@/lib/dates";
 import StatCard from "@/components/finance/StatCard";
 import { balanceSheet, ledgerStartDate } from "@/lib/balanceData";
+import useUploadRows from "@/components/useUploadRows";
 
 export default function FinanceBalance() {
   const [asOf] = useState(() => new Date());
-  const b = useMemo(() => balanceSheet(asOf), [asOf]);
+  // Debitor qarzdorlik Billz'ning "Долги клиентов" yuklamasidan keladi.
+  // Qatorlari tortilmasa baza ichidagi eski (modellashtirilgan) qarzlar
+  // ishlatilib, balansda soxta katta raqam chiqadi.
+  const rows = useUploadRows(["client_debts", "efficiency"]);
+  const b = useMemo(() => balanceSheet(asOf), [asOf, rows]);
 
   const bar = (amount, total) => (total > 0 ? (amount / total) * 100 : 0);
 

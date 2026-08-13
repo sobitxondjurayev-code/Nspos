@@ -11,6 +11,7 @@ import { overallDebtStats } from "@/lib/debtsData";
 import { addOperation } from "@/lib/financeData";
 import SupplierPayModal from "@/components/SupplierPayModal";
 import StatCard from "@/components/finance/StatCard";
+import useUploadRows from "@/components/useUploadRows";
 
 const fmtDay = (iso) => {
   const d = new Date(iso);
@@ -83,11 +84,13 @@ export default function FinancePayables() {
   const [tick, setTick] = useState(0);
   const bump = () => setTick((v) => v + 1);
 
+  // Debitor qarz Billz yuklamasidan o'qiladi
+  const uploads = useUploadRows(["client_debts"]);
   const summary = useMemo(() => payablesSummary(), [tick]);
   const schedule = useMemo(() => openInvoices(), [tick]);
   const rows = useMemo(() => supplierRows(), [tick]);
   // Debitor tomoni — taqqoslash uchun (mijozlar bizga qarzdor)
-  const receivable = useMemo(() => overallDebtStats(), [tick]);
+  const receivable = useMemo(() => overallDebtStats(), [tick, uploads]);
   const net = +(receivable.openAmount - summary.totalOpen).toFixed(2);
 
   // To'lov kassa jurnaliga chiqim bo'lib tushadi

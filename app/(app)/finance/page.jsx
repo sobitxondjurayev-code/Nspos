@@ -64,7 +64,7 @@ export default function FinanceHome() {
   // tannarx, kassa harakati). Qatorlar ro'yxat bilan birga kelmagani
   // uchun ular shu yerda tortiladi va kelgach hisob qayta yuriladi —
   // aks holda "Foyda" faqat xarajatdan iborat bo'lib, zarar ko'rinardi.
-  const rows = useUploadRows(["summary", "cashflow", "efficiency"]);
+  const rows = useUploadRows(["summary", "cashflow", "efficiency", "client_debts"]);
 
   const bal = useMemo(() => kassaBalances(new Date()), [rows]);
   const flow = useMemo(() => moneyFlow(month.from, month.to), [month, rows]);

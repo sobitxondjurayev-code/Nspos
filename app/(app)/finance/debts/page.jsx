@@ -8,11 +8,14 @@ import { customerDebtStats } from "@/lib/debtsData";
 import { addOperation } from "@/lib/financeData";
 import DebtPaymentModal from "@/components/DebtPaymentModal";
 import StatCard from "@/components/finance/StatCard";
+import useUploadRows from "@/components/useUploadRows";
 
 export default function FinanceDebts() {
   const [q, setQ] = useState("");
   const [payFor, setPayFor] = useState(null);
   const [tick, setTick] = useState(0);
+  // Qarzlar Billz yuklamasidan o'qiladi — qatorlari shu yerda tortiladi
+  const rows = useUploadRows(["client_debts"]);
 
   const debtors = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -23,7 +26,7 @@ export default function FinanceDebts() {
       .filter(({ customer: c }) =>
         !s || c.name.toLowerCase().includes(s) || (digits && c.phone.replace(/\D/g, "").includes(digits)))
       .sort((a, b) => b.stats.oldestOpenDays - a.stats.oldestOpenDays);
-  }, [q, tick]);
+  }, [q, tick, rows]);
 
   const totalOpen = +debtors.reduce((a, r) => a + r.stats.openAmount, 0).toFixed(2);
   const overdue = debtors.filter((r) => r.stats.oldestOpenDays > 30).length;
