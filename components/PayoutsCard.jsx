@@ -39,11 +39,13 @@ function DueBadge({ date }) {
 // focusDate — jadvalda bitta kun ustidan ochilgan bo'lsa, avval o'sha
 // kunning to'lovlari ko'rsatiladi ("qaysi kuni kimga" degan savol shu).
 // Bir bosishda butun ro'yxatga qaytiladi.
+// focusTab — jadvaldagi yashil "to'langan" qatoridan ochilganda darrov
+// "To'langan" ro'yxati ko'rsatiladi ("men to'lagan to'lovlar qayerda?").
 export default function PayoutsCard({
-  open = [], paid = [], total = 0, cashOnHand = 0, focusDate = null,
+  open = [], paid = [], total = 0, cashOnHand = 0, focusDate = null, focusTab = null,
   onAdd, onEdit, onPay, onRemove, onUnpay, onClose,
 }) {
-  const [tab, setTab] = useState("open");
+  const [tab, setTab] = useState(focusTab === "paid" ? "paid" : "open");
   const [day, setDay] = useState(focusDate);
   const rate = getUsdRate();
 

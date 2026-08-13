@@ -13,7 +13,7 @@
 import { t, tt } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import {
-  CalendarDays, ArrowDownLeft, ArrowUpRight, Wallet, ChevronRight, SlidersHorizontal, Plus,
+  CalendarDays, ArrowDownLeft, ArrowUpRight, Wallet, ChevronRight, SlidersHorizontal, Plus, Check,
 } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
@@ -70,7 +70,21 @@ export default function FinancePlan() {
   const booked = useMemo(() => plannedByKassa(), [tick, live]);
 
   const open = rows.filter((p) => p.status === "planned");
-  const paid = rows.filter((p) => p.status === "paid").slice(0, 30);
+  const allPaid = rows.filter((p) => p.status === "paid");
+  const paid = allPaid.slice(0, 30);
+
+  // "To'ladim" bosilganlar qaysi kunga tushgani. Jadvalda ular
+  // xarajat ustuniga ham kiradi (qaysi kassadan chiqqaniga qarab),
+  // lekin rahbar "men to'lagan to'lovlar qayerda?" deb aynan shu
+  // ustunga qaraydi — shuning uchun reja bilan yonma-yon turadi.
+  const paidByDay = useMemo(() => {
+    const m = {};
+    for (const p of allPaid) {
+      const d = String(p.paidAt ?? "").slice(0, 10);
+      if (d) m[d] = +((m[d] ?? 0) + p.amount).toFixed(2);
+    }
+    return m;
+  }, [allPaid]);
 
   const cashOnHand = useMemo(
     () => +Object.values(bal).reduce((s, b) => s + b.total, 0).toFixed(2), [bal]);
@@ -139,6 +153,11 @@ export default function FinancePlan() {
     .filter(([d]) => d >= fromISO && d <= toISO)
     .reduce((s, [, v]) => s + v, 0).toFixed(2);
 
+  // Shu davrda to'langanlari — "Jami" qatoridagi yashil qator
+  const paidInPeriod = +Object.entries(paidByDay)
+    .filter(([d]) => d >= fromISO && d <= toISO)
+    .reduce((s, [, v]) => s + v, 0).toFixed(2);
+
   // Jami — jadvalning eng tepasida, kunlardan oldin. Pastda takrorlash
   // kerak emas: bir xil raqam ikki joyda turgani foyda bermaydi.
   // Fon SHAFFOFMAS — sticky bo'lgani uchun tagidagi kunlar ko'rinmasin
@@ -170,6 +189,13 @@ export default function FinancePlan() {
           <p className="text-sm font-bold text-danger mt-1.5">
             {tt("{n} tasi kechikkan", { n: sum.overdueCount })}
           </p>
+        )}
+        {/* Allaqachon to'langanlari — bosilsa "To'langan" ro'yxati ochiladi */}
+        {paidInPeriod > 0 && (
+          <button onClick={() => setCard({ tab: "paid" })}
+            className="mt-1.5 flex items-center gap-1.5 ml-auto text-sm font-bold text-ok rounded-lg px-1.5 -mx-1.5 hover:bg-ok-soft transition-colors whitespace-nowrap">
+            <Check size={15} /> {tt("{n} to'langan", { n: fmtUSD(paidInPeriod) })}
+          </button>
         )}
       </td>
     </tr>
@@ -314,8 +340,16 @@ export default function FinancePlan() {
                         <span className="font-extrabold text-warn whitespace-nowrap">{fmtUSD(due)}</span>
                         <ChevronRight size={17} className="text-muted group-hover:text-brand" />
                       </button>
-                    ) : (
+                    ) : !paidByDay[r.date] ? (
                       <span className="text-muted">—</span>
+                    ) : null}
+                    {/* Shu kuni "To'ladim" bosilganlari */}
+                    {paidByDay[r.date] > 0 && (
+                      <button onClick={() => setCard({ tab: "paid" })}
+                        className={`flex items-center gap-1.5 ml-auto text-sm font-bold text-ok rounded-lg px-1.5 -mx-1.5 hover:bg-ok-soft transition-colors whitespace-nowrap ${
+                          due > 0 ? "mt-1.5" : ""}`}>
+                        <Check size={15} /> {tt("{n} to'langan", { n: fmtUSD(paidByDay[r.date]) })}
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -385,7 +419,7 @@ export default function FinancePlan() {
       {card && (
         <PayoutsCard
           open={open} paid={paid} total={sum.planned} cashOnHand={cashOnHand}
-          focusDate={card.date ?? null}
+          focusDate={card.date ?? null} focusTab={card.tab ?? null}
           onAdd={() => setForm({ dueDate: card.date ?? null })}
           onEdit={(p) => setForm({ initial: p })}
           onPay={pay}

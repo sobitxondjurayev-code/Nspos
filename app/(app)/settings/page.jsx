@@ -11,6 +11,7 @@ import { MODES, DARK_PRESETS, ACCENTS } from "@/lib/themes";
 import { LANGS } from "@/lib/i18n";
 import { ROLES, can } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
+import { useLive } from "@/components/DataProvider";
 import { demoStores } from "@/lib/demoData";
 import { listStaff, updateStaff, removeStaff, reloadStaff } from "@/lib/staffData";
 import { listInvites, addInvite, removeInvite } from "@/lib/invitesData";
@@ -42,11 +43,17 @@ const cameraRateOf = (id) =>
 function StaffManager({ onlyInstallers = false }) {
   const [modal, setModal] = useState(null);   // null | {} | {staff}
   const [tick, setTick] = useState(0);
+  // `live` bo'lmasa ro'yxat bir marta — ma'lumot kelishidan OLDIN —
+  // hisoblanardi va ekranda demo xodimlar (Bahodir Qosimov, Sanjar
+  // Umarov...) qotib qolardi. Haqiqiy 11 ta usta hech qachon
+  // ko'rinmasdi. Yuklash tugaganda `live` o'zgaradi va ro'yxat
+  // qayta yig'iladi.
+  const live = useLive();
   const staff = useMemo(() => {
     const list = listStaff();
     return onlyInstallers ? list.filter((s) => s.role === "installer") : list;
-  }, [tick, onlyInstallers]);
-  const invites = useMemo(() => (onlyInstallers ? [] : listInvites()), [tick, onlyInstallers]);
+  }, [tick, live, onlyInstallers]);
+  const invites = useMemo(() => (onlyInstallers ? [] : listInvites()), [tick, live, onlyInstallers]);
   const bump = () => setTick((v) => v + 1);
 
   const [busy, setBusy] = useState(false);
