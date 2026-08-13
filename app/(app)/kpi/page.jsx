@@ -538,7 +538,7 @@ function StaffDetail({ staffId, month, canEdit, canRules, canEditPast = false, s
                   </div>
                 ))}
                 <div className="flex justify-between font-extrabold">
-                  <span>{t("Qoldiq")}</span>
+                  <span>{t("Balans")}</span>
                   <span className={m.qoldiq < 0 ? "text-danger" : "text-ok"}>{som(m.qoldiq)} {t("so'm")}</span>
                 </div>
                 {!m.monthDone && (
@@ -806,7 +806,7 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
     { key: "off", label: "Dam olgan kun", type: "range", get: (r) => r.off },
     ...(showSalary ? [
       { key: "total", label: "Ishlab topgan (so'm)", type: "range", get: (r) => r.total },
-      { key: "qoldiq", label: "Qoldiq (so'm)", type: "range", get: (r) => r.qoldiq },
+      { key: "qoldiq", label: "Balans (so'm)", type: "range", get: (r) => r.qoldiq },
     ] : []),
   ], [showSalary]);
   // Tanlangan davr oyni to'liq qoplaydimi. Qoplasa — oylik hisob
@@ -840,7 +840,12 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
         late: rg ? rg.lateDays : m.lateDays,
         off: rg ? rg.offDays : m.offDays,
         total: earned, olgan: taken,
-        qoldiq: fullMonth ? m.qoldiq : +(earned - taken).toFixed(0) };
+        // BALANS — o'tgan oylardan qolgan qarz ham ichida. Davr
+        // tanlansa ham u yo'qolmaydi: iyulda usta oldindan pul olgan
+        // bo'lsa, avgustda "1,5 mln berishimiz kerak" degan yolg'on
+        // raqam chiqmasligi kerak.
+        qoldiq: +(m.carryIn + earned - taken).toFixed(0),
+        carryIn: m.carryIn };
     });
     return sortRows(base);
   }, [installers, month, range?.from, range?.to, fullMonth, tick, sort, live]);
@@ -892,7 +897,8 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
             ...(showSalary ? [
               { label: "Ishlab topgan (so'm)", get: (r) => Math.round(r.total) },
               { label: "Olgan (so'm)", get: (r) => Math.round(r.olgan) },
-              { label: "Qoldiq (so'm)", get: (r) => Math.round(r.qoldiq) },
+              { label: "Balans (so'm)", get: (r) => Math.round(r.qoldiq) },
+            { label: "O'tgan oylardan (so'm)", get: (r) => Math.round(r.carryIn ?? 0) },
             ] : []),
           ]} />
         <div className="card overflow-auto max-h-[70vh]">
@@ -910,7 +916,7 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
                 {showSalary && (<>
                   <SortTh label="Ishlab topgan" sortKey="total" sort={sort} onSort={toggle} align="right" />
                   <SortTh label="Olgan" sortKey="olgan" sort={sort} onSort={toggle} align="right" />
-                  <SortTh label="Qoldiq" sortKey="qoldiq" sort={sort} onSort={toggle} align="right" />
+                  <SortTh label="Balans" sortKey="qoldiq" sort={sort} onSort={toggle} align="right" />
                 </>)}
                 <th className="px-3 py-4"></th>
               </tr>
@@ -971,7 +977,16 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
                   {showSalary && (<>
                     <td className="px-3 py-3 text-right font-extrabold text-brand">{som(r0.total)}</td>
                     <td className="px-3 py-3 text-right font-semibold text-muted">{som(r0.olgan)}</td>
-                    <td className={`px-3 py-3 text-right font-extrabold ${r0.qoldiq < 0 ? "text-danger" : ""}`}>{som(r0.qoldiq)}</td>
+                    <td className={`px-3 py-3 text-right font-extrabold ${r0.qoldiq < 0 ? "text-danger" : ""}`}>
+                      {som(r0.qoldiq)}
+                      {/* O'tgan oydan qarz bo'lsa — ochiq yozamiz, aks
+                          holda "nega bu raqam?" degan savol qoladi */}
+                      {Math.abs(r0.carryIn ?? 0) > 0.5 && (
+                        <span className="block text-sm font-semibold text-muted">
+                          {tt("o'tgan oydan {n}", { n: som(r0.carryIn) })}
+                        </span>
+                      )}
+                    </td>
                   </>)}
                   <td className="px-3 py-3 text-right">
                     {canOpen && (
