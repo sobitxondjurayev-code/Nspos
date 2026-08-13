@@ -13,6 +13,7 @@ import {
   Wallet, Send, Plus, Check, X as XIcon, Clock, Building2, Trash2, Scale, LockKeyhole,
 } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
+import ControlDays from "@/components/finance/ControlDays";
 import { useAuth } from "@/components/AuthProvider";
 import KassaModal from "@/components/KassaModal";
 import {
@@ -82,6 +83,8 @@ export default function KassaPage() {
     return Math.max(0, Math.round((now - last) / 86400000));
   }, [flow]);
   const control = useMemo(() => kassaControl(), [rowsTick, tick]);
+  // Farq ustiga bosilganda ochiladigan kunlik ro'yxat
+  const [ctrlDays, setCtrlDays] = useState(null);
   const bal = useMemo(() => kassaBalances(new Date()), [tick, rowsTick]);
   const pending = useMemo(() => pendingTransfers(), [tick]);
   // Harakatlar: kassa yozuvlari + xarajatlar birga. Menejer o'zi
@@ -341,14 +344,16 @@ export default function KassaPage() {
                     <td className={`px-6 py-4 text-right font-extrabold ${
                       !r.hasKpi ? "text-muted" : ok ? "text-ok" : "text-danger"}`}>
                       {!r.hasKpi ? "—" : (
-                        <>
+                        // Ustiga bosilsa — farq qaysi kunlarda chiqqani
+                        <button onClick={() => setCtrlDays({ kassa: r.kassa, label: r.label })}
+                          className="rounded-lg px-2 -mx-2 py-1 hover:bg-brand-soft hover:text-brand transition-colors">
                           {r.diff > 0 ? "+" : ""}{fmtUSD(r.diff)}
                           {r.pct != null && (
                             <span className="block text-sm font-bold">
                               {r.pct > 0 ? "+" : ""}{r.pct}%
                             </span>
                           )}
-                        </>
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -447,6 +452,11 @@ export default function KassaPage() {
           onClose={() => setModal(null)}
           onSave={save}
         />
+      )}
+
+      {ctrlDays && (
+        <ControlDays kassaId={ctrlDays.kassa} label={ctrlDays.label}
+          onClose={() => setCtrlDays(null)} />
       )}
     </div>
   );

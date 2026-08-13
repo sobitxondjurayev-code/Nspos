@@ -74,6 +74,10 @@ hozircha menejerlar qo'lda kiritadi — bu xato manbai (5-bo'limga qarang).
   Bir ustun davr, ikkinchisi oylik bo'lmasin.
 - Yig'ma raqam **bosiladigan** bo'ladi: bosilganda o'sha summa qaysi
   yozuvlardan yig'ilgani ochiladi (`components/finance/CellSources.jsx`).
+  Kamomad jadvalidagi "Farq" ham shunday — qaysi kunlarda farq chiqqani
+  kunma-kun ochiladi (`components/finance/ControlDays.jsx`). Ochilgan
+  oynaning ko'rinishi bir xil: sarlavha, nechta yozuv, tepada Jami,
+  keyin qatorlar.
 - Rang mantiqi pul nuqtai nazaridan: qarz/pul kelmagani — **qizil**, pul
   tushgani yoki qarz yopilgani — **yashil**.
 - Bo'sh yoki ishlatilmaydigan bo'lim menyuda turmaydi.
