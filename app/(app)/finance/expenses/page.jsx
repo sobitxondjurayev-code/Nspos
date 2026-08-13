@@ -1,7 +1,6 @@
 "use client";
 import { t, tt } from "@/lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import {
   CalendarDays, Plus, Wallet, Lock, Waves, Percent, Repeat, Trash2, Pencil,
   SlidersHorizontal, Coins,
@@ -80,9 +79,17 @@ export default function FinanceExpenses() {
 
   // Boshqa sahifadan "shu xarajatni ko'ray" deb kelinganda
   // (?edit=<id>) — kerakli bo'limga o'tib, o'sha yozuv ochiladi.
-  const params = useSearchParams();
-  const editId = params.get("edit");
-  const wantTab = params.get("tab");
+  //
+  // Manzil BRAUZERDAN o'qiladi, `useSearchParams()` dan emas: u sahifani
+  // oldindan chizishga (prerender) to'sqinlik qiladi va Vercel'da
+  // "Suspense boundary" xatosi bilan yig'ilmay qoladi.
+  const [q, setQ] = useState({ edit: null, tab: null });
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    setQ({ edit: p.get("edit"), tab: p.get("tab") });
+  }, []);
+  const editId = q.edit;
+  const wantTab = q.tab;
   // Bir marta ochiladi: oyna yopilgach jonli yangilanish uni qayta
   // ochib yubormasin.
   const opened = useRef(null);
