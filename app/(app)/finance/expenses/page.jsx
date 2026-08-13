@@ -1,6 +1,7 @@
 "use client";
 import { t, tt } from "@/lib/i18n";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   CalendarDays, Plus, Wallet, Lock, Waves, Percent, Repeat, Trash2, Pencil,
   SlidersHorizontal, Coins,
@@ -23,7 +24,7 @@ import {
   expensesInRange, expensesByCategory, expensesByStore, expenseStructure,
   expenseSeries, monthlyFixedRunRate,
   listRecurring, addRecurring, removeRecurring, updateRecurring,
-  addExpense, removeExpense, updateExpense, somOf, monthlyFixedRunRateSom,
+  addExpense, removeExpense, updateExpense, somOf, monthlyFixedRunRateSom, listOneOff,
 } from "@/lib/expensesData";
 import { getStaff } from "@/lib/staffData";
 import ColumnSettings from "@/components/ColumnSettings";
@@ -71,10 +72,31 @@ export default function FinanceExpenses() {
   // gidratsiya xatosi chiqadi.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
   const [tick, setTick] = useState(0);
   // Boshqa xodim yozgan o'zgarish ham darrov ko'rinsin
   const live = useLive();
   const bump = () => setTick((v) => v + 1);
+
+  // Boshqa sahifadan "shu xarajatni ko'ray" deb kelinganda
+  // (?edit=<id>) — kerakli bo'limga o'tib, o'sha yozuv ochiladi.
+  const params = useSearchParams();
+  const editId = params.get("edit");
+  const wantTab = params.get("tab");
+  // Bir marta ochiladi: oyna yopilgach jonli yangilanish uni qayta
+  // ochib yubormasin.
+  const opened = useRef(null);
+  useEffect(() => {
+    if (!editId || opened.current === editId) return;
+    const rec = wantTab === "doimiy";
+    const found = rec
+      ? listRecurring().find((r) => r.id === editId)
+      : listOneOff().find((e) => e.id === editId);
+    if (!found) return;              // ma'lumot hali kelmagan bo'lishi mumkin
+    opened.current = editId;
+    setTab(rec ? TABS[1] : TABS[0]);
+    setModal({ initial: found });
+  }, [editId, wantTab, live]);
 
   const rows = useMemo(
     () => mineOnly(expensesInRange(range.from, range.to)), [range, tick, isOwner, myKassas.join(), live]);

@@ -1,7 +1,8 @@
 "use client";
 import { t, tt } from "@/lib/i18n";
 import { useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { X, ChevronRight } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { flowSources } from "@/lib/kassaData";
 
@@ -28,7 +29,13 @@ const som = (n) => Math.round(n).toLocaleString("ru-RU");
 // ketgani ko'ringani yaxshi.
 export default function CellSources({ from, to, colKey, label, dayLabel, kassa = null,
                                       rows: given = null, onClose }) {
+  const router = useRouter();
   const rows = given ?? flowSources(from, to, colKey, { kassa });
+
+  // Yozuv ustiga bosilsa — o'sha xarajat/to'lov tahrirlanadigan joyga
+  // o'tadi. "Bu xarajat qayerdan chiqdi?" degan savoldan keyingi
+  // savol doim "uni qanday tuzataman?" bo'ladi.
+  const go = (r) => { if (r.link) { router.push(r.link); onClose?.(); } };
   const total = +rows.reduce((s, r) => s + (r.out ? -r.amount : r.amount), 0).toFixed(2);
   const totalSom = rows.some((r) => r.amountSom != null)
     ? rows.reduce((s, r) => s + (r.amountSom ?? 0), 0) : null;
@@ -133,7 +140,9 @@ export default function CellSources({ from, to, colKey, label, dayLabel, kassa =
                 </tr>
               ))}
               {!grouped && rows.map((r, i) => (
-                <tr key={i} className="border-b border-line last:border-0">
+                <tr key={i} onClick={() => go(r)}
+                  className={`border-b border-line last:border-0 ${
+                    r.link ? "cursor-pointer hover:bg-surface/70" : ""}`}>
                   <td className="px-6 py-4 font-bold whitespace-nowrap">{fmtDay(r.date)}</td>
                   <td className="px-4 py-4">
                     <p className="font-bold">
@@ -143,6 +152,11 @@ export default function CellSources({ from, to, colKey, label, dayLabel, kassa =
                       )}
                     </p>
                     {r.note && <p className="text-sm text-muted font-semibold">{r.note}</p>}
+                    {r.link && (
+                      <span className="inline-flex items-center gap-1 text-sm font-bold text-brand mt-0.5">
+                        {t("ochish")} <ChevronRight size={14} />
+                      </span>
+                    )}
                   </td>
                   {hasPot && (
                     <td className="px-4 py-4 font-semibold text-muted whitespace-nowrap">{t(r.pot ?? "—")}</td>

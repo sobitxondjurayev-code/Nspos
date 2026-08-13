@@ -100,6 +100,13 @@ hozircha menejerlar qo'lda kiritadi — bu xato manbai (5-bo'limga qarang).
   sahifasidagi "Shu oyda kirgan/chiqqan/xarajat", Kassalar sahifasidagi
   har kassa summasi, Kamomad "Farq", kassaning kunlik jadvalidagi har
   katak va Jami (`kassaSources`).
+- Ochilgan ro'yxatdagi yozuv **bosiladigan**: xarajat bo'lsa
+  `/finance/expenses?edit=<id>` ga o'tadi va o'sha yozuv tahrirlash
+  oynasida ochiladi (doimiy xarajatning kunlik nusxasi emas, QOIDASI
+  ochiladi: `?tab=doimiy&edit=<recurringId>`). Reja to'lovi bo'lsa —
+  Pul rejasiga. Qatorda "ochish ›" belgisi turadi. Sabab: "bu xarajat
+  qayerdan chiqdi?" degan savoldan keyin doim "uni qanday tuzataman?"
+  keladi (2026-08-13).
 - Ochilgan ro'yxatda ikki ko'rinish bor: **"Turi bo'yicha"** (tushlik,
   yo'lkira, mashina gazi — har biri yig'ilgan, nechtaligi bilan) va
   **"Ro'yxat"** (har yozuv alohida, sanasi bilan). Yozuv turlardan ko'p
