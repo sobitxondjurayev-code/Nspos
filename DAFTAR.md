@@ -106,10 +106,11 @@ hozircha menejerlar qo'lda kiritadi — bu xato manbai (5-bo'limga qarang).
   hover'da esa yorug'lik. Faqat hover'da bilinsa foydalanuvchi ustiga
   bosish mumkinligini umuman bilmaydi — shu sabab "bosilmayapti" degan
   fidbek keldi (2026-08-13).
-- To'lov muddati kelgan kun jadvalda DOIM qator bo'ladi — tanlangan
-  davrdan tashqarida bo'lsa ham ("reja" deb belgilanadi). Aks holda
-  summa faqat "Jami"da qolib ketadi va rahbar uni qaysi kunga
-  qo'yganini ko'rmaydi.
+- To'lov rejasi kunlik jadvalda EMAS, "Berishim kerak" oynasida
+  (2026-08-13 dan). Kunlik jadval faqat pul harakatini ko'rsatadi;
+  reja, muddatlar va to'langanlar alohida oynada, kunlar bo'yicha
+  jadval bilan. Kelasi muddat ham o'sha jadvalda qator bo'lib turadi —
+  summa faqat "Jami"da qolib ketmasligi uchun.
 - Rang mantiqi pul nuqtai nazaridan: qarz/pul kelmagani — **qizil**, pul
   tushgani yoki qarz yopilgani — **yashil**.
 - Bo'sh yoki ishlatilmaydigan bo'lim menyuda turmaydi.

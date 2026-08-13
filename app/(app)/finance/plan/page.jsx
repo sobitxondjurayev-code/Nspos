@@ -73,19 +73,6 @@ export default function FinancePlan() {
   const open = rows.filter((p) => p.status === "planned");
   const allPaid = rows.filter((p) => p.status === "paid");
 
-  // "To'ladim" bosilganlar qaysi kunga tushgani. Jadvalda ular
-  // xarajat ustuniga ham kiradi (qaysi kassadan chiqqaniga qarab),
-  // lekin rahbar "men to'lagan to'lovlar qayerda?" deb aynan shu
-  // ustunga qaraydi — shuning uchun reja bilan yonma-yon turadi.
-  const paidByDay = useMemo(() => {
-    const m = {};
-    for (const p of allPaid) {
-      const d = String(p.paidAt ?? "").slice(0, 10);
-      if (d) m[d] = +((m[d] ?? 0) + p.amount).toFixed(2);
-    }
-    return m;
-  }, [allPaid]);
-
   const cashOnHand = useMemo(
     () => +Object.values(bal).reduce((s, b) => s + b.total, 0).toFixed(2), [bal]);
 
@@ -117,46 +104,10 @@ export default function FinancePlan() {
   const colPrefs = useColumns("plan-daily", ALL_COLS);
   const COLS = colPrefs.columns;
 
-  // —— Qaysi kuni qancha berish kerak ————————————————
-  // To'lov muddati bo'yicha kunlarga taqsimlanadi. Davr ichidagi
-  // muddatlar jadvalda alohida qator bo'lib ham chiqadi — o'sha kuni
-  // pul harakati bo'lmagan bo'lsa ham, chunki to'lov kuni ham voqea.
-  const dueByDay = useMemo(() => {
-    const m = {};
-    for (const p of open) m[p.dueDate] = +((m[p.dueDate] ?? 0) + p.amount).toFixed(2);
-    return m;
-  }, [open]);
-
-  const fromISO = isoOf(range.from), toISO = isoOf(range.to);
-  const tableRows = useMemo(() => {
-    const byDate = new Map(days.map((d) => [d.date, d]));
-    // To'lov muddati kelgan kun DOIM qator bo'ladi — davrdan tashqarida
-    // bo'lsa ham. Bu jadval "pul rejasi": kelasi to'lov qaysi kunga
-    // belgilangani ko'rinib turishi kerak, aks holda summa faqat "Jami"da
-    // qolib ketadi va rahbar uni qaysi kunga qo'yganini eslay olmaydi.
-    for (const d of Object.keys(dueByDay)) {
-      if (!byDate.has(d)) {
-        byDate.set(d, Object.fromEntries([
-          ["date", d], ["outside", d < fromISO || d > toISO],
-          ...ALL_COLS.map((c) => [c.key, 0]),
-        ]));
-      }
-    }
-    return [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : 1));
-  }, [days, dueByDay, fromISO, toISO]);
-
-  // Davr ichida muddati kelgan to'lovlar yig'indisi — pastdagi "Jami"
-  // qatoridagi raqam bundan katta bo'lsa, qolgani keyingi oylarga
-  // tegishli. Shuni aytib qo'yamiz, aks holda ikki raqam bir-biriga
-  // qarama-qarshidek ko'rinadi.
-  const dueInPeriod = +Object.entries(dueByDay)
-    .filter(([d]) => d >= fromISO && d <= toISO)
-    .reduce((s, [, v]) => s + v, 0).toFixed(2);
-
-  // Shu davrda to'langanlari — "Jami" qatoridagi yashil qator
-  const paidInPeriod = +Object.entries(paidByDay)
-    .filter(([d]) => d >= fromISO && d <= toISO)
-    .reduce((s, [, v]) => s + v, 0).toFixed(2);
+  // Jadval faqat pul harakati bo'lgan kunlarni ko'rsatadi. To'lov
+  // rejasi bu yerda emas — u "Berishim kerak" oynasida, kunlar bo'yicha
+  // jadval bilan birga (kelasi muddatlar ham o'sha yerda ko'rinadi).
+  const tableRows = days;
 
   // Jami — jadvalning eng tepasida, kunlardan oldin. Pastda takrorlash
   // kerak emas: bir xil raqam ikki joyda turgani foyda bermaydi.
@@ -177,27 +128,6 @@ export default function FinancePlan() {
           </button>
         </td>
       ))}
-      <td className="px-4 py-5 text-right sticky right-0 bg-surface border-l border-line shadow-[-10px_0_12px_-10px_rgba(0,0,0,.55)]">
-        <button onClick={() => setCard({})}
-          className="inline-flex items-center gap-2 rounded-xl border-2 border-line hover:border-brand hover:bg-brand-soft px-3 py-2 transition-colors group">
-          <span className={`text-lg font-extrabold ${sum.planned > 0 ? "text-warn" : "text-muted"}`}>
-            {fmtUSD(sum.planned)}
-          </span>
-          <ChevronRight size={18} className="text-muted group-hover:text-brand" />
-        </button>
-        {sum.overdueCount > 0 && (
-          <p className="text-sm font-bold text-danger mt-1.5">
-            {tt("{n} tasi kechikkan", { n: sum.overdueCount })}
-          </p>
-        )}
-        {/* Allaqachon to'langanlari — bosilsa "To'langan" ro'yxati ochiladi */}
-        {paidInPeriod > 0 && (
-          <button onClick={() => setCard({ tab: "paid" })}
-            className="mt-1.5 flex items-center gap-1.5 ml-auto text-sm font-bold text-ok rounded-lg px-1.5 -mx-1.5 hover:bg-ok-soft transition-colors whitespace-nowrap">
-            <Check size={15} /> {tt("{n} to'langan", { n: fmtUSD(paidInPeriod) })}
-          </button>
-        )}
-      </td>
     </tr>
   );
 
@@ -237,7 +167,7 @@ export default function FinancePlan() {
     <div>
       <h1 className="text-4xl font-extrabold tracking-tight mb-2">{t("Pul rejasi")}</h1>
       <p className="text-muted font-semibold mb-7 max-w-3xl">
-        {t("Davr ichida qancha pul kirdi va qayerga ketdi. \"Berishim kerak\" ustunida faqat summa turadi — ustiga bossangiz kimga, qachon va qancha berish kerakligi ochiladi.")}
+        {t("Davr ichida qancha pul kirdi va qayerga ketdi. Kimga qancha berish kerakligi va qaysi to'lovlar qilingani — \"Berishim kerak\" tugmasida.")}
       </p>
 
       {/* Davr */}
@@ -260,11 +190,8 @@ export default function FinancePlan() {
               va to'langanlar. Jadvaldagi katakni qidirib topish shart
               emas — tugma shu yerda turadi. */}
           <button onClick={() => setCard({ tab: "days" })}
-            className="flex items-center gap-2 rounded-xl border border-line font-bold px-5 py-3 hover:border-brand">
-            <ClipboardList size={18} /> {t("Berishim kerak")}
-            {sum.planned > 0 && (
-              <span className="text-warn">{fmtUSD(sum.planned)}</span>
-            )}
+            className="flex items-center gap-2 rounded-xl bg-surface hover:bg-track border border-line font-bold px-5 py-3 transition-colors">
+            <ClipboardList size={18} className="text-brand" /> {t("Berishim kerak")}
           </button>
           <div className="relative">
             <button onClick={() => setPickerOpen((v) => !v)}
@@ -312,10 +239,6 @@ export default function FinancePlan() {
               {COLS.map((c) => (
                 <th key={c.key} className="px-3 py-4 font-bold text-right align-bottom">{t(c.label)}</th>
               ))}
-              {/* Eng muhim ustun — jadval siljiganda ham ko'rinib tursin */}
-              <th className="px-3 py-4 font-bold text-right align-bottom sticky right-0 bg-surface border-l border-line shadow-[-10px_0_12px_-10px_rgba(0,0,0,.55)]">
-                {t("Berishim kerak")}
-              </th>
             </tr>
             {/* Jami tepada va pin: kunlar ko'payganda pastigacha
                 aylantirmasdan umumiy raqam ko'rinib tursin */}
@@ -323,16 +246,11 @@ export default function FinancePlan() {
           </thead>
           <tbody>
             {tableRows.map((r) => {
-              const due = dueByDay[r.date] ?? 0;
               return (
                 <tr key={r.date} className="border-b border-line last:border-0 hover:bg-surface/60">
-                  <td className={`px-4 py-4 font-bold whitespace-nowrap sticky left-0 bg-panel ${
-                    r.outside ? "text-muted" : ""}`}>
+                  <td className="px-4 py-4 font-bold whitespace-nowrap sticky left-0 bg-panel">
                     {fmtDay(r.date)}
-                    <span className="block text-sm text-muted font-semibold">
-                      {t(weekday(r.date))}
-                      {r.outside && <span className="ml-2 text-warn">{t("reja")}</span>}
-                    </span>
+                    <span className="block text-sm text-muted font-semibold">{t(weekday(r.date))}</span>
                   </td>
                   {COLS.map((c) => (
                     <td key={c.key} className="px-3 py-4 text-right whitespace-nowrap">
@@ -351,31 +269,11 @@ export default function FinancePlan() {
                       )}
                     </td>
                   ))}
-                  {/* Faqat summa. Kimga/qancha — bosilganda ochiladi */}
-                  <td className="px-4 py-4 text-right sticky right-0 bg-panel border-l border-line shadow-[-10px_0_12px_-10px_rgba(0,0,0,.55)]">
-                    {due > 0 ? (
-                      <button onClick={() => setCard({ date: r.date })}
-                        className="inline-flex items-center gap-1.5 rounded-xl border-2 border-line hover:border-brand hover:bg-brand-soft px-4 py-2 transition-colors group">
-                        <span className="font-extrabold text-warn whitespace-nowrap">{fmtUSD(due)}</span>
-                        <ChevronRight size={17} className="text-muted group-hover:text-brand" />
-                      </button>
-                    ) : !paidByDay[r.date] ? (
-                      <span className="text-muted">—</span>
-                    ) : null}
-                    {/* Shu kuni "To'ladim" bosilganlari */}
-                    {paidByDay[r.date] > 0 && (
-                      <button onClick={() => setCard({ tab: "paid" })}
-                        className={`flex items-center gap-1.5 ml-auto text-sm font-bold text-ok rounded-lg px-1.5 -mx-1.5 hover:bg-ok-soft transition-colors whitespace-nowrap ${
-                          due > 0 ? "mt-1.5" : ""}`}>
-                        <Check size={15} /> {tt("{n} to'langan", { n: fmtUSD(paidByDay[r.date]) })}
-                      </button>
-                    )}
-                  </td>
                 </tr>
               );
             })}
             {tableRows.length === 0 && (
-              <tr><td colSpan={COLS.length + 2} className="px-5 py-12 text-center text-muted font-semibold">
+              <tr><td colSpan={COLS.length + 1} className="px-5 py-12 text-center text-muted font-semibold">
                 {t("Bu davrda pul harakati bo'lmagan")}
               </td></tr>
             )}
@@ -385,9 +283,8 @@ export default function FinancePlan() {
 
       <p className="text-sm text-muted font-semibold mb-8">
         {t("Faqat pul harakati bo'lgan kunlar ko'rsatiladi. Payme va Naqd — o'sha kirimning to'lov turi bo'yicha bo'linishi, alohida pul emas.")}
-        {sum.planned > dueInPeriod + 0.009 && (
-          <> {t("Davrdan tashqaridagi to'lov muddatlari ham qator bo'lib turadi — ular \"reja\" deb belgilangan.")}</>
-        )}
+        {" "}
+        {t("Rejadagi to'lovlar va kelasi muddatlar \"Berishim kerak\" oynasida, kunlar bo'yicha jadval bilan birga.")}
       </p>
 
       {/* —— Kassalar: qanchasi band —— */}

@@ -126,7 +126,7 @@ export default function PayoutsCard({
   // Ism — bosiladigan: o'sha odamning butun tarixi ochiladi
   const Who = ({ p }) => (
     <button onClick={() => setWho(p.title)}
-      className="font-bold text-left rounded-lg px-1 -mx-1 border-b border-dashed border-muted/50 hover:bg-brand-soft hover:text-brand hover:border-transparent transition-colors">
+      className="font-bold text-left whitespace-nowrap rounded-lg px-1 -mx-1 border-b border-dashed border-muted/50 hover:bg-brand-soft hover:text-brand hover:border-transparent transition-colors">
       {p.title}
     </button>
   );
@@ -134,7 +134,7 @@ export default function PayoutsCard({
   return (
     <div className="fixed inset-0 z-50 bg-overlay/50 flex items-start justify-center p-4 overflow-y-auto"
       onClick={onClose}>
-      <div className="card w-full max-w-6xl my-8" onClick={(e) => e.stopPropagation()}>
+      <div className="card w-full my-4" onClick={(e) => e.stopPropagation()}>
         {/* Sarlavha */}
         <div className="px-8 pt-8 pb-6 border-b border-line">
           <div className="flex items-start justify-between gap-4 mb-1">
@@ -261,7 +261,7 @@ export default function PayoutsCard({
                             {r.due.map((p) => (
                               <div key={p.id} className="flex items-baseline gap-2">
                                 <Who p={p} />
-                                <span className="text-sm text-muted font-semibold">
+                                <span className="text-sm text-muted font-semibold whitespace-nowrap">
                                   {t(PAYOUT_CATEGORIES[p.category] ?? p.category)}
                                 </span>
                                 <span className="ml-auto font-bold text-warn whitespace-nowrap">
@@ -278,7 +278,7 @@ export default function PayoutsCard({
                             {r.paid.map((p) => (
                               <div key={p.id} className="flex items-baseline gap-2">
                                 <Who p={p} />
-                                <span className="text-sm text-muted font-semibold">
+                                <span className="text-sm text-muted font-semibold whitespace-nowrap">
                                   {t(PAYOUT_CATEGORIES[p.category] ?? p.category)}
                                   {" · "}{t(KASSAS[p.kassa]?.label ?? p.kassa)}
                                 </span>
