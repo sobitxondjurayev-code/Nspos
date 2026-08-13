@@ -349,7 +349,7 @@ export default function FinancePlan() {
       <p className="text-sm text-muted font-semibold mb-8">
         {t("Faqat pul harakati bo'lgan kunlar ko'rsatiladi. Xarajat ustunlari pul QAYSI QOPDAN chiqqaniga qarab bo'lingan: servis pulidan chiqqani — \"Servis xarajatlar\", do'kon kassasidan chiqqani — \"Do'kon xarajatlari\". Shuning uchun kirimdan xarajatni ayirsangiz o'sha qopdagi pul chiqadi.")}
         {" "}
-        {t("\"Servis xarajatlar\" — servis pulidan chiqqan hammasi: material, mashina gazi va USTALAR oyligi (olgan puli bilan). Shuning uchun servis kirimidan shu ustunni ayirsangiz kassadagi servis puli chiqadi. \"Oylik maoshlar\" esa boshqa xodimlar oyligi — naqddan yoki Payme'dan berilgani.")}
+        {t("\"Oylik maoshlar\" — faqat USTALARNIKI: reytingdagi olgan puli va servis pulidan berilgan oyligi. Menejer/kassir o'z oyligini xarajat qilib kiritadi, u o'z qopida turadi (B2B, Do'kon yoki Kompaniya xarajatlari). \"Servis xarajatlar\" esa material, mashina gazi va shunga o'xshashlar. Ikkalasini qo'shib servis kirimidan ayirsangiz — kassadagi servis puli chiqadi.")}
         {" "}
         {t("Rejadagi to'lovlar va kelasi muddatlar \"Berishim kerak\" oynasida, kunlar bo'yicha jadval bilan birga.")}
       </p>
