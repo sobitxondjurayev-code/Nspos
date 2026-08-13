@@ -51,6 +51,7 @@ hozircha menejerlar qo'lda kiritadi — bu xato manbai (5-bo'limga qarang).
 | Kunlik jadvaldagi "Kassada qoldi" tasdiqlanmagan pulni ham sanaydi | Kartochkadagi raqam ham shunday. Ikki joyda ikki xil qoldiq chiqmasligi uchun — yo'ldagi pul alohida ko'rsatiladi |
 | To'langan to'lov "Berishim kerak" ustunida yashil qator bo'lib turadi | Rahbar "To'ladim" bosgach uni jadvalda topolmadi (2026-08-13): pul xarajat ustuniga tushardi, lekin u ustun o'ngda, ba'zan yashirin. Endi reja ostida "✓ 766.00 to'langan" turadi — bosilsa "To'langan" ro'yxati ochiladi (`focusTab`) |
 | Kompaniya balansidan chiqim Pul rejasida rejalashtiriladi | Asosiy ish shu — shuning uchun "Yangi to'lov" tugmasi sahifaning O'ZIDA turadi ("Berishim kerak" kartochkasi ichida yashirin emas). To'langach pul kassadan chiqadi va jadvalda "Kompaniya xarajatlari" ustuniga tushadi |
+| Menejer ustaga login/parol o'zi ochadi | B2C do'kon menejeri (Abdulahad) kundalik ishni ustalar bilan yuritadi — yangi usta kelganda yoki parol unutilganda rahbarni kutib turmaydi. Sozlamalarda unga "Ustalar — login va parol" kartochkasi chiqadi. FAQAT usta roli: boshqa rol ocha olmaydi, rahbar/menejer parolini almashtira olmaydi. Cheklov serverda (`app/api/staff/route.js`, `canTouch`) — interfeysdagi emas |
 | Menejer 2 kundan oldingi kunlik raqamni tahrirlay olmaydi | Rahbar tahrirlay oladi |
 | Menejer faqat BUGUNGI xarajatni tuzata/o'chira oladi | Eski yozuvni o'zgartirish — hisobni orqadan tahrirlash. Doimiy xarajat esa umuman faqat rahbarniki. Himoya ikki qavat: interfeysda tugma chiqmaydi, bazada esa `expense_update`/`expense_delete` siyosati (sana Toshkent vaqti bo'yicha) |
 | Ustaga pul 1, 5, 10, 15, 20, 25-kunlari beriladi | Oylik 1-sanada, keyin har 5 kunda. Menejer faqat shu kunlarga yoza oladi (`payDayCol`), rahbar esa istalgan kunga — favqulodda holat bo'lib turadi |
@@ -281,6 +282,34 @@ Servis xarajatlar, do'kon kassasi → Do'kon/B2B xarajatlari, qolgani →
 Kompaniya xarajatlari). `flowSources()` ham shu qoidada — ochilgan
 ro'yxat katakdagi raqamga teng chiqishi uchun.
 **Qoida:** pul kassadan chiqsa, u ALBATTA biror ustunda ko'rinishi kerak.
+
+### Sozlamalardagi xodimlar ro'yxati DEMO bo'lib qolgan (2026-08-13)
+Sozlamalar → "Xodimlar va vakolatlar" jadvalida bazadagi 17 ta xodim
+o'rniga demo ro'yxat (Bahodir Qosimov, Sanjar Umarov, Ulug'bek Rasulov)
+turardi — rahbarga ham, menejerga ham. Sabab: `useMemo(() => listStaff(),
+[tick])` ro'yxatni sahifa ochilishida — ma'lumot bazadan KELISHIDAN
+oldin — bir marta hisoblardi va boshqa qayta yurmasdi. `staff` ning
+boshlang'ich qiymati esa `BILLZ_STAFF` (demo), shuning uchun ekranda
+soxta odamlar qotib qolardi. KPI sahifasi to'g'ri ishlagani chalg'itdi —
+u `useLive()` ni bog'lamiga qo'shgan edi.
+**Yechim:** `useLive()` shu yerga ham qo'shildi.
+**Qoida:** modul xotirasidan o'qiydigan HAR useMemo bog'lamiga `useLive()`
+kerak. Demo qiymat bilan boshlanadigan modulda bu ayniqsa muhim: xato
+"bo'sh ekran" bo'lib emas, **ishonarli, lekin soxta ro'yxat** bo'lib
+chiqadi va darrov ko'zga tashlanmaydi.
+
+### Menejerning yozuvi RLS'ga urilmasin — server yo'lidan (2026-08-13)
+Menejerga ustaga login ochish berilganda birinchi o'y `profiles` ga
+menejer uchun UPDATE siyosati qo'shish edi. Qilinmadi: RLS **ustun
+darajasida** cheklay olmaydi, ya'ni siyosat menejerga usta qatorini
+ochsa, u o'sha qator ichidagi `perms` va `fixed_salary` ni ham
+o'zgartira olardi. Shuning uchun menejerning har yozuvi
+`/api/staff` orqali ketadi — u yerda qaysi maydon o'zgarishi aniq
+sanab qo'yilgan (parol, telefon, ism), qolganiga umuman tegilmaydi.
+Natijada `profiles` RLS'i avvalgidek qoldi: yozish faqat rahbarda.
+**Qoida:** "shu rolga ham ruxsat beray" deganda avval so'rang — cheklov
+QATOR bo'yichami yoki USTUN bo'yicha. Ustun bo'yicha bo'lsa RLS emas,
+server yo'li kerak.
 
 ### Xato ekrani (2026-08-13)
 `app/(app)/error.jsx` qo'shildi: xato chiqsa Next.js'ning quruq
