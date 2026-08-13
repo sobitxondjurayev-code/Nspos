@@ -98,6 +98,7 @@ export default function FinancePlan() {
     // xarajatlari aynan shundan chiqadi, shuning uchun yonma-yon turadi.
     { key: "service", label: "Servis", tone: "in" },
     { key: "svcExp", label: "Servis xarajatlar", tone: "out" },
+    { key: "salary", label: "Oylik maoshlar", tone: "out" },
     { key: "cash", label: "Naqd", tone: "split" },
     { key: "payme", label: "Payme", tone: "split" },
     { key: "ns", label: "NS", tone: "out" },
@@ -348,7 +349,7 @@ export default function FinancePlan() {
       <p className="text-sm text-muted font-semibold mb-8">
         {t("Faqat pul harakati bo'lgan kunlar ko'rsatiladi. Xarajat ustunlari pul QAYSI QOPDAN chiqqaniga qarab bo'lingan: servis pulidan chiqqani — \"Servis xarajatlar\", do'kon kassasidan chiqqani — \"Do'kon xarajatlari\". Shuning uchun kirimdan xarajatni ayirsangiz o'sha qopdagi pul chiqadi.")}
         {" "}
-        {t("Naqd, Payme va \"NS\" — alohida pul emas, yuqoridagi ustunlarning ichidan ajratib ko'rsatilgani. Oylik ham qaysi qopdan berilgan bo'lsa o'sha ustunda turadi: usta oyligi va olgan puli — \"Servis xarajatlar\"da, do'kondan berilgani — \"Do'kon xarajatlari\"da.")}
+        {t("Oylik (usta olgan puli ham) alohida \"Oylik maoshlar\" ustunida turadi — xarajat ustunlariga qo'shilmaydi. Shu sababli \"Servis xarajatlar\" servis hamyonidan chiqqan puldan kam bo'lishi mumkin: usta oyligi ham o'sha hamyondan chiqadi, lekin oylik ustunida sanaladi. Kassalardagi \"Servis\" raqamining ustiga bossangiz — barcha kirim va chiqim ochiladi.")}
         {" "}
         {t("Rejadagi to'lovlar va kelasi muddatlar \"Berishim kerak\" oynasida, kunlar bo'yicha jadval bilan birga.")}
       </p>
