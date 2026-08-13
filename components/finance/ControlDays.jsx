@@ -23,8 +23,11 @@ export default function ControlDays({ kassaId, label, onClose }) {
   const totals = days.reduce((a, d) => ({
     billz: a.billz + d.billz, kpi: a.kpi + d.kpi, diff: a.diff + d.diff,
   }), { billz: 0, kpi: 0, diff: 0 });
-  // Sezilarli farq bo'lgan kunlar soni (1 dollargacha — yaxlitlash)
-  const bad = days.filter((d) => Math.abs(d.diff) > 1).length;
+  // Farq bo'lgan kunlar soni. Tiyinlik farq ham sanaladi: rahbar
+  // "0.50 qayerdan chiqdi?" deb so'raganda javob ko'rinib turishi kerak.
+  const bad = days.filter((d) => Math.abs(d.diff) >= 0.01).length;
+  // 1 dollargacha farq yaxlitlashdan — ko'rinadi, lekin kulrang
+  const big = days.filter((d) => Math.abs(d.diff) > 1).length;
 
   return (
     <div className="fixed inset-0 z-[60] bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
@@ -34,6 +37,9 @@ export default function ControlDays({ kassaId, label, onClose }) {
             <h2 className="text-2xl font-extrabold">{t(label)}</h2>
             <p className="text-sm text-muted font-semibold">
               {tt("{n} kundan {b} tasida farq bor", { n: days.length, b: bad })}
+              {bad > 0 && big < bad && (
+                <span> · {tt("{n} tasi 1 dollardan kam (yaxlitlash)", { n: bad - big })}</span>
+              )}
             </p>
           </div>
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>
@@ -59,7 +65,10 @@ export default function ControlDays({ kassaId, label, onClose }) {
             </thead>
             <tbody>
               {days.map((d) => {
-                const ok = Math.abs(d.diff) <= 1;
+                // Farq umuman yo'q — "—". Bor, lekin 1 dollardan kam —
+                // kulrang ko'rsatiladi (yaxlitlash, kamomad emas).
+                const none = Math.abs(d.diff) < 0.01;
+                const small = Math.abs(d.diff) <= 1;
                 return (
                   <tr key={d.date} className="border-b border-line last:border-0">
                     <td className="px-6 py-3.5 font-bold whitespace-nowrap">{fmtDay(d.date)}</td>
@@ -79,8 +88,8 @@ export default function ControlDays({ kassaId, label, onClose }) {
                       )}
                     </td>
                     <td className={`px-6 py-3.5 text-right font-extrabold ${
-                      ok ? "text-muted" : d.diff < 0 ? "text-danger" : "text-ok"}`}>
-                      {ok ? "—" : `${d.diff > 0 ? "+" : ""}${fmtUSD(d.diff)}`}
+                      none || small ? "text-muted" : d.diff < 0 ? "text-danger" : "text-ok"}`}>
+                      {none ? "—" : `${d.diff > 0 ? "+" : ""}${fmtUSD(d.diff)}`}
                     </td>
                   </tr>
                 );
@@ -95,7 +104,7 @@ export default function ControlDays({ kassaId, label, onClose }) {
         </div>
 
         <p className="px-7 py-4 text-sm text-muted font-semibold border-t border-line">
-          {t("Servis puli ham qo'shib solishtiriladi: menejer uni naqddan ayirib yozadi, Billz esa montajni oddiy sotuv deb naqdga qo'shadi. 1 dollargacha farq ko'rsatilmaydi — u yaxlitlash. Farq manfiy bo'lsa menejer Billz ko'rsatgandan kam topshirgan, musbat bo'lsa ko'p.")}
+          {t("Servis puli ham qo'shib solishtiriladi: menejer uni naqddan ayirib yozadi, Billz esa montajni oddiy sotuv deb naqdga qo'shadi. 1 dollardan kam farq kulrang turadi — u yaxlitlash, kamomad emas. Farq manfiy bo'lsa menejer Billz ko'rsatgandan kam topshirgan, musbat bo'lsa ko'p.")}
         </p>
       </div>
     </div>
