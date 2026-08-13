@@ -30,7 +30,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
 import { getStaff } from "@/lib/staffData";
 import {
-  KASSAS, WALLETS, walletsOf, kassaBalances, kassaDailyRows, kassaDaySources,
+  KASSAS, WALLETS, walletsOf, kassaBalances, kassaDailyRows, kassaSources, hasSources,
   closeDay, cancelClose, canOperate, kassasOf, unclosedDays,
 } from "@/lib/kassaData";
 
@@ -47,6 +47,12 @@ const fmtDay = (d) => {
 
 const WEEKDAYS = ["Yak", "Du", "Se", "Cho", "Pa", "Ju", "Sha"];
 const weekday = (d) => WEEKDAYS[new Date(d + "T12:00:00").getDay()];
+
+// Bosiladigan raqam ko'rinib tursin: faqat hover'da bilinsa, foydalanuvchi
+// ustiga bosish mumkinligini umuman bilmaydi. Nuqtali chiziq — "batafsili
+// bor" degan belgi, hover'da esa odatdagi yorug'lik.
+const LINKY = "rounded-lg px-1.5 -mx-1.5 border-b border-dashed border-muted/50 " +
+  "hover:bg-brand-soft hover:text-brand hover:border-transparent transition-colors";
 
 export default function KassaDays() {
   const { id } = useParams();
@@ -234,21 +240,35 @@ export default function KassaDays() {
             {/* Jami — TEPADA, fon shaffofmas (tagidagi kunlar ko'rinmasin) */}
             <tr className="bg-surface border-b-2 border-line">
               <td className="px-4 py-5 font-extrabold sticky left-0 bg-surface">{t("Jami")}</td>
-              {COLS.map((c) => (
-                <td key={c.key} className="px-3 py-5 text-right whitespace-nowrap">
-                  <span className={`text-lg font-extrabold ${
-                    totals[c.key] === 0 ? "text-muted"
-                      : c.tone === "out" ? "text-danger"
-                      : c.tone === "in" ? "text-ok"
-                      : totals[c.key] < 0 ? "text-danger" : ""}`}>
-                    {c.tone === "out" && totals[c.key] > 0 ? "−" : ""}
-                    {fmtUSD(totals[c.key])}
-                  </span>
-                  {c.total === "last" && (
-                    <span className="block text-sm text-muted font-semibold">{t("hozirgi qoldiq")}</span>
-                  )}
-                </td>
-              ))}
+              {COLS.map((c) => {
+                const v = totals[c.key];
+                // Jami raqami ham bosiladi — davr bo'yicha yozuvlar ochiladi
+                const open = hasSources(c.key) && Math.abs(v) > 0.004;
+                const cls = `text-lg font-extrabold ${
+                  v === 0 ? "text-muted"
+                    : c.tone === "out" ? "text-danger"
+                    : c.tone === "in" ? "text-ok"
+                    : v < 0 ? "text-danger" : ""}`;
+                const text = `${c.tone === "out" && v > 0 ? "−" : ""}${fmtUSD(v)}`;
+                return (
+                  <td key={c.key} className="px-3 py-5 text-right whitespace-nowrap">
+                    {open ? (
+                      <button
+                        onClick={() => setSrc({ from: daily.from, to: daily.to,
+                          key: c.key, label: c.label,
+                          dayLabel: `${fmtDay(range.from)} — ${fmtDay(range.to)}` })}
+                        className={`${cls} ${LINKY}`}>
+                        {text}
+                      </button>
+                    ) : (
+                      <span className={cls}>{text}</span>
+                    )}
+                    {c.total === "last" && (
+                      <span className="block text-sm text-muted font-semibold">{t("hozirgi qoldiq")}</span>
+                    )}
+                  </td>
+                );
+              })}
               {!kassa.main && (
                 <td className="px-4 py-5 text-right sticky right-0 bg-surface border-l border-line shadow-[-10px_0_12px_-10px_rgba(0,0,0,.55)]">
                   <span className={`font-extrabold ${
@@ -274,27 +294,26 @@ export default function KassaDays() {
                   </td>
                   {COLS.map((c) => {
                     const v = r[c.key];
-                    const clickable = (c.key === "in" || c.key === "out") && Math.abs(v) > 0.004;
+                    // Ustiga bosilsa — shu kundagi raqam qaysi yozuvlardan
+                    // yig'ilgani ochiladi. Qoldiq ustunlari bosilmaydi:
+                    // ular yugurib boradigan raqam, o'z yozuvi yo'q.
+                    const open = hasSources(c.key) && Math.abs(v ?? 0) > 0.004;
+                    const cls = `font-bold ${
+                      c.tone === "out" ? "text-danger"
+                        : c.tone === "in" ? "text-ok"
+                        : v < 0 ? "text-danger" : ""}`;
                     return (
                       <td key={c.key} className="px-3 py-4 text-right whitespace-nowrap">
-                        {v == null ? <span className="text-muted">—</span>
-                          : v === 0 ? <span className="text-muted">—</span>
-                          : clickable ? (
-                            // Ustiga bosilsa — shu kundagi raqam qaysi
-                            // yozuvlardan yig'ilgani ochiladi
+                        {v == null || v === 0 ? <span className="text-muted">—</span>
+                          : open ? (
                             <button
-                              onClick={() => setSrc({ date: r.date, kind: c.key, label: c.label })}
-                              className={`font-bold rounded-lg px-1.5 -mx-1.5 hover:bg-brand-soft hover:text-brand transition-colors ${
-                                c.tone === "out" ? "text-danger" : "text-ok"}`}>
+                              onClick={() => setSrc({ from: r.date, to: r.date, key: c.key,
+                                label: c.label, dayLabel: fmtDay(r.date) })}
+                              className={`${cls} ${LINKY}`}>
                               {c.tone === "out" ? "−" : ""}{fmtUSD(v)}
                             </button>
                           ) : (
-                            <span className={`font-bold ${
-                              c.tone === "out" ? "text-danger"
-                                : c.tone === "in" ? "text-ok"
-                                : v < 0 ? "text-danger" : ""}`}>
-                              {c.tone === "out" ? "−" : ""}{fmtUSD(v)}
-                            </span>
+                            <span className={cls}>{c.tone === "out" ? "−" : ""}{fmtUSD(v)}</span>
                           )}
                       </td>
                     );
@@ -363,8 +382,8 @@ export default function KassaDays() {
 
       {src && (
         <CellSources label={`${t(kassa.label)} · ${t(src.label)}`}
-          dayLabel={fmtDay(src.date)}
-          rows={kassaDaySources(id, src.date, src.kind === "out" ? "out" : "in")}
+          dayLabel={src.dayLabel}
+          rows={kassaSources(id, src.from, src.to, src.key)}
           onClose={() => setSrc(null)} />
       )}
     </div>

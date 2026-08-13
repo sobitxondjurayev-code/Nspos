@@ -86,7 +86,12 @@ hozircha menejerlar qo'lda kiritadi — bu xato manbai (5-bo'limga qarang).
   keyin qatorlar. Oyna keng (`max-w-5xl`) — raqamlar siqilib qolmasin.
   Bosiladigan joylar: Pul rejasidagi har katak va Jami, Moliya bosh
   sahifasidagi "Shu oyda kirgan/chiqqan/xarajat", Kassalar sahifasidagi
-  har kassa summasi, Kamomad "Farq".
+  har kassa summasi, Kamomad "Farq", kassaning kunlik jadvalidagi har
+  katak va Jami (`kassaSources`).
+- Bosiladigan raqam **ko'rinib tursin**: ostida nuqtali chiziq bo'ladi,
+  hover'da esa yorug'lik. Faqat hover'da bilinsa foydalanuvchi ustiga
+  bosish mumkinligini umuman bilmaydi — shu sabab "bosilmayapti" degan
+  fidbek keldi (2026-08-13).
 - To'lov muddati kelgan kun jadvalda DOIM qator bo'ladi — tanlangan
   davrdan tashqarida bo'lsa ham ("reja" deb belgilanadi). Aks holda
   summa faqat "Jami"da qolib ketadi va rahbar uni qaysi kunga
