@@ -24,7 +24,7 @@ import { useLive } from "@/components/DataProvider";
 import { can } from "@/lib/auth";
 import {
   computeMonth, computeDay, listDays, saveDay, savePlan, saveRules,
-  monthKey, todayKey, isRevisionDay, KPI_TYPES, MANAGER_TYPES, typeOf,
+  monthKey, todayKey, isRevisionDay, isPayDay, PAY_DAYS, KPI_TYPES, MANAGER_TYPES, typeOf,
   getType, setType, hasType, setInstallerRate, setInstallerNps, installerRange,
 } from "@/lib/kpiData";
 
@@ -246,7 +246,7 @@ function RulesEditor({ m, onRule, onPlan }) {
 // ══════════════════════════════════════════════════════════════
 // Kunlik jadval — tur ustunlariga qarab chiziladi
 // ══════════════════════════════════════════════════════════════
-function DailyTable({ m, rows, month, onEdit, canEdit, canEditPast = false, showSalary = false }) {
+function DailyTable({ m, rows, month, onEdit, canEdit, canEditPast = false, showSalary = false, payAnyDay = false }) {
   const today = todayKey();
   // Menejer faqat bugun va kechani tahrirlaydi — eski kunlar yopiq,
   // aks holda hisoblangan oylik keyinchalik jimgina o'zgartirilib
@@ -357,6 +357,9 @@ function DailyTable({ m, rows, month, onEdit, canEdit, canEditPast = false, show
             const closed = isFuture || (!canEditPast && date < yesterday);
             const weekend = d.getDay() === 0;
             const revDay = isRevisionDay(i + 1, m.rules.revisionEveryDays ?? 5);
+            // Pul beriladigan kun (1, 5, 10, 15, 20, 25). Rahbar uchun
+            // cheklov yo'q — u xohlagan kuni bera oladi.
+            const payDay = payAnyDay || isPayDay(i + 1);
 
             // Jami savdo: SHU kun savdosi bo'sh bo'lsa — jami ham bo'sh
             const hasSales = r.sales != null && r.sales !== "";
@@ -381,7 +384,7 @@ function DailyTable({ m, rows, month, onEdit, canEdit, canEditPast = false, show
                 );
               }
               if (c.kind === "money" || c.kind === "int") {
-                const locked = closed || (c.revisionCol && !revDay) || !canEdit;
+                const locked = closed || (c.revisionCol && !revDay) || (c.payDayCol && !payDay) || !canEdit;
                 if (locked) {
                   const has = r[c.key] != null && r[c.key] !== "";
                   return has ? <span className="font-semibold">{usd(r[c.key])}</span> : <span className="text-muted">·</span>;
@@ -481,7 +484,7 @@ function editPatch(key, value, day) {
 // ══════════════════════════════════════════════════════════════
 // Bitta xodim — to'liq ko'rinish (karta + bonus + jadval)
 // ══════════════════════════════════════════════════════════════
-function StaffDetail({ staffId, month, canEdit, canRules, canEditPast = false, showSalary = false, tick, bump }) {
+function StaffDetail({ staffId, month, canEdit, canRules, canEditPast = false, showSalary = false, payAnyDay = false, tick, bump }) {
   const live = useLive();   // boshqa xodim yozgani ham darrov ko'rinsin
   const [showRules, setShowRules] = useState(false);
   const m = useMemo(() => computeMonth(staffId, month), [staffId, month, tick, live]);
@@ -700,9 +703,14 @@ function StaffDetail({ staffId, month, canEdit, canRules, canEditPast = false, s
           ? tt("Kulrang ustunlar o'zi hisoblanadi. Kamomad har {n} kunda va ertasiga yoziladi. Kelmagan kunlar yopiq.",
               { n: m.rules.revisionEveryDays ?? 5 })
           : t("Kulrang ustunlar o'zi hisoblanadi. Kelmagan kunlar yopiq.")}
+        {m.type === "installer" && (
+          <> {payAnyDay
+            ? tt("Pul odatda {d}-kunlari beriladi — rahbar sifatida siz istalgan kunga yoza olasiz.", { d: PAY_DAYS.join(", ") })
+            : tt("Pul faqat {d}-kunlari beriladi. Boshqa kunga rahbar yozadi.", { d: PAY_DAYS.join(", ") })}</>
+        )}
       </p>
       <DailyTable m={m} rows={rows} month={month} onEdit={edit} canEdit={canEdit}
-        canEditPast={canEditPast} showSalary={showSalary} />
+        canEditPast={canEditPast} showSalary={showSalary} payAnyDay={payAnyDay} />
     </div>
   );
 }
@@ -1224,7 +1232,8 @@ export default function Kpi() {
               </div>
             </div>
             <StaffDetail staffId={openInstaller.id} month={month} canEdit canRules={canManageInstaller}
-              canEditPast={isAdmin} showSalary={canManageInstaller} tick={tick} bump={bump} />
+              canEditPast={isAdmin} showSalary={canManageInstaller} payAnyDay={isAdmin}
+              tick={tick} bump={bump} />
           </div>
         ) : (
           <>
