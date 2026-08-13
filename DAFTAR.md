@@ -89,6 +89,12 @@ hozircha menejerlar qo'lda kiritadi — bu xato manbai (5-bo'limga qarang).
   sahifasidagi "Shu oyda kirgan/chiqqan/xarajat", Kassalar sahifasidagi
   har kassa summasi, Kamomad "Farq", kassaning kunlik jadvalidagi har
   katak va Jami (`kassaSources`).
+- Ochilgan ro'yxatda ikki ko'rinish bor: **"Turi bo'yicha"** (tushlik,
+  yo'lkira, mashina gazi — har biri yig'ilgan, nechtaligi bilan) va
+  **"Ro'yxat"** (har yozuv alohida, sanasi bilan). Yozuv turlardan ko'p
+  bo'lsa yig'ilgani o'zi ochiladi. Kassaning kunlik jadvalidan
+  ochilganda **"Qayerdan"** ustuni ham bo'ladi: pul qaysi qopdan chiqqan
+  — `B2C · Naqd`, `B2B · Payme`, `Servis` (rahbar shu tilda o'ylaydi).
 - Bosiladigan raqam **ko'rinib tursin**: ostida nuqtali chiziq bo'ladi,
   hover'da esa yorug'lik. Faqat hover'da bilinsa foydalanuvchi ustiga
   bosish mumkinligini umuman bilmaydi — shu sabab "bosilmayapti" degan

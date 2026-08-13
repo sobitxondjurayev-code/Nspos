@@ -31,6 +31,7 @@ import { payablesSummary } from "@/lib/suppliersData";
 import { totalExpenses } from "@/lib/expensesData";
 import { profitAndLoss } from "@/lib/pnlData";
 import { balanceSheet } from "@/lib/balanceData";
+import useUploadRows from "@/components/useUploadRows";
 
 const TONES = {
   brand: "bg-brand-soft text-brand",
@@ -59,14 +60,20 @@ export default function FinanceHome() {
   // bosh sahifada esa bitta oddiy o'lchov yetarli.
   const month = useMemo(() => periodRange("Oy"), []);
 
-  const bal = useMemo(() => kassaBalances(new Date()), []);
-  const flow = useMemo(() => moneyFlow(month.from, month.to), [month]);
-  const plan = useMemo(() => payoutSummary(), []);
-  const debt = useMemo(() => overallDebtStats(), []);
-  const supp = useMemo(() => payablesSummary(), []);
-  const exp = useMemo(() => totalExpenses(month.from, month.to), [month]);
-  const pnl = useMemo(() => profitAndLoss(month.from, month.to), [month]);
-  const sheet = useMemo(() => balanceSheet(new Date()), []);
+  // Kartochkalardagi raqamlar Billz yuklamalariga ham tayanadi (tushum,
+  // tannarx, kassa harakati). Qatorlar ro'yxat bilan birga kelmagani
+  // uchun ular shu yerda tortiladi va kelgach hisob qayta yuriladi —
+  // aks holda "Foyda" faqat xarajatdan iborat bo'lib, zarar ko'rinardi.
+  const rows = useUploadRows(["summary", "cashflow", "efficiency"]);
+
+  const bal = useMemo(() => kassaBalances(new Date()), [rows]);
+  const flow = useMemo(() => moneyFlow(month.from, month.to), [month, rows]);
+  const plan = useMemo(() => payoutSummary(), [rows]);
+  const debt = useMemo(() => overallDebtStats(), [rows]);
+  const supp = useMemo(() => payablesSummary(), [rows]);
+  const exp = useMemo(() => totalExpenses(month.from, month.to), [month, rows]);
+  const pnl = useMemo(() => profitAndLoss(month.from, month.to), [month, rows]);
+  const sheet = useMemo(() => balanceSheet(new Date()), [rows]);
 
   // Menejerga faqat O'Z kassasi: boshqa do'konning puli unga tegishli
   // emas va uni ko'rsatish "kompaniyada qancha pul bor" degan javob
@@ -80,12 +87,12 @@ export default function FinanceHome() {
   // value — kartochkadagi asosiy raqam, hint — bo'lim nima uchunligi.
   const sections = [
     {
-      href: "/finance/kassa", icon: Wallet, label: "Kassalar va balans",
+      href: "/finance/kassa", icon: Wallet, label: "Kassalar va balans", term: "Cash & bank",
       hint: "Do'kon kassalari va kompaniya balansi",
       value: fmtUSD(cash), tone: "brand",
     },
     {
-      href: "/finance/plan", icon: ListChecks, label: "Pul rejasi",
+      href: "/finance/plan", icon: ListChecks, label: "Pul rejasi", term: "Payment schedule",
       hint: "Kimga, qachon va qancha berish kerak",
       value: fmtUSD(plan.planned),
       tone: plan.overdueCount > 0 ? "red" : "amber",
@@ -94,52 +101,52 @@ export default function FinanceHome() {
         : plan.count > 0 ? tt("{n} ta to'lov rejada", { n: plan.count }) : null,
     },
     {
-      href: "/finance/operations", icon: Banknote, label: "Kassa operatsiyalari",
+      href: "/finance/operations", icon: Banknote, label: "Kassa operatsiyalari", term: "Cash book",
       hint: "Kunlik kirim-chiqim jurnali",
       value: fmtUSD(flow.out), tone: "red", note: t("Shu oyda chiqim"),
     },
     {
-      href: "/finance/expenses", icon: Receipt, label: "Xarajatlar",
+      href: "/finance/expenses", icon: Receipt, label: "Xarajatlar", term: "OPEX",
       hint: "Ijara, kommunal, transport, ovqat",
       value: fmtUSD(exp), tone: "red", note: t("Shu oyda"),
     },
     {
-      href: "/finance/payroll", icon: Users, label: "Ish haqi",
+      href: "/finance/payroll", icon: Users, label: "Ish haqi", term: "Payroll",
       hint: "Maosh, foiz va bonuslar",
       // pnl.expenses.payroll — qat'iy maosh + foiz + bonus (usta ulushi
       // xizmat foydasida alohida chegirilgan, bu yerda ikki marta emas)
       value: fmtUSD(pnl.expenses?.payroll ?? 0), tone: "amber", note: t("Shu oyda"),
     },
     {
-      href: "/finance/debts", icon: Clock, label: "Qarz to'lovlari",
+      href: "/finance/debts", icon: Clock, label: "Qarz to'lovlari", term: "Receivables (AR)",
       hint: "Mijozlar bizga qarzdor",
       value: fmtUSD(debt.openAmount ?? 0), tone: "green",
     },
     // Yetkazib beruvchilar hozircha yuritilmaydi — kartochka faqat
     // yozuv paydo bo'lganda chiqadi (bo'sh bo'lim joy egallamasin).
     ...(supp.totalOpen > 0 || supp.overdueCount > 0 ? [{
-      href: "/finance/payables", icon: Truck, label: "Yetkazib beruvchilar",
+      href: "/finance/payables", icon: Truck, label: "Yetkazib beruvchilar", term: "Payables (AP)",
       hint: "Biz qarzdormiz",
       value: fmtUSD(supp.totalOpen), tone: "red",
       note: supp.overdueCount > 0 ? tt("{n} tasi kechikkan", { n: supp.overdueCount }) : null,
     }] : []),
     {
-      href: "/finance/pnl", icon: TrendingUp, label: "Foyda va pul oqimi",
+      href: "/finance/pnl", icon: TrendingUp, label: "Foyda va pul oqimi", term: "P&L · Cash flow",
       hint: "Tushum, tannarx, sof foyda",
       value: fmtUSD(pnl.netProfit), tone: pnl.netProfit >= 0 ? "green" : "red",
       note: t("Shu oyda sof foyda"),
     },
     {
-      href: "/finance/balance", icon: Scale, label: "Balans",
+      href: "/finance/balance", icon: Scale, label: "Balans", term: "Balance sheet",
       hint: "Aktiv va passiv",
       value: fmtUSD(sheet.totalAssets), tone: "brand", note: t("Jami aktiv"),
     },
     {
-      href: "/finance/import", icon: Upload, label: "Billz'dan yuklash",
+      href: "/finance/import", icon: Upload, label: "Billz'dan yuklash", term: "Import",
       hint: "ДДС va boshqa hisobotlarni yuklash",
     },
     {
-      href: "/finance/cost", icon: Package, label: "Import va tannarx",
+      href: "/finance/cost", icon: Package, label: "Import va tannarx", term: "Landed cost",
       hint: "Keltirilgan tovar tannarxi",
     },
   ].filter((s) => canOpen(s.href, user));
@@ -213,7 +220,16 @@ export default function FinanceHome() {
             </span>
 
             <div className="flex-1 min-w-0">
-              <p className="text-lg font-extrabold text-ink mb-1">{t(s.label)}</p>
+              <p className="text-lg font-extrabold text-ink mb-1 flex items-center gap-2 flex-wrap">
+                {t(s.label)}
+                {/* Buxgalteriyadagi rasmiy nomi — hisobchi yoki investor
+                    bilan gaplashganda bo'lim qaysi hisobot ekani aniq
+                    bo'lsin (P&L, Cash flow, Balance sheet…) */}
+                {s.term && (
+                  <span className="text-[0.6875rem] font-bold uppercase tracking-wide text-muted
+                    bg-track rounded-md px-1.5 py-0.5 shrink-0">{s.term}</span>
+                )}
+              </p>
               <p className="text-sm text-muted font-semibold">{t(s.hint)}</p>
             </div>
 

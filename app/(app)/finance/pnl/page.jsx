@@ -1,6 +1,6 @@
 "use client";
 import { t, tt } from "@/lib/i18n";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CalendarDays, TrendingUp, TrendingDown, Banknote, Landmark, AlertTriangle,
 } from "lucide-react";
@@ -8,8 +8,7 @@ import { fmtUSD } from "@/lib/demoData";
 import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
 import DateRangePicker from "@/components/DateRangePicker";
 import { profitAndLoss, cashFlow, billzPnl, billzPnlTotals, billzCashflow, pnlSourceGap } from "@/lib/pnlData";
-import { listDatasets, loadRows } from "@/lib/datasets";
-import { useLive } from "@/components/DataProvider";
+import useUploadRows from "@/components/useUploadRows";
 import { demoStores } from "@/lib/demoData";
 import StatCard from "@/components/finance/StatCard";
 
@@ -37,10 +36,16 @@ function Row({ label, value, hint, bold, tone, indent, negative }) {
 
 const Divider = () => <div className="border-t border-dashed border-line my-2" />;
 
+/* Uchala tab ham Billz yuklamalariga tayanadi: tushum va tannarx
+   "Сводный"dan, solishtirish "Прибыли и убытки"dan, pul oqimi ДДС va
+   samaradorlik hisobotidan. Qatorlar tab tanlanishini kutmay, sahifa
+   ochilishi bilan tortiladi — aks holda tushum 0 bo'lib turardi. */
+const NEEDED = ["summary", "pnl", "cashflow", "efficiency"];
+
 /* ——— P&L ——————————————————————————————————— */
-function PnlView({ range }) {
-  const p = useMemo(() => profitAndLoss(range.from, range.to), [range]);
-  const gap = useMemo(() => pnlSourceGap(range.from, range.to), [range]);
+function PnlView({ range, rows }) {
+  const p = useMemo(() => profitAndLoss(range.from, range.to), [range, rows]);
+  const gap = useMemo(() => pnlSourceGap(range.from, range.to), [range, rows]);
   const exp = p.expenses;
 
   return (
@@ -148,24 +153,8 @@ function PnlView({ range }) {
 }
 
 /* ——— Cash Flow ——————————————————————————————— */
-function CashFlowView({ range }) {
-  const live = useLive();
-  // Servis kirimi Billz yuklamasidan olinadi, lekin yuklama qatorlari
-  // ro'yxat bilan birga kelmaydi — shu sahifada kerak bo'lgani uchun
-  // shu yerda tortiladi, kelgach hisob qayta yuriladi.
-  const [rowsTick, setRowsTick] = useState(0);
-  useEffect(() => {
-    const ds = listDatasets().find((d) => d.reportId === "efficiency");
-    if (!ds || ds.rows) return;
-    let alive = true;
-    loadRows(ds.id).then(() => { if (alive) setRowsTick((v) => v + 1); });
-    return () => { alive = false; };
-    // `live` bog'lamda: ilova ochilganda yuklamalar ro'yxati hali
-    // kelmagan bo'lishi mumkin — o'shanda `ds` topilmaydi va qatorlar
-    // hech qachon tortilmasdi (kassa "ДДС yuklang" deb turardi).
-  }, [live]);
-
-  const c = useMemo(() => cashFlow(range.from, range.to), [range, rowsTick, live]);
+function CashFlowView({ range, rows }) {
+  const c = useMemo(() => cashFlow(range.from, range.to), [range, rows]);
 
   return (
     <div>
@@ -265,10 +254,10 @@ function CashFlowView({ range }) {
 }
 
 /* ——— Billz bilan solishtirish ——————————————————— */
-function BillzCompare() {
-  const rows = useMemo(() => billzPnl(), []);
-  const tot = useMemo(() => billzPnlTotals(), []);
-  const cf = useMemo(() => billzCashflow(), []);
+function BillzCompare({ uploads }) {
+  const rows = useMemo(() => billzPnl(), [uploads]);
+  const tot = useMemo(() => billzPnlTotals(), [uploads]);
+  const cf = useMemo(() => billzCashflow(), [uploads]);
   const storeName = (id) => demoStores.find((s) => s.id === id)?.name;
 
   // Hisob boshlanish sanasidan oldingi oylar sanalmaydi. Eksport eski
@@ -376,6 +365,7 @@ export default function FinancePnl() {
   const [period, setPeriod] = useState("Oy");
   const [range, setRange] = useState(() => periodRange("Oy"));
   const [pickerOpen, setPickerOpen] = useState(false);
+  const rows = useUploadRows(NEEDED);
 
   return (
     <div>
@@ -414,9 +404,9 @@ export default function FinancePnl() {
         ))}
       </div>
 
-      {tab === "Foyda va zarar" && <PnlView range={range} />}
-      {tab === "Pul oqimi" && <CashFlowView range={range} />}
-      {tab === "Billz bilan solishtirish" && <BillzCompare />}
+      {tab === "Foyda va zarar" && <PnlView range={range} rows={rows} />}
+      {tab === "Pul oqimi" && <CashFlowView range={range} rows={rows} />}
+      {tab === "Billz bilan solishtirish" && <BillzCompare uploads={rows} />}
     </div>
   );
 }
