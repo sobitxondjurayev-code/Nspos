@@ -340,6 +340,26 @@ orqaga qaytarish (revert) esa ikkinchi ishni ham o'chiradi.
 ya'ni boshqa suhbatning yarim ishi ham saytga chiqib ketishi mumkin.
 Chiqarishdan oldin `git status` toza ekaniga ishonch hosil qiling.
 
+### "Servis balansi xato" — aslida usta oyligi (2026-08-13)
+Kartochkada Servis 3 535.99, jadvalda esa Servis 4 473.90 va Servis
+xarajatlar −503.07 (ya'ni 3 970.83 kutilardi). Farq **434.84**.
+Bazadan tekshirildi: `expenses` da `method='service'` va
+`category='salary'` bo'lgan 12 ta yozuv — **usta oyligi servis pulidan
+to'langan**. Jadvalda u "Oylik maoshlar" ustuniga tushadi (tur bo'yicha),
+balansda esa servis hamyonidan chiqadi (hamyon bo'yicha). Ikkalasi ham
+to'g'ri — ustunlar TUR bo'yicha, hamyon esa PUL bo'yicha bo'lingan.
+Uchala hamyon tekshirildi va tiyinigacha to'g'ri:
+naqd 38 452.44 − 1 603.31 − 10 591.00 = **26 258.13**;
+Payme 10 492.26 − 1 400.00 = **9 092.26**;
+servis 4 473.90 − 937.91 = **3 535.99**.
+**Yechim:** "Hozir kassalarda" kartochkasidagi har hamyon endi bosiladi —
+`walletSources()` o'sha hamyonga tushgan va undan chiqqan hamma yozuvni
+beradi (kassadan kassaga ko'chish sanalmaydi, aks holda ikki marta
+qo'shilardi). Turi bo'yicha yig'ilgan holda ochiladi, ya'ni "oylik
+−434.84" darrov ko'rinadi.
+**Qoida:** ustun va hamyon boshqa-boshqa kesim — biri mos kelmasa,
+avval "bu pul qaysi hamyondan chiqqan?" deb so'ralsin.
+
 ### Xato ekrani (2026-08-13)
 `app/(app)/error.jsx` qo'shildi: xato chiqsa Next.js'ning quruq
 "Application error" ekrani emas, xatoning MATNI ko'rinadi (rasmga olib

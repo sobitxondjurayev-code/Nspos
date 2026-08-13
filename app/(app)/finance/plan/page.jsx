@@ -27,8 +27,10 @@ import { useColumns } from "@/components/useColumns";
 import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
 import {
-  KASSAS, WALLETS, WALLET_IDS, kassaBalances, moneyFlow, summaryRow, dailyRows, COMPANY,
+  KASSAS, WALLETS, WALLET_IDS, kassaBalances, moneyFlow, summaryRow, dailyRows,
+  walletSources, COMPANY,
 } from "@/lib/kassaData";
+import { getLedgerStart } from "@/lib/companyData";
 import {
   listPayouts, addPayout, updatePayout, removePayout, payPayout, unpayPayout,
   payoutSummary, plannedByKassa,
@@ -57,6 +59,7 @@ export default function FinancePlan() {
   const [form, setForm] = useState(null);        // { initial } | {}
   const [paying, setPaying] = useState(null);    // "To'ladim" bosilgan reja
   const [src, setSrc] = useState(null);          // bosilgan katak ortidagi ro'yxat
+  const [walletSrc, setWalletSrc] = useState(null);  // hamyon (naqd/Payme/servis) ortidagi ro'yxat
   const [tick, setTick] = useState(0);
   // Boshqa xodim yozgan o'zgarish ham darrov ko'rinsin
   const live = useLive();
@@ -261,10 +264,15 @@ export default function FinancePlan() {
           </div>
           <p className="text-3xl font-extrabold">{fmtUSD(cashOnHand)}</p>
           <div className="flex flex-wrap gap-x-6 gap-y-1 mt-1.5">
+            {/* Har hamyon bosiladi: o'sha pul qayerdan kelib qayerga
+                ketgani ochiladi. Servis ayniqsa savol tug'diradi —
+                undan usta oyligi ham to'lanadi, ya'ni raqam "Servis
+                xarajatlar" ustunidan katta kamayadi. */}
             {WALLET_IDS.map((w) => (
-              <span key={w} className="text-sm font-semibold text-muted whitespace-nowrap">
+              <button key={w} onClick={() => setWalletSrc(w)}
+                className="text-sm font-semibold text-muted whitespace-nowrap rounded-lg px-1.5 -mx-1.5 border-b border-dashed border-muted/50 hover:bg-brand-soft hover:text-brand hover:border-transparent transition-colors">
                 {t(WALLETS[w])} <b className="text-ink">{fmtUSD(walletTotals[w])}</b>
-              </span>
+              </button>
             ))}
           </div>
         </div>
@@ -404,6 +412,15 @@ export default function FinancePlan() {
       {/* "To'ladim" — qancha berilgani so'raladi, qolgani rejada qoladi */}
       {paying && (
         <PayModal payout={paying} onClose={() => setPaying(null)} onConfirm={confirmPay} />
+      )}
+
+      {/* Hamyon ustiga bosilganda — o'sha hamyonga tushgan va undan
+          chiqqan hamma yozuv (hisob boshidan) */}
+      {walletSrc && (
+        <CellSources label={`${t("Hozir kassalarda")} · ${t(WALLETS[walletSrc])}`}
+          dayLabel={t("Hisob boshidan")}
+          rows={walletSources(walletSrc, getLedgerStart(), new Date())}
+          onClose={() => setWalletSrc(null)} />
       )}
 
       {/* Katak ustiga bosilganda — shu summa qaysi yozuvlardan yig'ilgani */}
