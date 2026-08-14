@@ -6,6 +6,7 @@ import { demoStores, demoUser, fmtUSD } from "@/lib/demoData";
 import { listProducts, findByBarcode } from "@/lib/productsData";
 import { listSales, addSale, addReturn, returnedQtyOf } from "@/lib/salesData";
 import { searchCustomers } from "@/lib/customersData";
+import { ymd } from "@/lib/dates";
 import PaymentModal from "@/components/PaymentModal";
 import ReceiptModal from "@/components/ReceiptModal";
 import ReturnModal from "@/components/ReturnModal";
@@ -120,9 +121,38 @@ export default function Sales() {
     return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
   };
 
+  // Eng oxirgi chek sanasi — sahifa tepasidagi izoh uchun. Ro'yxat
+  // sanaga qarab saralangan (salesData), lekin ishonch uchun
+  // maksimumini olamiz.
+  const lastSale = useMemo(() => {
+    let max = null;
+    for (const s of sales) {
+      const d = ymd(s.at ?? s.date);
+      if (d && (!max || d > max)) max = d;
+    }
+    if (!max) return null;
+    const [y, m, dd] = max.split("-");
+    return `${dd}.${m}.${y}`;
+  }, [sales]);
+
   return (
     <div>
       <h1 className="text-4xl font-extrabold tracking-tight mb-7">{t("Sotuvlar")}</h1>
+
+      {/* Cheklar Billz'dan bir marta eksport qilib olingan va o'zi
+          yangilanmaydi (Billz API bermaydi). Shuning uchun bu bo'lim
+          bir kun kelib "0 chek" ko'rsatadi-yu, Moliya bo'limi o'sha
+          davr uchun tushum ko'rsatadi — ikkalasi bir-biriga qarshi
+          bo'lib qoladi. Sana qo'lda yozilmaydi: eng oxirgi chekdan
+          olinadi, ya'ni yangi eksport yuklansa o'zi suriladi
+          (2026-08-14). */}
+      {lastSale && (
+        <p className="card px-5 py-3.5 mb-6 text-sm font-semibold text-muted flex items-center gap-2">
+          <Receipt size={16} className="text-warn shrink-0" />
+          {tt("Cheklar {d} gacha — undan keyingi savdo Billz'da yuritiladi. Davr bo'yicha tushum va foyda Moliya → Foyda hisobotida (Billz yuklamasidan).",
+            { d: lastSale })}
+        </p>
+      )}
 
       <div className="flex items-center justify-between gap-4 mb-6">
         <div className="bg-track rounded-2xl p-1.5 flex">
