@@ -506,6 +506,20 @@ uchun ular o'zaro ham qo'shilishi kerak
 **Qoida:** bir tushuncha — bitta funksiya. "Shu yerda boshqacharoq
 kerak" degan joyda avval o'sha funksiyaga parametr qo'shing.
 
+### "Pul oqimi" kassadan 47 000 $ farq qilardi (2026-08-14)
+P&L bo'limidagi "Pul oqimi" tabi eski sotuv modulidan hisoblardi:
+`sales` jadvalidagi chek bo'yicha naqd/karta/Payme ulushi. Billz
+cheklari NSPOS'ga to'lov turi bilan tushmaydi, shuning uchun o'sha
+ustunlar 0 edi va tabda faqat "qaytgan qarz puli" ko'rinardi:
+**kirim 11 826.19**, Pul rejasi sahifasida esa o'sha davr uchun
+**59 237.65**.
+**Yechim:** `cashFlow()` endi kassa jurnalidan o'qiydi — jami
+`moneyFlow()` dan, hamyon kesimi `walletSources()` dan. Natijada
+"Turlar bo'yicha sof" qatori kassalardagi haqiqiy qoldiqqa teng
+chiqadi (naqd 29 025.74 · Payme 5 731.90 · servis 2 830.81).
+Qaytgan qarz puli alohida qator bo'lib turmaydi — u menejer yozgan
+kunlik naqd ichida allaqachon bor.
+
 ### Usta puli ikki marta chiqib ketgan (2026-08-14)
 KPI jadvalidagi "olgan" ustuni avtomat ravishda "Oylik" xarajatiga
 aylanadi (`installerPayouts`). Menejer o'sha pulni Xarajatlar bo'limiga
