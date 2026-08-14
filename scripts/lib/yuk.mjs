@@ -70,9 +70,51 @@ export async function sql(query, urinish = 3) {
 // ko'rardi va ustun tushib qolgan xatoni sezmasdi — 2026-08-14 da
 // `companies` ro'yxatida `ledger_start` yo'q edi, ya'ni ilova hisob
 // boshini bazadan emas, joriy oy boshidan olardi.
-// Ichma-ich so'rov ("*, sale_items(*)") SQL da ifodalanmaydi — unda
-// hammasi olinadi.
-const cols = (select) => (!select || select.includes("(") ? "*" : select);
+//
+// Ichma-ich so'rov ("*, stock(store_id, qty)") — bu PostgREST'ning
+// o'z yozuvi, SQL da bunday yozib bo'lmaydi. Shuning uchun bola
+// jadval ALOHIDA olinadi va ota qatorga biriktiriladi. Busiz `stock`
+// kelmasdi va tekshiruv omborni butunlay bo'sh deb ko'rardi
+// (balansdagi "Ombordagi tovar" 0 chiqib, soxta xato berardi).
+const parseSelect = (select) => {
+  if (!select || select === "*") return { cols: "*", embeds: [] };
+  const embeds = [...select.matchAll(/(\w+)\(([^)]*)\)/g)].map((m) => ({
+    table: m[1], cols: m[2].split(",").map((c) => c.trim()).filter(Boolean),
+  }));
+  const own = select.replace(/,?\s*\w+\([^)]*\)/g, "").trim().replace(/,$/, "");
+  return { cols: own || "*", embeds };
+};
+
+// Bola jadval ota jadvalga qaysi ustun orqali bog'langan — taxmin
+// qilmaymiz, bazaning o'zidan so'raymiz.
+async function fkColumn(child, parent) {
+  const rows = await sql(`
+    select kcu.column_name
+    from information_schema.table_constraints tc
+    join information_schema.key_column_usage kcu on kcu.constraint_name = tc.constraint_name
+    join information_schema.constraint_column_usage ccu on ccu.constraint_name = tc.constraint_name
+    where tc.constraint_type = 'FOREIGN KEY'
+      and tc.table_name = '${child}' and ccu.table_name = '${parent}'
+    limit 1`);
+  return rows[0]?.column_name ?? null;
+}
+
+async function attachEmbeds(parent, rows, embeds) {
+  for (const e of embeds) {
+    const fk = await fkColumn(e.table, parent);
+    if (!fk) { for (const r of rows) r[e.table] = []; continue; }
+    const want = e.cols.includes("*") || !e.cols.length
+      ? "*" : [...new Set([fk, ...e.cols])].join(", ");
+    const kids = await sql(`select ${want} from ${e.table}`);
+    const byParent = new Map();
+    for (const k of kids) {
+      const id = k[fk];
+      if (!byParent.has(id)) byParent.set(id, []);
+      byParent.get(id).push(k);
+    }
+    for (const r of rows) r[e.table] = byParent.get(r.id) ?? [];
+  }
+}
 
 // —— Modullarni to'ldirish ————————————————————————
 // Ilovadagi har modul import qilinishi bilan o'zini `registerModule`
@@ -99,7 +141,9 @@ export async function loadApp() {
       // Shuning uchun asosiy jadvaldan o'qiymiz: skript rahbar
       // ko'radigan to'liq ro'yxatni ko'rishi kerak.
       const table = m.readTable === "staff_directory" ? m.table : (m.readTable ?? m.table);
-      const rows = await sql(`select ${cols(m.select)} from ${table}`);
+      const { cols, embeds } = parseSelect(m.select);
+      const rows = await sql(`select ${cols} from ${table}`);
+      if (embeds.length) await attachEmbeds(table, rows, embeds);
       m.restore(rows.map((r) => (m.fromRow ? m.fromRow(r) : r)));
       report.push({ table: m.table, rows: rows.length });
     } catch (e) {

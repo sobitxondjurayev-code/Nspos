@@ -102,6 +102,7 @@ const KINDS = {
   unlinked: "Har to'langan reja kassa yozuviga bog'langan",
   dup: "Ikkilangan kassa chiqimi yo'q",
   dubl: "Usta puli ikki marta hisoblanmagan",
+  nostaff: "Har oylik to'lovi xodimga bog'langan",
   nostore: "Kassaga tushmay qolgan kirim yo'q",
 };
 chiqar("── Ma'lumot xatolari ────────────────────────────",

@@ -506,6 +506,17 @@ uchun ular o'zaro ham qo'shilishi kerak
 **Qoida:** bir tushuncha — bitta funksiya. "Shu yerda boshqacharoq
 kerak" degan joyda avval o'sha funksiyaga parametr qo'shing.
 
+### Tekshiruv omborni ko'rmasdi (2026-08-14)
+`productsData` bazadan `select: "*, stock(store_id, qty)"` bilan
+o'qiydi — bu PostgREST'ning ichma-ich so'rovi. Tekshiruv skripti uni
+SQL ga o'gira olmay `select *` qilardi, ya'ni `stock` kelmasdi va
+"Ombordagi tovar" 0 chiqardi (haqiqatda **276 384.78 $**, 188 311 dona).
+Ya'ni tekshiruv soxta "hammasi bo'sh" holatini ko'rsatardi.
+**Yechim:** `scripts/lib/yuk.mjs` endi bola jadvalni alohida oladi va
+ota qatorga biriktiradi; bog'lovchi ustun bazaning o'zidan (FK)
+topiladi. Xuddi shu yo'l `sale_items`, `debt_payments`,
+`service_items` uchun ham ishlaydi.
+
 ### "Pul oqimi" kassadan 47 000 $ farq qilardi (2026-08-14)
 P&L bo'limidagi "Pul oqimi" tabi eski sotuv modulidan hisoblardi:
 `sales` jadvalidagi chek bo'yicha naqd/karta/Payme ulushi. Billz
