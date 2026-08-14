@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "tekshir": "node scripts/tekshir.mjs"
+    "tekshir": "node --import ./scripts/lib/register.mjs --no-warnings scripts/tekshir.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

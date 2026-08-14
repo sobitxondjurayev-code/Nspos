@@ -133,6 +133,30 @@ hozircha menejerlar qo'lda kiritadi — bu xato manbai (5-bo'limga qarang).
 
 ---
 
+## 3-A. Aytilgan gap qayerga yoziladi (takrorlamaslik tizimi)
+
+Bir marta aytilgan narsa ikkinchi marta aytilmasligi uchun har fidbek
+o'z JOYIGA yoziladi. Joyi to'rtta, aralashtirilmaydi:
+
+| Fidbek turi | Qayerga | Qachon ishlaydi |
+|---|---|---|
+| Uslub, ko'rinish, ish tartibi ("javob qisqa bo'lsin", "jadvalda Jami tepada") | `CLAUDE.md` → Fidbek qoidalari | Har sessiya boshida o'qiladi |
+| Qaror va uning SABABI ("servis tushumga kiradi, chunki…") | `DAFTAR.md` | Ish boshlashdan oldin o'qiladi |
+| **"Bu raqam ana u raqamga teng bo'lishi kerak"** | `lib/moslik.js` → `CHECKS` | **Kodga aylanadi**: har `npm run tekshir` da va ilova ichida o'zi tekshiriladi |
+| **"Bunday ma'lumot xato"** (minus hamyon, ikkilangan to'lov) | `lib/audit.js` → `moneyWarnings` | Xuddi shunday: terminalda ham, ekranda ham |
+
+Pastdagi ikkitasi eng muhimi: **qoida kodga aylansa, uni eslash shart
+emas.** Men unutsam ham, `npm run tekshir` eslatadi; rahbar ekranni
+ochsa "Tekshirib ko'ring" kartochkasida ko'radi. Yangi qoida qo'shish —
+bitta funksiya va ro'yxatga bitta qator.
+
+**Tekshiruv ilovaning O'Z kodini ishlatadi** (`scripts/lib/yuk.mjs`
+modullarni haqiqiy baza qatorlari bilan to'ldiradi). Formulani
+tekshiruvda qayta yozish taqiqlanadi — sabab pastda, "Tekshiruv
+o'zi yolg'on aytdi" bandida.
+
+---
+
 ## 4. Xatolar daftari
 
 Har biri bir marta bo'lgan. Ikkinchi marta takrorlanmasin.
@@ -442,6 +466,55 @@ qolmagan. **Yechim:** bo'lim bosh sahifasi (`HUB_PAGES`) ichidagi biror
 sahifa ochiq bo'lsa ochiladi; u yerda faqat ruxsat etilgan kartochkalar
 chiqadi. Menejerga kompaniya bo'yicha umumiy raqamlar ko'rsatilmaydi.
 
+### Tekshiruv o'zi yolg'on aytdi (2026-08-14) — eng qimmatlisi
+`npm run tekshir` "naqd 26 786.89 · hammasi joyida" deb turgan paytda
+ekranda 25 286.89 turgan edi. Sabab: skript formulalarni SQL da QAYTA
+yozgan va doimiy xarajatni (`is_recurring = true` — 1 500 $ ijara)
+umuman olmagan. Ya'ni nazorat vositasining o'zi nazoratdan chiqqan.
+
+**Yechim:** skript endi hech narsa hisoblamaydi — ilovaning o'z
+funksiyalarini chaqiradi. `scripts/lib/yuk.mjs` har modulni haqiqiy
+baza qatorlari bilan to'ldiradi (modul qaysi ustunlarni so'rasa,
+o'shani — pastdagi `ledger_start` xatosi shundan topildi), keyin
+`kassaBalances()`, `moneyFlow()`, `profitAndLoss()` — ekrandagi
+raqamni chiqaradigan aynan o'sha kod ishlaydi.
+**Qoida:** tekshiruvda formula qayta yozilmaydi. Yozilsa, u ertami-kech
+ilovadan uzoqlashadi va "hammasi joyida" degan yolg'on chiqaradi.
+
+### Hisob boshi 1-sentabrda yo'qolib ketardi (2026-08-14)
+`companies` moduli bazadan `ledger_start` ustunini SO'RAMAGAN edi
+(`select` ro'yxatida yo'q). `fromRow` esa uni topmasa joriy oy boshini
+qo'yardi. 14-avgustda ikkalasi ham "2026-08-01" bo'lgani uchun xato
+ko'rinmasdi — 1-sentabrda esa hisob boshi o'zi "2026-09-01" ga
+sakrardi va **butun avgust kassa balansidan, P&L dan, balansdan
+yo'qolardi**.
+**Qoida:** modulning `select` ro'yxatiga ustun qo'shishni unutmang;
+tekshiruv ham aynan o'sha ro'yxat bo'yicha o'qiydi, shuning uchun
+bunday xato endi topiladi.
+
+### Ish haqi uch sahifada uch xil edi (2026-08-14)
+Bitta oy uchun: P&L 2 881.25 (KPI bo'yicha), rahbariyat paneli 0
+(profildagi qat'iy maosh, u bazada 0), balansdagi "to'lanmagan ish
+haqi" ham 0. Natijada sof foyda ham ikki xil chiqdi — P&L da 628.33,
+panelda 1 000.24.
+**Yechim:** `payrollData.payrollCost(from, to)` — ish haqi uchun
+YAGONA funksiya (KPI bo'yicha hisoblangani ustun, bo'lmasa qat'iy +
+bonus). P&L, panel va balans shundan o'qiydi. Panel endi tushum va
+yalpi foydani ham P&L dan oladi: kartochkalar bir qatorda turgani
+uchun ular o'zaro ham qo'shilishi kerak
+(yalpi foyda − xarajat = sof foyda).
+**Qoida:** bir tushuncha — bitta funksiya. "Shu yerda boshqacharoq
+kerak" degan joyda avval o'sha funksiyaga parametr qo'shing.
+
+### Usta puli ikki marta chiqib ketgan (2026-08-14)
+KPI jadvalidagi "olgan" ustuni avtomat ravishda "Oylik" xarajatiga
+aylanadi (`installerPayouts`). Menejer o'sha pulni Xarajatlar bo'limiga
+QO'LDA ham kiritgan: 6 ta yozuv, 205.00 $ ikki marta chiqqan. Shu sabab
+Namangan servis hamyoni minusga tushgan.
+**Yechim:** `lib/audit.js` ga tekshiruv qo'shildi — bir xil usta, bir
+xil kun, bir xil summa bo'lsa ogohlantiradi va to'g'ri yozuvga havola
+beradi.
+
 ### Boshqa mayda, lekin takrorlanadiganlar
 - **Gidratsiya xatosi:** brauzer xotirasidan keladigan raqam serverda yo'q →
   `mounted` bayrog'i bilan himoyalanadi.
@@ -488,15 +561,26 @@ chiqadi. Menejerga kompaniya bo'yicha umumiy raqamlar ko'rsatilmaydi.
 
 ## 6. Foydali usullar
 
-- **`npm run tekshir`** (`scripts/tekshir.mjs`) — pul hisobini HAQIQIY baza
-  bo'yicha tekshiradi va xato topilsa 1 qaytaradi:
-  hamyonlar balansi (naqd/Payme/servis), "servis kirimi − chiqimlari =
-  kassadagi servis puli", ikkilangan kassa chiqimi, to'langan reja kassa
-  yozuviga bog'langanmi, kurssiz/manfiy xarajat, do'koni yo'q xodim
-  kiritgan (kassaga tushmagan) kirim. **Saytga chiqarishdan oldin
-  majburiy.** Sabab: bir raqam bir necha bo'limda ko'rinadi, kodda
-  bittasini o'zgartirib boshqasini unutish oson edi — 2026-08-13 da
-  shu sababli bir necha xato ketma-ket chiqdi.
+- **`npm run tekshir`** (`scripts/tekshir.mjs`) — **saytga chiqarishdan
+  oldin majburiy.** Ilovaning modullarini haqiqiy baza bilan to'ldirib,
+  ekrandagi raqamni chiqaradigan AYNAN o'sha funksiyalarni chaqiradi va
+  ikki xil savol beradi:
+  1. **Sahifalararo moslik** (`lib/moslik.js`) — bir xil ma'nodagi raqam
+     ikki sahifada teng chiqyaptimi: Pul rejasidagi kartochka = jadval,
+     kassa kartochkasi = kunlik jadval, bosilgan raqam = ochilgan
+     ro'yxat, balans = kassalar, ish haqi hamma joyda bitta, sof foyda
+     P&L da ham panelda ham bir xil.
+  2. **Ma'lumot xatosi** (`lib/audit.js`) — minusdagi hamyon, yopilmagan
+     kun, ikkilangan chiqim, kurssiz xarajat, kassaga tushmagan kirim,
+     usta puli ikki marta.
+
+  Xato topilsa 1 qaytaradi. Aynan shu ro'yxat ilova ichida ham
+  ko'rinadi ("Tekshirib ko'ring" kartochkasi), ya'ni rahbar va menejer
+  xatoni men aytishimni kutmaydi.
+
+  Yangi qoida qo'shish: `lib/moslik.js` (yoki `audit.js`) ichida bitta
+  funksiya yozib, `CHECKS` ro'yxatiga bitta qator qo'shiladi — boshqa
+  hech qayerga tegilmaydi.
 
 - **Hisobotni haqiqiy ma'lumot bilan tekshirish:** Billz eksportini
   `public/` ga vaqtincha qo'yib, brauzerda `fetch` bilan olib, `<input

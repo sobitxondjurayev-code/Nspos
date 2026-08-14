@@ -12,12 +12,16 @@ import { AlertTriangle, ChevronRight } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
 import { moneyWarnings } from "@/lib/audit";
+import { mismatchWarnings } from "@/lib/moslik";
 
 export default function Warnings() {
   const { user } = useAuth();
   const live = useLive();
+  // Ikki manba: ma'lumot xatosi (audit) va sahifalararo nomuvofiqlik
+  // (moslik — "bir raqam ikki joyda ikki xil"). Ikkinchisi faqat
+  // rahbarga chiqadi: u butun kompaniya hisobiga tegishli.
   const items = useMemo(() => {
-    try { return moneyWarnings(user); } catch { return []; }
+    try { return [...moneyWarnings(user), ...mismatchWarnings(user)]; } catch { return []; }
   }, [user, live]);
 
   if (!items.length) return null;
