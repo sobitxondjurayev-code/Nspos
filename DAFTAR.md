@@ -488,6 +488,16 @@ chiqadi. Menejerga kompaniya bo'yicha umumiy raqamlar ko'rsatilmaydi.
 
 ## 6. Foydali usullar
 
+- **`npm run tekshir`** (`scripts/tekshir.mjs`) — pul hisobini HAQIQIY baza
+  bo'yicha tekshiradi va xato topilsa 1 qaytaradi:
+  hamyonlar balansi (naqd/Payme/servis), "servis kirimi − chiqimlari =
+  kassadagi servis puli", ikkilangan kassa chiqimi, to'langan reja kassa
+  yozuviga bog'langanmi, kurssiz/manfiy xarajat, do'koni yo'q xodim
+  kiritgan (kassaga tushmagan) kirim. **Saytga chiqarishdan oldin
+  majburiy.** Sabab: bir raqam bir necha bo'limda ko'rinadi, kodda
+  bittasini o'zgartirib boshqasini unutish oson edi — 2026-08-13 da
+  shu sababli bir necha xato ketma-ket chiqdi.
+
 - **Hisobotni haqiqiy ma'lumot bilan tekshirish:** Billz eksportini
   `public/` ga vaqtincha qo'yib, brauzerda `fetch` bilan olib, `<input
   type=file>` ga `DataTransfer` orqali berish mumkin — demo rejimda
