@@ -55,7 +55,10 @@ export default function FinanceExpenses() {
   // qiladi, shuning uchun u ham faqat rahbarniki.
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  const canTouch = (e) => isOwner || (e.source !== "recurring" && String(e.date).slice(0, 10) === todayKey);
+  // Usta olgan puli KPI jadvalida yuritiladi — bu yerda faqat
+  // ko'rinadi, tahrirlanmaydi (aks holda ikki joyda ikki xil raqam).
+  const canTouch = (e) => e.source !== "installer"
+    && (isOwner || (e.source !== "recurring" && String(e.date).slice(0, 10) === todayKey));
   const myKassas = useMemo(() => kassasOf(user), [user]);
   const mineOnly = (list) => isOwner ? list : list.filter((e) => myKassas.includes(e.kassa));
   const [period, setPeriod] = useState("Yil");
