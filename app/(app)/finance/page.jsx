@@ -21,6 +21,7 @@ import { periodRange } from "@/lib/dates";
 import { canOpen } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
 import StatCard from "@/components/finance/StatCard";
+import Warnings from "@/components/finance/Warnings";
 import CellSources from "@/components/finance/CellSources";
 import ColumnSettings from "@/components/ColumnSettings";
 import { useColumns } from "@/components/useColumns";
@@ -188,6 +189,9 @@ export default function FinanceHome() {
       <p className="text-muted font-semibold mb-7 max-w-3xl">
         {t("Kompaniyaning bugungi moliyaviy holati. Har bo'lim o'z asosiy raqami bilan turadi — kerakligini bosib ochasiz.")}
       </p>
+
+      {/* Hisobdagi nomuvofiqliklar — bo'lsa shu yerda turadi */}
+      <Warnings />
 
       {/* —— Asosiy ko'rsatkichlar ——
           Faqat rahbarga: bular butun kompaniya bo'yicha (hamma do'kon

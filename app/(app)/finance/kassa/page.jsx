@@ -21,6 +21,7 @@ import { getLedgerStart } from "@/lib/companyData";
 import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
 import KassaModal from "@/components/KassaModal";
+import Warnings from "@/components/finance/Warnings";
 import CloseKassaModal from "@/components/CloseKassaModal";
 import {
   KASSAS, kassaIds, WALLETS, WALLET_IDS, walletsOf, categoryLabel,
@@ -194,6 +195,9 @@ export default function KassaPage() {
       <p className="text-muted font-semibold mb-7 max-w-3xl">
         {t("Kassa kirimi menejerlarning kunlik jadvalidan olinadi (KPI va oylik bo'limi), chiqim esa shu yerda va Xarajatlar bo'limida kiritiladi. Kassa har kun alohida yopiladi: o'sha kunning qoldig'i rahbarga topshiriladi va u tasdiqlagach asosiy balansga qo'shiladi. Qaysi kun yopilgani, qancha bilan yopilgani va yopilmay qolgani \"Kunlar\" ichida ko'rinadi.")}
       </p>
+
+      {/* Hisobdagi nomuvofiqliklar — menejer ham ko'radi */}
+      <Warnings />
 
       {/* ДДС yuklanmagan bo'lsa kassa bo'sh ko'rinadi — sababini aytamiz */}
       {/* ДДС majburiy emas: kassa kunlik jadvaldan ishlaydi. Lekin u

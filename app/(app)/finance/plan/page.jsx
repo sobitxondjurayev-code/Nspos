@@ -18,6 +18,7 @@ import {
 import { fmtUSD } from "@/lib/demoData";
 import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
 import DateRangePicker from "@/components/DateRangePicker";
+import Warnings from "@/components/finance/Warnings";
 import PayoutModal from "@/components/PayoutModal";
 import PayoutsCard from "@/components/PayoutsCard";
 import PayModal from "@/components/PayModal";
@@ -195,6 +196,8 @@ export default function FinancePlan() {
       <p className="text-muted font-semibold mb-7 max-w-3xl">
         {t("Davr ichida qancha pul kirdi va qayerga ketdi. Kimga qancha berish kerakligi va qaysi to'lovlar qilingani — \"Berishim kerak\" tugmasida.")}
       </p>
+
+      <Warnings />
 
       {/* Davr */}
       <div className="flex items-center justify-between gap-4 mb-6">
