@@ -41,15 +41,28 @@ if (!token || !ref) {
 delete process.env.NEXT_PUBLIC_SUPABASE_URL;
 delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export async function sql(query) {
-  const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(text.slice(0, 300));
-  return JSON.parse(text);
+// Bitta so'rov uzilib qolsa, o'sha jadval BO'SH bo'lib qoladi va
+// tekshiruv "hamma hamyon minusda" degan soxta xato chiqaradi. Shuning
+// uchun avval qayta urinamiz, keyin ham bo'lmasa — xato yuqoriga
+// chiqadi va tekshiruv butunlay to'xtaydi (pastdagi loadApp).
+export async function sql(query, urinish = 3) {
+  let oxirgi;
+  for (let i = 0; i < urinish; i++) {
+    try {
+      const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const text = await res.text();
+      if (!res.ok) throw new Error(text.slice(0, 300));
+      return JSON.parse(text);
+    } catch (e) {
+      oxirgi = e;
+      await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+    }
+  }
+  throw oxirgi;
 }
 
 // Modul QAYSI USTUNLARNI so'rasa, tekshiruv ham aynan o'shani oladi.
@@ -95,6 +108,21 @@ export async function loadApp() {
   }));
 
   await loadDatasets(mods, report);
+
+  // Bitta jadval ham kelmasa — TEKSHIRUV O'TKAZILMAYDI.
+  // Sabab: yarim ma'lumot ustida hisoblansa, ekranda hech qanday
+  // muammo yo'q bo'lsa ham "hamma hamyon minusda", "kirim 0" degan
+  // SOXTA xatolar chiqadi. Bunday ogohlantirish eng yomoni: u
+  // ishonarli ko'rinadi va odam haqiqiy pulni qidirib ketadi
+  // (2026-08-14 da aynan shunday bo'ldi).
+  const yiqilgan = report.filter((r) => r.error);
+  if (yiqilgan.length) {
+    const e = new Error(
+      "Baza to'liq o'qilmadi, tekshiruv bekor qilindi:\n" +
+      yiqilgan.map((r) => `   ${r.table}: ${r.error}`).join("\n"));
+    e.yuklanmadi = yiqilgan;
+    throw e;
+  }
   return report;
 }
 

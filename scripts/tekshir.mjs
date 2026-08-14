@@ -25,7 +25,15 @@
 import { loadApp } from "./lib/yuk.mjs";
 
 const t0 = Date.now();
-const report = await loadApp();
+let report;
+try {
+  report = await loadApp();
+} catch (e) {
+  // Ma'lumot to'liq kelmasa tekshiruv umuman o'tkazilmaydi — yarim
+  // ma'lumot ustida "hammasi buzilgan" degan soxta xato chiqadi.
+  console.error(`\n❌ ${e.message}\n\n   Internet yoki Supabase javob bermayotgan bo'lishi mumkin. Qayta urining.\n`);
+  process.exit(2);
+}
 
 const { getLedgerStart, getUsdRate } = await import("../lib/companyData.js");
 const { KASSAS, WALLET_IDS, WALLETS, kassaIds, kassaBalances, moneyFlow } = await import("../lib/kassaData.js");
