@@ -41,6 +41,7 @@ hozircha menejerlar qo'lda kiritadi — bu xato manbai (5-bo'limga qarang).
 | Servis puli "Jami tushum"ga kiradi | Billz'da montaj oddiy tovar kabi sotiladi, ya'ni "Savdo" ichida. Chiqarilsa nasiya aynan servis summasiga oshadi |
 | Servis naqddan ayriladi | Menejer avval kun naqdini yozadi (731), keyin servisni (31) → naqd 700 bo'ladi. Jami baribir 731 |
 | Rahbarlar (owner) oylik olmaydi | Ular pulni NS (kassadan shaxsiy pul) orqali oladi. KPI, ish haqi, maosh hisoblarida ko'rinmaydi |
+| Rahbarga o'tkazma Xarajatlar ro'yxatida KO'RINADI, lekin "Jami"ga qo'shilmaydi | Rahbar so'radi (2026-08-15): "u ham kassadan olingan pulku". To'g'ri — pul KASSADAN chiqadi, lekin KOMPANIYADAN chiqmaydi, u kompaniya balansiga ko'chadi. Shuning uchun ro'yxatda alohida qator bo'lib turadi (`kassaData.ownerTransferRows`), jami ostida esa "+ Rahbarga o'tkazma: …" bo'lib ko'rsatiladi. `expensesInRange` ga QO'SHILMAYDI — aks holda P&L sof foydani, kassa balansi esa pulni ikki marta kamaytirardi. Haqiqiy xarajat — **NS** (rahbar o'ziga olgan pul), u boshqa yozuv |
 | Menejer kursni o'zgartira oladi | Xarajat so'mda kiritiladi, kurssiz saqlab bo'lmaydi. Bazada `set_usd_rate()` SECURITY DEFINER + `is_manager()` |
 | Kassa: 3 ta (b2b, b2c, kompaniya), har birida naqd/payme/servis | B2B kassada servis YO'Q |
 | Kassa **kunlik** yopiladi, butunlay emas | Ilgari bir bosishda hisob boshidan yig'ilgan hamma pul ketardi: qaysi kunniki ekani yo'qolar, yopilmay qolgan kun esa umuman ko'rinmasdi. Endi har kunning o'z qoldig'i topshiriladi va yopilmagan kun qizarib turadi (`kassaDailyRows`, `closeDay`) |
@@ -539,6 +540,20 @@ Namangan servis hamyoni minusga tushgan.
 **Yechim:** `lib/audit.js` ga tekshiruv qo'shildi — bir xil usta, bir
 xil kun, bir xil summa bo'lsa ogohlantiradi va to'g'ri yozuvga havola
 beradi.
+
+### "Yo'ldagi" pul soxta 100 $ farq chiqargan (2026-08-15)
+Menejer 100 $ o'tkazma yubordi, rahbar hali tasdiqlamadi. Shu zahoti
+`npm run tekshir` "Kassa: kartochka = kunlik jadval" xatosini berdi:
+kartochkada −1 522.98, jadvalda −1 622.98, farq aynan 100.00.
+**Sabab:** tekshiruv `total + pending` deb hisoblardi. Lekin
+`kassaBalances` tasdiq kutayotgan pulni hamyondan AYIRMAYDI (rahbar
+rad etsa qaytadi) — ya'ni u `total` ichida allaqachon bor. Kunlik
+jadval ham `wait` ni qoldiqdan chegirmaydi. Ikkalasi bir xil edi,
+faqat tekshiruv o'sha pulni ikki marta sanardi.
+**Yechim:** `moslik.js` da `card = bal[k].total` — `pending` ustiga
+qo'shilmaydi. Qoida: tasdiq kutayotgan pul QAYSI YERDA turgani bitta
+javobga ega bo'lishi kerak (kassada), tekshiruv uni "yana bir joyda
+ham bor" deb o'ylamasin.
 
 ### Boshqa mayda, lekin takrorlanadiganlar
 - **Gidratsiya xatosi:** brauzer xotirasidan keladigan raqam serverda yo'q →

@@ -16,10 +16,10 @@ import ExpenseModal from "@/components/ExpenseModal";
 import StatCard from "@/components/finance/StatCard";
 import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
-import { kassasOf } from "@/lib/kassaData";
+import { kassasOf, ownerTransferRows } from "@/lib/kassaData";
 import { storeTotalsInRange } from "@/lib/salesData";
 import {
-  EXPENSE_CATEGORIES, categoryLabel, methodLabel, STREET_INSTALLER,
+  categoryLabel, methodLabel, STREET_INSTALLER,
   expensesInRange, expensesByCategory, expensesByStore, expenseStructure,
   expenseSeries, monthlyFixedRunRate,
   listRecurring, addRecurring, removeRecurring, updateRecurring,
@@ -57,7 +57,9 @@ export default function FinanceExpenses() {
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   // Usta olgan puli KPI jadvalida yuritiladi — bu yerda faqat
   // ko'rinadi, tahrirlanmaydi (aks holda ikki joyda ikki xil raqam).
-  const canTouch = (e) => e.source !== "installer"
+  // Rahbarga o'tkazma ham shu ro'yxatda ko'rinadi, lekin Kassa
+  // bo'limida yuritiladi — bu yerda tahrirlanmaydi.
+  const canTouch = (e) => e.source !== "installer" && e.source !== "transfer"
     && (isOwner || (e.source !== "recurring" && String(e.date).slice(0, 10) === todayKey));
   const myKassas = useMemo(() => kassasOf(user), [user]);
   const mineOnly = (list) => isOwner ? list : list.filter((e) => myKassas.includes(e.kassa));
@@ -110,6 +112,14 @@ export default function FinanceExpenses() {
 
   const rows = useMemo(
     () => mineOnly(expensesInRange(range.from, range.to)), [range, tick, isOwner, myKassas.join(), live]);
+  // Rahbarga o'tkazmalar — ro'yxatda ko'rinadi, lekin xarajat EMAS:
+  // kesim, grafik va "Jami xarajat" kartochkalariga qo'shilmaydi
+  // (pul kompaniyada qoladi, P&L ga kirmasligi kerak).
+  const transfers = useMemo(
+    () => mineOnly(ownerTransferRows(range.from, range.to)), [range, tick, isOwner, myKassas.join(), live]);
+  // Jadvalga ikkalasi birga, sana bo'yicha tushadi
+  const listRows = useMemo(
+    () => [...rows, ...transfers].sort((x, y) => (x.date < y.date ? 1 : -1)), [rows, transfers]);
   const byCat = useMemo(() => expensesByCategory(range.from, range.to), [range, tick, live]);
   const byStore = useMemo(() => expensesByStore(range.from, range.to), [range, tick, live]);
   const struct = useMemo(() => expenseStructure(range.from, range.to), [range, tick, live]);
@@ -132,34 +142,43 @@ export default function FinanceExpenses() {
   const [fBy, setFBy] = useState("all");
 
   const uniq = (list) => [...new Set(list.filter(Boolean))];
-  const catOptions = useMemo(() => uniq(rows.map((e) => e.category)), [rows]);
-  const methodOptions = useMemo(() => uniq(rows.map((e) => e.method)), [rows]);
-  const staffOptions = useMemo(() => uniq(rows.map((e) => e.staffId)), [rows]);
-  // Ko'cha ustasi xodim emas — filtrda alohida variant
-  const hasStreet = useMemo(() => rows.some((e) => e.paidTo), [rows]);
-  const byOptions = useMemo(() => uniq(rows.map((e) => e.createdBy)), [rows]);
+  const catOptions = useMemo(() => uniq(listRows.map((e) => e.category)), [listRows]);
+  const methodOptions = useMemo(() => uniq(listRows.map((e) => e.method)), [listRows]);
+  const staffOptions = useMemo(() => uniq(listRows.map((e) => e.staffId)), [listRows]);
+  // Ko'cha ustasi xodim emas — filtrda alohida variant. O'tkazmadagi
+  // "Rahbar" ko'cha usta emas — unga o'z varianti bor.
+  const hasStreet = useMemo(
+    () => listRows.some((e) => e.paidTo && e.source !== "transfer"), [listRows]);
+  const byOptions = useMemo(() => uniq(listRows.map((e) => e.createdBy)), [listRows]);
 
   const hasFilter = [fCat, fStore, fMethod, fStaff, fBy].some((v) => v !== "all");
   const clearFilters = () => {
     setFCat("all"); setFStore("all"); setFMethod("all"); setFStaff("all"); setFBy("all");
   };
 
-  const shown = useMemo(() => rows.filter((e) => {
+  const shown = useMemo(() => listRows.filter((e) => {
     if (fCat !== "all" && e.category !== fCat) return false;
     // "Umumkorxona" — do'konga biriktirilmagan xarajat
     if (fStore === "all-company" ? (e.storeId && e.storeId !== "all") : false) return false;
     if (fStore !== "all" && fStore !== "all-company" && e.storeId !== fStore) return false;
     if (fMethod !== "all" && e.method !== fMethod) return false;
     if (fStaff === "none" && (e.staffId || e.paidTo)) return false;
-    if (fStaff === "street" && !e.paidTo) return false;
-    if (fStaff !== "all" && fStaff !== "none" && fStaff !== "street" && e.staffId !== fStaff) return false;
+    if (fStaff === "street" && !(e.paidTo && e.source !== "transfer")) return false;
+    if (fStaff === "rahbar" && e.source !== "transfer") return false;
+    if (fStaff !== "all" && fStaff !== "none" && fStaff !== "street" && fStaff !== "rahbar" && e.staffId !== fStaff) return false;
     if (fBy !== "all" && e.createdBy !== fBy) return false;
     return true;
-  }), [rows, fCat, fStore, fMethod, fStaff, fBy]);
+  }), [listRows, fCat, fStore, fMethod, fStaff, fBy]);
 
-  // Jami — ko'rinib turgan qatorlar bo'yicha, filtr bilan birga o'zgaradi
+  // Jami — ko'rinib turgan XARAJAT qatorlari bo'yicha, filtr bilan birga
+  // o'zgaradi. Rahbarga o'tkazma jamiga QO'SHILMAYDI (u xarajat emas,
+  // pul kompaniyada qoladi) — alohida qator bo'lib ostida turadi.
+  const shownExp = useMemo(() => shown.filter((e) => e.source !== "transfer"), [shown]);
   const shownSom = useMemo(
-    () => shown.reduce((a, e) => a + somOf(e), 0), [shown]);
+    () => shownExp.reduce((a, e) => a + somOf(e), 0), [shownExp]);
+  const shownTransferSom = useMemo(
+    () => shown.filter((e) => e.source === "transfer").reduce((a, e) => a + somOf(e), 0), [shown]);
+  const shownTransferCount = shown.length - shownExp.length;
 
 
   const ofRevenue = revenue > 0 ? +((struct.total / revenue) * 100).toFixed(1) : 0;
@@ -185,6 +204,12 @@ export default function FinanceExpenses() {
           {(e.staffId || e.paidTo) && (
             <p className="text-sm font-bold text-brand">
               {e.staffId ? (getStaff(e.staffId)?.name ?? "—") : e.paidTo}
+            </p>
+          )}
+          {/* O'tkazma holati — kassadagi bilan bir xil tilda */}
+          {e.source === "transfer" && e.status && (
+            <p className={`text-sm font-bold ${e.status === "approved" ? "text-ok" : "text-warn"}`}>
+              {t(e.status === "approved" ? "Tasdiqlangan" : "Kutilmoqda")}
             </p>
           )}
           {e.note && <p className="text-sm text-muted">{e.note}</p>}
@@ -265,7 +290,7 @@ export default function FinanceExpenses() {
     bump();
   }
 
-  const empty = rows.length === 0 && recur.length === 0;
+  const empty = rows.length === 0 && recur.length === 0 && transfers.length === 0;
 
   return (
     <div>
@@ -458,7 +483,7 @@ export default function FinanceExpenses() {
                   <select className="inp" value={fCat} onChange={(e) => setFCat(e.target.value)}>
                     <option value="all">{t("Barchasi")}</option>
                     {catOptions.map((k) => (
-                      <option key={k} value={k}>{t(EXPENSE_CATEGORIES[k]?.label ?? k)}</option>
+                      <option key={k} value={k}>{t(categoryLabel(k))}</option>
                     ))}
                   </select>
                 </label>
@@ -490,6 +515,7 @@ export default function FinanceExpenses() {
                     <option value="all">{t("Barchasi")}</option>
                     <option value="none">{t("Hech kimga bog'liq emas")}</option>
                     {hasStreet && <option value="street">{t(STREET_INSTALLER)}</option>}
+                    {transfers.length > 0 && <option value="rahbar">{t("Rahbar")}</option>}
                     {staffOptions.map((id) => (
                       <option key={id} value={id}>{getStaff(id)?.name ?? "—"}</option>
                     ))}
@@ -539,11 +565,18 @@ export default function FinanceExpenses() {
                     <th className="px-4 py-4 font-extrabold text-left" colSpan={Math.max(1, expCols.length - 1)}>
                       {t("Jami")}
                       <span className="ml-2 text-sm font-bold text-muted">
-                        {tt("{n} ta yozuv", { n: shown.length })}
+                        {tt("{n} ta yozuv", { n: shownExp.length })}
                       </span>
                     </th>
-                    <th className="px-4 py-4 text-right text-lg font-extrabold text-danger whitespace-nowrap">
-                      −{fmtSom(shownSom)}
+                    <th className="px-4 py-4 text-right whitespace-nowrap">
+                      <span className="text-lg font-extrabold text-danger">−{fmtSom(shownSom)}</span>
+                      {/* O'tkazma jamiga kirmaydi — xarajat emas, pul
+                          kompaniyaga ko'chadi. Lekin ko'rinib turadi. */}
+                      {shownTransferCount > 0 && (
+                        <span className="block text-sm font-bold text-muted">
+                          {tt("+ Rahbarga o'tkazma: {s}", { s: fmtSom(shownTransferSom) })}
+                        </span>
+                      )}
                     </th>
                     <th className="px-4 py-4" />
                   </tr>
