@@ -566,6 +566,8 @@ ham bor" deb o'ylamasin.
   Yangi sahifa yozishdan oldin jadvalda yozuv bor-yo'qligini SQL bilan
   tekshiring.
 - **P&L maydoni:** `pnl.expenses.payroll` (`wages` emas).
+- **Vercel "Not authorized":** `.vercel/project.json` dagi `orgId` eskirgan.
+  Chiqarish buyrug'i: `npx vercel --prod --scope urinboevmirjalol-8358s-projects`.
 
 ---
 
