@@ -23,6 +23,7 @@ quyidagi fidbek qoidalarini o'qing va so'ralmasdan qo'llang.
 - [2026-08-06] Har o'zgarishdan keyin saytga chiqarilsin (nspos.vercel.app) — foydalanuvchi lokal serverda emas, saytda ishlaydi.
 - [2026-08-06] So'mda kiritilgan har qanday summaning ASL raqami saqlansin (`companyData.fromSom`): dollardan qaytarib hisoblab ko'rsatilmasin, aks holda 10 000 → 9 985 bo'lib ketadi.
 - [2026-08-06] Xarajat turlari haqida gapirilganda "qat'iy" emas, **"doimiy"** deyilsin. ("Qat'iy maosh" — ish haqi atamasi, u o'zgarmaydi.)
+- [2026-08-15] "Shu oyga faqat" deb aytilgan cheklov O'CHIRILMASIN — istisno oy ro'yxatiga qo'shilsin (masalan `kpiData.PAY_ANY_DAY_MONTHS`). Keyingi oyda qoida o'zi qaytadi, foydalanuvchi buni eslatib o'tirmaydi.
 - [2026-08-15] Rahbarga pul o'tkazmasi Xarajatlar ro'yxatida ham ko'rinsin, lekin "Jami xarajat"ga QO'SHILMASIN: pul kassadan chiqadi-yu, kompaniyadan chiqmaydi (kompaniya balansiga ko'chadi). Jami ostida alohida qator bo'lib turadi. Haqiqiy xarajat — NS (rahbar o'ziga olgan pul).
 - [2026-08-06] Rahbarlar (owner) oylik olmaydi — KPI, ish haqi va maosh hisoblarida ko'rinmasin. Ular pulni NS (kassadan olingan shaxsiy pul) orqali oladi.
 - [2026-08-06] Bo'sh yoki ishlatilmaydigan bo'limlar menyuda turmasin (masalan Smenalar — u Billz'da yuritiladi). Sahifa kodda qolsin, faqat menyudan olinsin.

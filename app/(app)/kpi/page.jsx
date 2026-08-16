@@ -24,7 +24,7 @@ import { useLive } from "@/components/DataProvider";
 import { can } from "@/lib/auth";
 import {
   computeMonth, computeDay, listDays, saveDay, savePlan, saveRules,
-  monthKey, todayKey, isRevisionDay, isPayDay, PAY_DAYS, KPI_TYPES, MANAGER_TYPES, typeOf,
+  monthKey, todayKey, isRevisionDay, isPayDay, isPayAnyDayMonth, PAY_DAYS, KPI_TYPES, MANAGER_TYPES, typeOf,
   getType, setType, hasType, setInstallerRate, setInstallerNps, installerRange,
 } from "@/lib/kpiData";
 
@@ -358,8 +358,10 @@ function DailyTable({ m, rows, month, onEdit, canEdit, canEditPast = false, show
             const weekend = d.getDay() === 0;
             const revDay = isRevisionDay(i + 1, m.rules.revisionEveryDays ?? 5);
             // Pul beriladigan kun (1, 5, 10, 15, 20, 25). Rahbar uchun
-            // cheklov yo'q — u xohlagan kuni bera oladi.
-            const payDay = payAnyDay || isPayDay(i + 1);
+            // cheklov yo'q — u xohlagan kuni bera oladi. Cheklov
+            // vaqtincha ochilgan oyda (PAY_ANY_DAY_MONTHS) menejer ham
+            // istalgan kunga yozadi.
+            const payDay = payAnyDay || isPayDay(i + 1, month);
 
             // Jami savdo: SHU kun savdosi bo'sh bo'lsa — jami ham bo'sh
             const hasSales = r.sales != null && r.sales !== "";
@@ -706,7 +708,9 @@ function StaffDetail({ staffId, month, canEdit, canRules, canEditPast = false, s
         {m.type === "installer" && (
           <> {payAnyDay
             ? tt("Pul odatda {d}-kunlari beriladi — rahbar sifatida siz istalgan kunga yoza olasiz.", { d: PAY_DAYS.join(", ") })
-            : tt("Pul faqat {d}-kunlari beriladi. Boshqa kunga rahbar yozadi.", { d: PAY_DAYS.join(", ") })}</>
+            : isPayAnyDayMonth(month)
+              ? tt("Pul odatda {d}-kunlari beriladi — shu oyga cheklov vaqtincha ochilgan, istalgan kunga yozaverasiz.", { d: PAY_DAYS.join(", ") })
+              : tt("Pul faqat {d}-kunlari beriladi. Boshqa kunga rahbar yozadi.", { d: PAY_DAYS.join(", ") })}</>
         )}
       </p>
       <DailyTable m={m} rows={rows} month={month} onEdit={edit} canEdit={canEdit}
