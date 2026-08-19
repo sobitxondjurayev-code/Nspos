@@ -18,6 +18,10 @@ uning ustiga qo'yiladi: Billz bermaydigan narsalar uchun — tahlil, KPI va
 oylik, ustalar reytingi, moliya, nazorat.
 
 - Sayt: https://nspos.vercel.app · chiqarish: `npx vercel --prod --yes`
+- Repo: https://github.com/urinboevmirjalol-commits/nspos — **yopiq (private)**
+  repo, 2026-08-19 da yaratildi. Dasturchiga topshirish uchun; kirish
+  huquqi Settings → Collaborators dan beriladi. Kalitlar repoda YO'Q
+  (`.env*` gitignore'da) — alohida beriladi, [TOPSHIRISH.md](TOPSHIRISH.md) ga qarang.
 - Baza: Supabase (Postgres + RLS). Migratsiya: `node scripts/sql.mjs "..."`
 - Kod: Next.js 14 App Router, JSX (TypeScript emas), Tailwind, Recharts
 - Interfeys o'zbekcha (ruscha tarjima `lib/i18n.js` da)
