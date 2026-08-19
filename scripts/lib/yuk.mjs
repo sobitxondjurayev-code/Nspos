@@ -1,0 +1,217 @@
+// ══════════════════════════════════════════════════════════════
+// ILOVANI NODE'DA HAQIQIY BAZA BILAN TO'LDIRISH
+// ══════════════════════════════════════════════════════════════
+// Ilovaning modullari (lib/*.js) brauzerda bazadan bir marta o'qib
+// xotirada ishlaydi. Shu fayl xuddi shu ishni Node'da qiladi:
+// har modul o'zi qayd etgan jadvalni SQL orqali oladi va o'z
+// `restore()` funksiyasiga beradi.
+//
+// Nega SQL orqali (anon kalit bilan emas): RLS anon foydalanuvchiga
+// hech narsa ko'rsatmaydi, ya'ni tekshiruv bo'sh ma'lumot ustida
+// "hammasi joyida" deb turaverardi.
+//
+// Yozish xavfi yo'q: NEXT_PUBLIC_* o'zgaruvchilari berilmagani uchun
+// ilova DEMO rejimda ishlaydi va insert/update/delete umuman bazaga
+// bormaydi.
+import { readFileSync } from "fs";
+import { execFileSync } from "child_process";
+import { fileURLToPath } from "url";
+import path from "path";
+
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+for (const line of readFileSync(path.join(root, ".env.local"), "utf8").split("\n")) {
+  const m = line.match(/^\s*([A-Z_]+)\s*=\s*(.+?)\s*$/);
+  if (m) process.env[m[1]] ??= m[2];
+}
+
+const token = process.env.SUPABASE_ACCESS_TOKEN;
+const ref = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").match(/https:\/\/([a-z0-9]+)\.supabase/)?.[1];
+
+// Ikkinchi yo'l: Supabase CLI. Management API kaliti shaxsiy va uni
+// har kompyuterga qo'yish shart emas — `supabase login` qilingan
+// bo'lsa CLI o'sha kalitni o'zi biladi. Tekshiruv saytga chiqarishdan
+// oldin MAJBURIY (CLAUDE.md, 2026-08-13), shuning uchun u kalit
+// yo'qligi sababli o'tkazib yuborilmasligi kerak.
+//   supabase link --project-ref <ref>
+const cliReady = !token && (() => {
+  try { execFileSync("supabase", ["--version"], { stdio: "ignore" }); return true; }
+  catch { return false; }
+})();
+
+if (!ref || (!token && !cliReady)) {
+  console.error("Bazaga yo'l topilmadi. Yo .env.local ga SUPABASE_ACCESS_TOKEN qo'ying,");
+  console.error("yo `supabase login && supabase link --project-ref <ref>` qiling.");
+  process.exit(1);
+}
+
+// —— Yozishni butunlay o'chiramiz ————————————————————
+// Ilova moduli ba'zan o'qigan zahoti bazaga qaytib yozadi (masalan KPI
+// turi qo'yilmagan xodimga standart tur beriladi). Tekshiruv HECH
+// NARSANI o'zgartirmasligi kerak: NEXT_PUBLIC_* o'chirilsa `lib/db.js`
+// DEMO rejimga o'tadi va insert/update/delete umuman jo'natilmaydi.
+// SQL orqali o'qish esa boshqa kalit (SUPABASE_ACCESS_TOKEN) bilan
+// ketadi — u shu faylda qoladi.
+delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+// Bitta so'rov uzilib qolsa, o'sha jadval BO'SH bo'lib qoladi va
+// tekshiruv "hamma hamyon minusda" degan soxta xato chiqaradi. Shuning
+// uchun avval qayta urinamiz, keyin ham bo'lmasa — xato yuqoriga
+// chiqadi va tekshiruv butunlay to'xtaydi (pastdagi loadApp).
+export async function sql(query, urinish = 3) {
+  if (cliReady) return sqlViaCli(query);
+
+  let oxirgi;
+  for (let i = 0; i < urinish; i++) {
+    try {
+      const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const text = await res.text();
+      if (!res.ok) throw new Error(text.slice(0, 300));
+      return JSON.parse(text);
+    } catch (e) {
+      oxirgi = e;
+      await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+    }
+  }
+  throw oxirgi;
+}
+
+// CLI javobi: { boundary, rows: [...], warning }. `maxBuffer` oshirilgan —
+// `sales` 7 000 dan ortiq qator qaytaradi va standart 1 MB yetmaydi.
+function sqlViaCli(query) {
+  const out = execFileSync("supabase", ["db", "query", "--linked", query], {
+    encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"],
+  });
+  const parsed = JSON.parse(out);
+  if (parsed.error) throw new Error(JSON.stringify(parsed.error).slice(0, 300));
+  return parsed.rows ?? [];
+}
+
+// Modul QAYSI USTUNLARNI so'rasa, tekshiruv ham aynan o'shani oladi.
+// `select *` qilib qo'ysak tekshiruv brauzerdan KO'PROQ ma'lumot
+// ko'rardi va ustun tushib qolgan xatoni sezmasdi — 2026-08-14 da
+// `companies` ro'yxatida `ledger_start` yo'q edi, ya'ni ilova hisob
+// boshini bazadan emas, joriy oy boshidan olardi.
+//
+// Ichma-ich so'rov ("*, stock(store_id, qty)") — bu PostgREST'ning
+// o'z yozuvi, SQL da bunday yozib bo'lmaydi. Shuning uchun bola
+// jadval ALOHIDA olinadi va ota qatorga biriktiriladi. Busiz `stock`
+// kelmasdi va tekshiruv omborni butunlay bo'sh deb ko'rardi
+// (balansdagi "Ombordagi tovar" 0 chiqib, soxta xato berardi).
+const parseSelect = (select) => {
+  if (!select || select === "*") return { cols: "*", embeds: [] };
+  const embeds = [...select.matchAll(/(\w+)\(([^)]*)\)/g)].map((m) => ({
+    table: m[1], cols: m[2].split(",").map((c) => c.trim()).filter(Boolean),
+  }));
+  const own = select.replace(/,?\s*\w+\([^)]*\)/g, "").trim().replace(/,$/, "");
+  return { cols: own || "*", embeds };
+};
+
+// Bola jadval ota jadvalga qaysi ustun orqali bog'langan — taxmin
+// qilmaymiz, bazaning o'zidan so'raymiz.
+async function fkColumn(child, parent) {
+  const rows = await sql(`
+    select kcu.column_name
+    from information_schema.table_constraints tc
+    join information_schema.key_column_usage kcu on kcu.constraint_name = tc.constraint_name
+    join information_schema.constraint_column_usage ccu on ccu.constraint_name = tc.constraint_name
+    where tc.constraint_type = 'FOREIGN KEY'
+      and tc.table_name = '${child}' and ccu.table_name = '${parent}'
+    limit 1`);
+  return rows[0]?.column_name ?? null;
+}
+
+async function attachEmbeds(parent, rows, embeds) {
+  for (const e of embeds) {
+    const fk = await fkColumn(e.table, parent);
+    if (!fk) { for (const r of rows) r[e.table] = []; continue; }
+    const want = e.cols.includes("*") || !e.cols.length
+      ? "*" : [...new Set([fk, ...e.cols])].join(", ");
+    const kids = await sql(`select ${want} from ${e.table}`);
+    const byParent = new Map();
+    for (const k of kids) {
+      const id = k[fk];
+      if (!byParent.has(id)) byParent.set(id, []);
+      byParent.get(id).push(k);
+    }
+    for (const r of rows) r[e.table] = byParent.get(r.id) ?? [];
+  }
+}
+
+// —— Modullarni to'ldirish ————————————————————————
+// Ilovadagi har modul import qilinishi bilan o'zini `registerModule`
+// ga yozadi. Shuning uchun avval hammasini import qilamiz.
+export async function loadApp() {
+  const { listModules } = await import("../../lib/db.js");
+
+  await Promise.all([
+    "companyData", "storesData", "staffData", "kpiData", "expensesData",
+    "kassaData", "payoutsData", "payrollData", "datasets", "debtsData",
+    "customersData", "salesData", "productsData", "servicesData",
+    "warehouseData", "suppliersData", "financeData", "ratesData", "npsData",
+  ].map((m) => import(`../../lib/${m}.js`)));
+
+  const mods = listModules();
+  const report = [];
+
+  await Promise.all(mods.map(async (m) => {
+    // datasets — alohida: qatorlari boshqa jadvalda (pastga qarang)
+    if (m.table === "datasets") return;
+    try {
+      // `staff_directory` ko'rinishi kirgan foydalanuvchi bo'yicha
+      // filtrlanadi (auth_company_id) — SQL orqali u BO'SH qaytadi.
+      // Shuning uchun asosiy jadvaldan o'qiymiz: skript rahbar
+      // ko'radigan to'liq ro'yxatni ko'rishi kerak.
+      const table = m.readTable === "staff_directory" ? m.table : (m.readTable ?? m.table);
+      const { cols, embeds } = parseSelect(m.select);
+      const rows = await sql(`select ${cols} from ${table}`);
+      if (embeds.length) await attachEmbeds(table, rows, embeds);
+      m.restore(rows.map((r) => (m.fromRow ? m.fromRow(r) : r)));
+      report.push({ table: m.table, rows: rows.length });
+    } catch (e) {
+      report.push({ table: m.table, error: e.message.slice(0, 80) });
+    }
+  }));
+
+  await loadDatasets(mods, report);
+
+  // Bitta jadval ham kelmasa — TEKSHIRUV O'TKAZILMAYDI.
+  // Sabab: yarim ma'lumot ustida hisoblansa, ekranda hech qanday
+  // muammo yo'q bo'lsa ham "hamma hamyon minusda", "kirim 0" degan
+  // SOXTA xatolar chiqadi. Bunday ogohlantirish eng yomoni: u
+  // ishonarli ko'rinadi va odam haqiqiy pulni qidirib ketadi
+  // (2026-08-14 da aynan shunday bo'ldi).
+  const yiqilgan = report.filter((r) => r.error);
+  if (yiqilgan.length) {
+    const e = new Error(
+      "Baza to'liq o'qilmadi, tekshiruv bekor qilindi:\n" +
+      yiqilgan.map((r) => `   ${r.table}: ${r.error}`).join("\n"));
+    e.yuklanmadi = yiqilgan;
+    throw e;
+  }
+  return report;
+}
+
+// Yuklamalar: ro'yxat `datasets` da, qatorlar `dataset_chunks` da.
+// Brauzerda ular kerak bo'lgandagina tortiladi (useUploadRows), bu
+// yerda esa hammasi birdan olinadi — tekshiruv to'liq bo'lsin.
+async function loadDatasets(mods, report) {
+  const m = mods.find((x) => x.table === "datasets");
+  if (!m) return;
+  try {
+    const list = await sql("select * from datasets order by created_at desc");
+    const chunks = await sql("select dataset_id, seq, rows from dataset_chunks order by dataset_id, seq");
+    const byId = new Map();
+    for (const c of chunks) byId.set(c.dataset_id, [...(byId.get(c.dataset_id) ?? []), ...c.rows]);
+    m.restore(list.map((r) => ({ ...m.fromRow(r), rows: byId.get(r.id) ?? null })));
+    report.push({ table: "datasets", rows: list.length, qator: chunks.reduce((s, c) => s + c.rows.length, 0) });
+  } catch (e) {
+    report.push({ table: "datasets", error: e.message.slice(0, 80) });
+  }
+}
+

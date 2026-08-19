@@ -1,0 +1,19 @@
+node_modules
+.next
+.env.local
+
+# Local Netlify folder
+.netlify
+.vercel
+.env*
+
+# Vaqtinchalik fayllar (sinov skriptlari, eksport, oraliq natija).
+# Ikki suhbat bir papkada ishlaganda `git add -A` shularni ham repoga
+# tortib ketardi — shuning uchun ular boshidanoq ko'rinmaydi.
+.tmp
+.tmp/
+.tmp-*
+*.tmp.mjs
+
+# supabase link yaratadigan vaqtinchalik holat
+supabase/.temp

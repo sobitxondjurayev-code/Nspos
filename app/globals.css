@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-ui: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+
+  /* Yorug' rejim — asl Billz palitrasi */
+  --c-brand: 37 99 235;
+  --c-brand-soft: 239 244 255;
+  --c-brand-dark: 29 78 216;
+  --c-ink: 15 23 42;
+  --c-muted: 100 116 139;
+  --c-line: 226 232 240;
+  --c-surface: 246 248 251;
+  --c-panel: 255 255 255;
+  --c-track: 241 245 249;
+  --c-track2: 226 232 240;
+  --c-faint: 203 213 225;
+  --c-overlay: 15 23 42;
+  --c-ok: 5 150 105;
+  --c-ok-soft: 236 253 245;
+  --c-warn: 217 119 6;
+  --c-warn-soft: 255 251 235;
+  --c-danger: 239 68 68;
+  --c-danger-soft: 254 242 242;
+
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, .04), 0 8px 24px rgba(15, 23, 42, .06);
+  --shadow-pop: 0 12px 40px rgba(15, 23, 42, .14);
+
+  /* Grafik ranglari (Recharts hex kutadi) */
+  --chart-grid: #eef2f7;
+  --chart-tick: #64748b;
+  --chart-dot-stroke: #ffffff;
+}
+
+/* Qorong'i rejim — standart "Billz kulrang" palitrasi (neytral, ko'kish tussiz).
+   Sozlamalarda tanlangan boshqa palitra <html> ga inline yoziladi va
+   bu qiymatlarni qoplaydi (lib/themes.js). */
+.dark {
+  --c-brand: 47 128 255;
+  --c-brand-soft: 27 43 68;
+  --c-brand-dark: 96 160 255;
+  --c-ink: 235 235 235;
+  --c-muted: 154 154 154;
+  --c-line: 56 56 56;
+  --c-surface: 24 24 24;
+  --c-panel: 38 38 38;
+  --c-track: 48 48 48;
+  --c-track2: 68 68 68;
+  --c-faint: 94 94 94;
+  --c-overlay: 0 0 0;
+  --c-ok: 61 194 134;
+  --c-ok-soft: 26 51 40;
+  --c-warn: 240 180 70;
+  --c-warn-soft: 56 45 22;
+  --c-danger: 255 107 107;
+  --c-danger-soft: 58 32 32;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, .35), 0 8px 24px rgba(0, 0, 0, .4);
+  --shadow-pop: 0 12px 40px rgba(0, 0, 0, .6);
+
+  --chart-grid: #303030;
+  --chart-tick: #9a9a9a;
+  --chart-dot-stroke: #262626;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INTERFEYS O'LCHAMI
+   ══════════════════════════════════════════════════════════════
+   Rahbar brauzerni kichraytirib ishlatardi — 100% da hamma narsa juda
+   yirik ko'rinardi. Endi interfeys o'zi 90% o'lchamda chiziladi:
+   ildiz shrifti 16px o'rniga 14.4px.
+
+   Nega aynan shu yo'l: Tailwind'dagi barcha o'lcham (matn, bo'shliq,
+   radius) rem'da, shuning uchun bitta qator hammasini bir tekis
+   kichraytiradi. `zoom` yoki `transform: scale` esa modal oynalar va
+   `position: fixed` elementlarni buzardi.
+
+   Piksel bilan yozilgan o'lchamlar (ikonkalar, jadval min-width'lari)
+   ham shu nisbatda kichraytirilgan — pastdagi .lucide qoidasiga qarang. */
+html { font-size: 90%; }
+
+html, body { height: 100%; }
+body {
+  font-family: var(--font-ui);
+  @apply bg-surface text-ink antialiased;
+}
+
+/* Lucide ikonkalari o'lchamini piksel bilan oladi (size={20}), shuning
+   uchun rem bilan birga kichraymaydi — matndan yirikroq bo'lib qolardi.
+   Kenglikni em bilan qayta yozib bo'lmaydi: unda 14 va 24 o'lchamdagi
+   ikonkalar bir xil bo'lib qolardi. Shuning uchun nisbati saqlanadigan
+   yagona yo'l — bir tekis kichraytirish. */
+svg.lucide { transform: scale(.9); }
+
+/* Rejim almashganda ranglar yumshoq o'tsin */
+body, .card, aside, table, input, select {
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+
+/* Billz uslubidagi yumshoq scrollbar */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { @apply bg-line rounded-full; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+.card { @apply bg-panel rounded-xl2 shadow-card; }
+.side-link { @apply flex items-center gap-3 px-4 py-3 rounded-xl text-[0.9375rem] font-semibold text-muted hover:bg-brand-soft hover:text-brand transition-colors; }
+.side-link.active { @apply bg-brand-soft text-brand; }
+.tab-btn { @apply px-6 py-3 text-[0.9375rem] font-semibold text-muted rounded-xl transition-colors hover:text-ink; }
+.tab-btn.active { @apply bg-panel text-ink shadow-card; }
+.inp { @apply w-full rounded-xl border border-line bg-panel px-4 py-3 outline-none focus:border-brand focus:ring-4 focus:ring-brand-soft font-semibold; }
