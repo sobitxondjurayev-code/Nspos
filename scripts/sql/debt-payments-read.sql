@@ -21,6 +21,10 @@
 -- Hech narsa o'chirilmaydi, hech kimga yangi YOZISH huquqi
 -- berilmaydi: bu faqat O'QISH.
 
+-- Qayta ishga tushirsa ham xato bermasin (faqat SHU siyosat, boshqasiga
+-- tegilmaydi).
+drop policy if exists debt_payment_read on debt_payments;
+
 create policy debt_payment_read on debt_payments for select
   using (exists (select 1 from debts d
                   where d.id = debt_id and d.company_id = auth_company_id()));

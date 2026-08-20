@@ -748,6 +748,52 @@ katalogda ko'rinmaydi, tarixdagi foyda to'g'ri hisoblanadi.
 
 ---
 
+### Qarz to'lovlari ko'rinmasdi — o'qish huquqi (2026-08-21)
+
+Balansdagi "Mijozlardan olinadigan qarz" haqiqiydan **16 931.79 $ katta**
+turgan edi. Sabab hisobda emas, HUQUQDA: `debt_payments` jadvalida RLS
+yoqilgan, lekin faqat `debt_pay` (INSERT) siyosati bor edi — SELECT yo'q.
+
+Ya'ni bazada **16 000 ta to'lov yozuvi** (jami 1 613 523 $) turgan holda
+brauzer ularning BITTASINI ham ololmasdi. `lib/debtsData.js` qarzni
+`select "*, debt_payments(...)"` bilan o'qiydi, massiv esa doim bo'sh
+kelardi — demak har qarz "to'liq ochiq" bo'lib ko'rinardi.
+
+**Nima uchun sezilmagan:** xato chiqmaydi. PostgREST ruxsat yo'q deb
+xato bermaydi, shunchaki bo'sh massiv qaytaradi. Bu Billz'ning
+`/v3/order-search` tuzog'i bilan bir xil naqsh: "huquq yo'q" degani
+"ma'lumot yo'q" bo'lib ko'rinadi.
+
+Tuzatilgach (`scripts/sql/debt-payments-read.sql`), Billz qarzlari
+bo'yicha ochiq summa 67 862.11 → **50 930.32** bo'ldi (362 ta qarz).
+
+**Tekshiruvning ko'r nuqtasi.** Yangi `moslik.js` qoidasi qo'shildi —
+"Qarz: to'langan summa = to'lov yozuvlari". Lekin u terminalda bu
+xatoni TUTA OLMAYDI: `scripts/lib/yuk.mjs` qatorlarni SQL orqali
+o'qiydi, ya'ni RLS chetlab o'tiladi va terminalda hamma to'lov
+ko'rinadi. Huquq muammosi faqat ILOVA ICHIDA bilinadi.
+
+> **Qoida:** `npm run tekshir` "toza" degani "brauzerda ham toza"
+> degani EMAS. Tekshiruv hisob xatosini tutadi, huquq xatosini
+> tutmaydi. Yangi jadval qo'shilganda RLS siyosati ALOHIDA
+> tekshiriladi — buni SQL bilan qilish mumkin, brauzer shart emas:
+>
+> ```sql
+> begin;
+>   select set_config('request.jwt.claims',
+>     json_build_object('sub', (select id from profiles where role='owner' limit 1),
+>                       'role', 'authenticated')::text, true);
+>   set local role authenticated;
+>   select count(*) from <jadval>;
+> rollback;
+> ```
+
+**Shu naqsh bo'yicha qolgan bo'shliqlar** (hali tekshirilmagan):
+`customers`, `debts`, `usd_rates` da yozish siyosati yo'q, brauzer esa
+yozadi — yozuv jimgina rad etilishi mumkin.
+
+---
+
 ### Excel yuklamasi bazadan USTUN turadi (2026-08-19 da aniqlandi)
 
 To'rt modulda bir xil qator bor:
