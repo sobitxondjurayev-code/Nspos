@@ -94,7 +94,7 @@ function ShipmentEditor({ id, onBack, onChanged }) {
 
       <div className="grid grid-cols-[1fr_340px] gap-6 items-start">
         {/* Tovarlar */}
-        <div className="card overflow-hidden">
+        <div className="card overflow-auto max-h-[70vh]">
           <div className="flex items-center justify-between px-6 py-4 border-b border-line">
             <p className="font-extrabold">{t("Partiyadagi tovarlar")}</p>
             {!locked && (

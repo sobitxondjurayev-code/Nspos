@@ -105,7 +105,13 @@ body, .card, aside, table, input, select {
 *::-webkit-scrollbar-thumb { @apply bg-line rounded-full; }
 *::-webkit-scrollbar-track { background: transparent; }
 
-.card { @apply bg-panel rounded-xl2 shadow-card; }
+/* `border-transparent` — ko'rinmaydigan chegara ATAYLAB qo'yilgan.
+   To'rt joyda `hover:border-brand` yozilgan (StatCard, reports,
+   finance hub, management), lekin `.card` da border umuman yo'q edi
+   (`border-width: 0`) — ya'ni hover effekti hech qachon chiqmasdi va
+   kartochka bosiladigani bilinmasdi. Endi joy band turadi, hover'da
+   esa rang paydo bo'ladi; o'lcham o'zgarmaydi (sakrash bo'lmaydi). */
+.card { @apply bg-panel rounded-xl2 shadow-card border border-transparent; }
 .side-link { @apply flex items-center gap-3 px-4 py-3 rounded-xl text-[0.9375rem] font-semibold text-muted hover:bg-brand-soft hover:text-brand transition-colors; }
 .side-link.active { @apply bg-brand-soft text-brand; }
 .tab-btn { @apply px-6 py-3 text-[0.9375rem] font-semibold text-muted rounded-xl transition-colors hover:text-ink; }

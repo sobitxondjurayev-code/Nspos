@@ -192,7 +192,7 @@ export default function Management() {
 
       <div className="grid grid-cols-3 gap-6 mb-7">
         {/* Do'kon reytingi */}
-        <div className="card p-7 col-span-2">
+        <div className="card p-7 col-span-2 overflow-auto max-h-[70vh]">
           <h2 className="text-2xl font-extrabold mb-1">{t("Do'konlar kesimida")}</h2>
           <p className="text-sm text-muted font-semibold mb-5">
             {t("Umumkorxona xarajatlari tushum nisbatida taqsimlangan")}

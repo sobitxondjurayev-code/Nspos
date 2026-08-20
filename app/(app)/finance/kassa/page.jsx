@@ -410,7 +410,7 @@ export default function KassaPage() {
 
       {/* —— Kamomad nazorati —— */}
       {isOwner && control.ready && control.rows.some((r) => r.hasKpi) && (
-        <div className="card overflow-hidden mb-7">
+        <div className="card overflow-auto max-h-[70vh] mb-7">
           <div className="px-6 py-5 border-b border-line flex items-center gap-2">
             <Scale size={20} className="text-brand" />
             <p className="text-lg font-extrabold">{t("Kamomad nazorati")}</p>
@@ -478,7 +478,7 @@ export default function KassaPage() {
       )}
 
       {/* —— Harakatlar tarixi —— */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-auto max-h-[70vh]">
         <div className="px-6 py-5 border-b border-line">
           <p className="text-lg font-extrabold">{t("Harakatlar")}</p>
         </div>

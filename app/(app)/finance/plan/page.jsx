@@ -358,7 +358,7 @@ export default function FinancePlan() {
       </p>
 
       {/* —— Kassalar: qanchasi band —— */}
-      <div className="card overflow-hidden">
+      <div className="card overflow-auto max-h-[70vh]">
         <div className="px-6 py-5 border-b border-line">
           <p className="text-lg font-extrabold">{t("Qaysi kassada qancha bo'sh pul bor")}</p>
           <p className="text-sm text-muted font-semibold">
