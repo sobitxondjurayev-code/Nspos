@@ -30,12 +30,21 @@ create schema if not exists auth;
 -- Kim so'rayapti. Qo'yilmagan bo'lsa NULL — ya'ni hech narsa
 -- ko'rinmaydi. Xatoga yo'l qo'yilganda "hamma narsa ochiq" emas,
 -- "hech narsa ochiq emas" holatiga tushishi kerak.
+--
+-- IKKI manbani biladi, chunki bazaga ikki yo'ldan kelinadi:
+--   1. `request.jwt.claims` — PostgREST shu yerga JWT ichini yozadi
+--      (Supabase ham aynan shunday qiladi). Ilova shu yo'ldan keladi.
+--   2. `app.user_id` — to'g'ridan-to'g'ri ulanish (skriptlar,
+--      migratsiya, tekshiruv). JWT yasab o'tirish shart emas.
 create or replace function auth.uid()
 returns uuid
 language sql
 stable
 as $$
-  select nullif(current_setting('app.user_id', true), '')::uuid;
+  select coalesce(
+    nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub',
+    nullif(current_setting('app.user_id', true), '')
+  )::uuid;
 $$;
 
 -- Supabase'da `auth.role()` kirgan foydalanuvchi uchun
@@ -46,10 +55,7 @@ returns text
 language sql
 stable
 as $$
-  select case
-    when nullif(current_setting('app.user_id', true), '') is null then 'anon'
-    else 'authenticated'
-  end;
+  select case when auth.uid() is null then 'anon' else 'authenticated' end;
 $$;
 
 -- ── Foydalanuvchilar jadvali ──────────────────────────────────
