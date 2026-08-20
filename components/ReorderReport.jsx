@@ -316,6 +316,11 @@ export default function ReorderReport({ dataset }) {
             ))}
           </tbody>
         </table>
+        {shown.length > 300 && (
+          <p className="px-5 py-4 text-sm text-muted font-semibold border-t border-line">
+            {tt("Birinchi 300 tasi ko'rsatildi ({n} tadan) — filtrni toraytiring yoki Excelga chiqaring", { n: shown.length })}
+          </p>
+        )}
         {shown.length === 0 && (
           <p className="px-5 py-10 text-center text-muted font-semibold">
             {t("Buyurtma kerak bo'lgan tovar yo'q — zaxira yetarli.")}

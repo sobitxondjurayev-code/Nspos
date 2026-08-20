@@ -129,10 +129,14 @@ export default function KassaPage() {
         amount: e.amount, date: e.date, note: e.note, staffId: null,
         category: e.category, expense: true,
       }));
+    // Kesish shu yerda QILINMAYDI: aks holda komponent haqiqiy sonni
+    // bilmaydi va "60 tadan ko'pi ko'rsatilmadi" deb ayta olmaydi.
+    // Ilgari shunday edi — jadval jimgina 60 qatorda tugardi.
     return [...kassaOps, ...exp]
-      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
-      .slice(0, 60);
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   }, [tick, visible.join(), live]);
+
+  const OPS_LIMIT = 60;
 
   const refresh = () => setTick((v) => v + 1);
 
@@ -493,7 +497,7 @@ export default function KassaPage() {
             </tr>
           </thead>
           <tbody>
-            {ops.map((o) => {
+            {ops.slice(0, OPS_LIMIT).map((o) => {
               const out = o.kind === "out" || (o.kind === "transfer" && o.status === "approved");
               return (
                 <tr key={o.id} className="border-b border-line last:border-0 hover:bg-surface/70">
@@ -544,6 +548,12 @@ export default function KassaPage() {
             )}
           </tbody>
         </table>
+        {ops.length > OPS_LIMIT && (
+          <p className="px-6 py-4 text-sm text-muted font-semibold border-t border-line">
+            {tt("Oxirgi {k} harakat ko'rsatildi ({n} tadan) — to'liq ro'yxat kassa ichida, kunma-kun",
+                { k: OPS_LIMIT, n: ops.length })}
+          </p>
+        )}
       </div>
 
       {upload && (

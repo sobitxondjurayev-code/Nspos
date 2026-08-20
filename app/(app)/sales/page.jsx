@@ -360,6 +360,11 @@ export default function Sales() {
               )}
             </tbody>
           </table>
+          {sales.length > 100 && (
+            <p className="px-6 py-4 text-sm text-muted font-semibold border-t border-line">
+              {tt("Oxirgi 100 chek ko'rsatildi ({n} tadan) — kerakli chekni qidiruv orqali toping", { n: sales.length })}
+            </p>
+          )}
         </div>
       )}
 

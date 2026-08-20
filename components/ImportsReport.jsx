@@ -310,6 +310,11 @@ export default function ImportsReport({ dataset }) {
             ))}
           </tbody>
         </table>
+        {shown.length > 300 && (
+          <p className="px-5 py-4 text-sm text-muted font-semibold border-t border-line">
+            {tt("Birinchi 300 tasi ko'rsatildi ({n} tadan) — filtrni toraytiring yoki Excelga chiqaring", { n: shown.length })}
+          </p>
+        )}
       </div>
     </div>
   );
