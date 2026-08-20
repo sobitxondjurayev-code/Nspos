@@ -39,7 +39,21 @@ const cliReady = !token && (() => {
   catch { return false; }
 })();
 
-if (!ref || (!token && !cliReady)) {
+// Uchinchi yo'l: to'g'ridan-to'g'ri Postgres. `NSPOS_PG` berilsa
+// hammasidan ustun turadi.
+//
+// Nega kerak: `loadApp()` yigirmadan ortiq so'rovni BAROBAR yuboradi va
+// Supabase Management API limitiga uriladi — tekshiruv "Baza to'liq
+// o'qilmadi" deb to'xtaydi (2026-08-21 da shunday bo'ldi). Mahalliy
+// nusxada esa limit yo'q va javob bir necha barobar tez.
+//
+// Ikkinchi sabab: VPS'ga ko'chgach baza aynan shu yo'l bilan o'qiladi —
+// ya'ni bu vaqtinchalik chora emas, kelajakdagi asosiy yo'l.
+//
+//   NSPOS_PG="postgres://localhost/nspos_sinov" npm run tekshir
+const pgUrl = process.env.NSPOS_PG;
+
+if (!pgUrl && (!ref || (!token && !cliReady))) {
   console.error("Bazaga yo'l topilmadi. Yo .env.local ga SUPABASE_ACCESS_TOKEN qo'ying,");
   console.error("yo `supabase login && supabase link --project-ref <ref>` qiling.");
   process.exit(1);
@@ -60,6 +74,7 @@ delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 // uchun avval qayta urinamiz, keyin ham bo'lmasa — xato yuqoriga
 // chiqadi va tekshiruv butunlay to'xtaydi (pastdagi loadApp).
 export async function sql(query, urinish = 3) {
+  if (pgUrl) return sqlViaPsql(query);
   if (cliReady) return sqlViaCli(query);
 
   let oxirgi;
@@ -90,6 +105,17 @@ function sqlViaCli(query) {
   const parsed = JSON.parse(out);
   if (parsed.error) throw new Error(JSON.stringify(parsed.error).slice(0, 300));
   return parsed.rows ?? [];
+}
+
+// To'g'ridan-to'g'ri Postgres. Har qanday SELECT `json_agg` ichiga
+// o'raladi — natija CLI bilan bir xil ko'rinishda (obyektlar massivi)
+// qaytadi, ya'ni chaqiruvchi tomonda hech narsa o'zgarmaydi.
+function sqlViaPsql(query) {
+  const ichki = query.trim().replace(/;\s*$/, "");
+  const out = execFileSync("psql", [pgUrl, "-tAX", "-v", "ON_ERROR_STOP=1", "-c",
+    `select coalesce(json_agg(t), '[]'::json) from (${ichki}) t;`],
+    { encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+  return JSON.parse(out);
 }
 
 // Modul QAYSI USTUNLARNI so'rasa, tekshiruv ham aynan o'shani oladi.
