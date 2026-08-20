@@ -260,17 +260,32 @@ export default function FinanceOperations() {
                 </th>
               ))}
             </tr>
+            {/* JAMI — har ustun uchun ALOHIDA katak. Ilgari
+                `colSpan={cols.length - 1}` bilan summa OXIRGI katakka
+                qo'yilgan edi, lekin "Ustunlar" tugmasi ustunni surish va
+                yashirishga ruxsat beradi — Summa ko'chirilishi bilan jami
+                boshqa ustun ostida qolardi. Naqsh:
+                finance/plan/page.jsx:126 */}
             <tr className="bg-surface border-b-2 border-line">
-              <th className="px-4 py-4 font-extrabold text-left" colSpan={Math.max(1, cols.length - 1)}>
-                {t("Jami")}
-                <span className="ml-2 text-sm font-bold text-muted">
-                  {tt("{n} ta yozuv", { n: shown.length })}
-                </span>
-              </th>
-              <th className="px-4 py-4 text-right whitespace-nowrap">
-                <span className="text-ok font-extrabold">+{fmtUSD(totalIn)}</span>
-                <span className="block text-danger font-extrabold">−{fmtUSD(totalOut)}</span>
-              </th>
+              {cols.map((c, i) => (
+                <th key={c.key}
+                  className={`px-4 py-4 whitespace-nowrap ${c.right ? "text-right" : "text-left"}`}>
+                  {i === 0 && (
+                    <>
+                      <span className="font-extrabold">{t("Jami")}</span>
+                      <span className="ml-2 text-sm font-bold text-muted">
+                        {tt("{n} ta yozuv", { n: shown.length })}
+                      </span>
+                    </>
+                  )}
+                  {c.key === "amount" && (
+                    <>
+                      <span className="text-ok font-extrabold">+{fmtUSD(totalIn)}</span>
+                      <span className="block text-danger font-extrabold">−{fmtUSD(totalOut)}</span>
+                    </>
+                  )}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>

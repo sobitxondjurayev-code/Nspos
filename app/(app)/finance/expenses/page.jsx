@@ -561,23 +561,41 @@ export default function FinanceExpenses() {
                     ))}
                     <th className="px-4 py-4 bg-panel" />
                   </tr>
+                  {/* JAMI — har ustun uchun ALOHIDA katak.
+                      Ilgari `colSpan={expCols.length - 1}` bilan yozilgan
+                      va summa OXIRGI katakka qo'yilgan edi. Lekin
+                      "Ustunlar" tugmasi foydalanuvchiga ustunni surish va
+                      yashirishga ruxsat beradi (`category` dan boshqasi
+                      qulflanmagan) — Summa ko'chirilishi bilan jami
+                      butunlay boshqa ustun ostida qolardi va buni hech
+                      narsa ko'rsatmasdi. Naqsh finance/plan/page.jsx:126
+                      dan olindi. */}
                   <tr className="bg-surface border-b-2 border-line">
-                    <th className="px-4 py-4 font-extrabold text-left" colSpan={Math.max(1, expCols.length - 1)}>
-                      {t("Jami")}
-                      <span className="ml-2 text-sm font-bold text-muted">
-                        {tt("{n} ta yozuv", { n: shownExp.length })}
-                      </span>
-                    </th>
-                    <th className="px-4 py-4 text-right whitespace-nowrap">
-                      <span className="text-lg font-extrabold text-danger">−{fmtSom(shownSom)}</span>
-                      {/* O'tkazma jamiga kirmaydi — xarajat emas, pul
-                          kompaniyaga ko'chadi. Lekin ko'rinib turadi. */}
-                      {shownTransferCount > 0 && (
-                        <span className="block text-sm font-bold text-muted">
-                          {tt("+ Rahbarga o'tkazma: {s}", { s: fmtSom(shownTransferSom) })}
-                        </span>
-                      )}
-                    </th>
+                    {expCols.map((c, i) => (
+                      <th key={c.key}
+                        className={`px-4 py-4 whitespace-nowrap ${c.right ? "text-right" : "text-left"}`}>
+                        {i === 0 && (
+                          <>
+                            <span className="font-extrabold">{t("Jami")}</span>
+                            <span className="ml-2 text-sm font-bold text-muted">
+                              {tt("{n} ta yozuv", { n: shownExp.length })}
+                            </span>
+                          </>
+                        )}
+                        {c.key === "amount" && (
+                          <>
+                            <span className="text-lg font-extrabold text-danger">−{fmtSom(shownSom)}</span>
+                            {/* O'tkazma jamiga kirmaydi — xarajat emas, pul
+                                kompaniyaga ko'chadi. Lekin ko'rinib turadi. */}
+                            {shownTransferCount > 0 && (
+                              <span className="block text-sm font-bold text-muted">
+                                {tt("+ Rahbarga o'tkazma: {s}", { s: fmtSom(shownTransferSom) })}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </th>
+                    ))}
                     <th className="px-4 py-4" />
                   </tr>
                 </thead>
