@@ -59,7 +59,11 @@ uchun: tahlil, KPI va oylik, ustalar reytingi, moliya.
 
 - Baza: Supabase — migratsiya `node scripts/sql.mjs -f <fayl>.sql`, kalit
   bo'lmasa `supabase db query --linked -f <fayl>.sql`
-- Sayt: https://nspos.vercel.app (`npx vercel --prod`)
+- Sayt: **https://nspos-psi.vercel.app** (`npx vercel --prod`)
+  Eski manzil `nspos.vercel.app` BOSHQA Vercel hisobida qolgan — u yerdagi
+  kod eski, lekin BAZA BIR XIL. Ikkalasi ochiq turmasin: eski sayt
+  Mijozlar/Qarzlar sahifalarini hamon Excel'dan o'qiydi va o'sha bazaga
+  yozadi. Yangi manzil `techjadid2-debug` hisobida.
 - Ikki valyuta: savdo/moliya dollarda, oylik va xarajat so'mda — kurs
   `companies.usd_rate` da, tarixi `usd_rates` jadvalida
 - Ma'lumot Billz'dan **API orqali** keladi (2026-08-19 dan):

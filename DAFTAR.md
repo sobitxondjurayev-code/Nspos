@@ -656,6 +656,32 @@ o'raydi — yangi bosqich qo'shilganda "dry ni unutish" mumkin emas.
 
 ---
 
+### Saytga chiqarildi — yangi manzil (2026-08-20)
+
+`nspos.vercel.app` **boshqa Vercel hisobida** ekan: CLI `techjadid2-debug`
+sifatida kirgan va o'sha hisobda nspos loyihasi yo'q. Shuning uchun yangi
+loyiha ochildi — **https://nspos-psi.vercel.app**.
+
+**Diqqat: ikki sayt, bitta baza.** Eski manzil hali ishlayotgan bo'lsa,
+u eski kod bilan AYNAN SHU Supabase bazasiga yozadi va Mijozlar/Qarzlar
+sahifalarini hamon Excel yuklamasidan o'qiydi. Chalkashmaslik uchun
+bittasi tanlanishi kerak.
+
+**Deploy tafsilotlari.** Vercel'ning "Deployment Protection"i yangi
+loyihada yoqiq bo'ladi: `nspos-<hash>-...vercel.app` ko'rinishidagi
+manzillar Vercel loginini so'raydi (302 → vercel.com/sso-api), lekin
+DOIMIY ishlab chiqarish manzili (`nspos-psi.vercel.app`) ochiq. Ya'ni
+foydalanuvchiga o'shani berish kerak, deploy chiqargan uzun havolani emas.
+
+Env kalitlari (production + preview + development): `BILLZ_SECRET_TOKEN`,
+`BILLZ_API_URL`, `CRON_SECRET`, `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+Saytda sinaldi: ruxsatsiz `/api/billz/sync` → 401, sir bilan → tashxis
+va inkremental sinxronizatsiya 30 soniyada (23 tovar, 3 mijoz).
+
+---
+
 ### Cheklarni tortish: sakkizta tuzoq (2026-08-19)
 
 Sotuvlar huquqi ochilgach 8 993 chek va 34 489 chek qatori tortildi
@@ -818,9 +844,11 @@ statistika nolga tushib qolardi.
 - [ ] Saytga chiqarish kutib turibdi (2026-08-19 qarori): hammasi
       to'liq ishlaganidan keyin bir yo'la. Vercel'ga qo'shiladigan
       kalitlar: `BILLZ_SECRET_TOKEN`, `CRON_SECRET`.
-- [ ] Papka git repo emas (zip'dan chiqqan) — chiqarishdan oldin
-      `git init` yoki GitHub repoga ulash kerak, aks holda CLAUDE.md
-      dagi "`git status` ni tekshir" qoidasi bajarilmaydi.
+- [x] ~~Papka git repo emas~~ — `git init` qilindi, boshlang'ich kommit bor.
+- [ ] GitHub'ga ulash: `gh auth login` (foydalanuvchi qiladi), keyin
+      `git remote add origin` + `git push`.
+- [ ] Eski `nspos.vercel.app` bilan nima qilish — o'chirish yoki yangi
+      koddan qayta chiqarish. Ikkalasi bitta bazaga yozadi.
 - [ ] Mijozlar ro'yxatida 4 183 ta dublikat bor (Excel importidan qolgan).
       **O'chirilmaydi** — foydalanuvchi qarori. Kerak bo'lsa ro'yxatda
       birlashtirib ko'rsatiladi, bazada ikkalasi ham qoladi.
