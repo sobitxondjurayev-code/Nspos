@@ -16,6 +16,7 @@
 //   • har kecha — Vercel Cron (vercel.json), soat 02:00 UTC
 //   • qo'lda    — Sozlamalardagi "Zaxira" tugmasi (egasi bosadi)
 import { createClient } from "@supabase/supabase-js";
+import { BACKUP_TABLES } from "@/lib/backupTables";
 
 export const maxDuration = 60;
 
@@ -26,19 +27,9 @@ const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TG_CHAT = process.env.TELEGRAM_CHAT_ID;
 const DRIVE_HOOK = process.env.DRIVE_BACKUP_URL;   // Google Apps Script veb-ilova
 
-// Zaxiraga tushadigan jadvallar. Yangi jadval qo'shilsa shu yerga ham
-// qo'shiladi — aks holda u zaxirasiz qolib ketadi.
-const TABLES = [
-  "companies", "stores", "profiles", "staff_directory",
-  "customers", "debts", "debt_payments",
-  "kpi_day", "kpi_plan", "kpi_assign", "nps_records",
-  "expenses", "kassa_ops", "payouts", "payroll_payments",
-  "usd_rates", "store_plans", "suppliers", "supplier_invoices", "supplier_payments",
-  "shipments", "shipment_items", "shipment_costs",
-  "products", "stock", "sales", "sale_items",
-  "service_orders", "service_items", "warehouse_items", "warehouse_operations",
-  "shifts", "doc_counters", "invites",
-];
+// Jadvallar ro'yxati `lib/backupTables.js` da — bitta joyda, chunki u
+// tiklash yo'liga va tekshiruvga ham kerak (ikki nusxa ajralib ketadi).
+const TABLES = BACKUP_TABLES;
 
 const iso = (d) => d.toISOString().slice(0, 10);
 
