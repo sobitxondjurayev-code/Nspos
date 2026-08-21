@@ -1,7 +1,7 @@
 "use client";
 import { t, tt } from "@/lib/i18n";
 import { useMemo, useState } from "react";
-import { Plus, Search, Pencil, Trash2, X, Receipt, Wallet, PiggyBank } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, X, Receipt, Wallet, PiggyBank, Users } from "lucide-react";
 import { demoStores, fmtUSD } from "@/lib/demoData";
 import {
   listCustomers, getCustomer, addCustomer, updateCustomer, removeCustomer, totalPurchasesOf,
@@ -14,6 +14,8 @@ import CustomerModal from "@/components/CustomerModal";
 import FilterBar, { applyFilters } from "@/components/FilterBar";
 import DebtPaymentModal from "@/components/DebtPaymentModal";
 import BalanceModal from "@/components/BalanceModal";
+import DataTable from "@/components/ui/DataTable";
+import Button from "@/components/ui/Button";
 
 const fmtWhen = (iso) => {
   const d = new Date(iso);
@@ -324,69 +326,75 @@ export default function Clients() {
         fields={FIELDS} filters={filters} onChange={setFilters}
       />
 
-      <p className="text-sm text-muted font-semibold mb-4">
-        {shown.length} / {items.length} {t("mijoz")}
-      </p>
-
-      <div className="card overflow-hidden">
-        <table className="w-full text-[0.9375rem]">
-          <thead>
-            <tr className="text-left text-muted text-sm border-b border-line">
-              <th className="px-6 py-4 font-bold">{t("Mijoz")}</th>
-              <th className="px-4 py-4 font-bold text-center">{t("Xaridlar")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Jami xarid")}</th>
-              <th className="px-4 py-4 font-bold">{t("Daraja")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Balans")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Cashback")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Qarzdorlik")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("O'rtacha qaytarish")}</th>
-              <th className="px-4 py-4"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map(({ customer: c, orders, spent, debt }) => (
-              <tr key={c.id} onClick={() => setDrawer(c)}
-                className="border-b border-line last:border-0 hover:bg-surface/70 cursor-pointer">
-                <td className="px-6 py-4">
-                  <p className="font-bold">{c.name}</p>
-                  <p className="text-sm text-muted">{c.phone}</p>
-                </td>
-                <td className="px-4 py-4 text-center font-bold">{orders}</td>
-                <td className="px-4 py-4 text-right font-extrabold">{fmtUSD(spent)}</td>
-                <td className="px-4 py-4">
-                  {(() => { const tr = tierOf(totalPurchasesOf(c)); return (
-                    <span className="text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap"
-                      style={{ background: tr.color + "22", color: tr.color }}>{t(tr.name)}</span>
-                  ); })()}
-                </td>
-                <td className="px-4 py-4 text-right font-bold">
-                  {(c.balance ?? 0) > 0 ? fmtUSD(c.balance) : <span className="text-muted">—</span>}
-                </td>
-                <td className="px-4 py-4 text-right font-semibold text-ok">{fmtUSD(c.cashback)}</td>
-                <td className="px-4 py-4 text-right font-extrabold">
-                  {debt.openAmount > 0
-                    ? <span className="text-danger">{fmtUSD(debt.openAmount)}</span>
-                    : <span className="text-muted">—</span>}
-                </td>
-                <td className="px-4 py-4 text-right font-bold text-muted">
-                  {debt.weightedAvgDays != null ? tt("{n} kun", { n: debt.weightedAvgDays }) : "—"}
-                </td>
-                <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex justify-end gap-1">
-                    <button onClick={() => setModal({ mode: "edit", customer: c })}
-                      className="p-2 rounded-lg text-muted hover:bg-brand-soft hover:text-brand"><Pencil size={17} /></button>
-                    <button onClick={() => del(c)}
-                      className="p-2 rounded-lg text-muted hover:bg-danger-soft hover:text-danger"><Trash2 size={17} /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {shown.length === 0 && (
-              <tr><td colSpan={9} className="px-6 py-12 text-center text-muted font-semibold">{t("Hech narsa topilmadi")}</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* 9 087 mijoz bir vaqtda chizilmaydi — `limit` bilan
+          chegaralanadi va nechtasi yashiringani AYTILADI. Ilgari
+          chegara umuman yo'q edi: telefonda bu sahifa ochilmasdi. */}
+      <DataTable
+        id="clients-list"
+        name={t("Mijozlar")}
+        rows={shown}
+        rowKey={(r) => r.customer.id}
+        onRowClick={(r) => setDrawer(r.customer)}
+        boshSort={{ key: "spent", dir: "desc" }}
+        limit={200}
+        count={items.length}
+        jamiIzoh={tt("{a} / {b} mijoz", { a: shown.length.toLocaleString("ru-RU"), b: items.length.toLocaleString("ru-RU") })}
+        minWidth="76rem"
+        empty={{ icon: Users, title: "Hech narsa topilmadi",
+                 hint: "Qidiruv yoki filtrni tozalab ko'ring" }}
+        columns={[
+          { key: "nom", label: "Mijoz", locked: true, value: (r) => r.customer.name,
+            cell: (r) => (
+              <>
+                <p className="font-bold">{r.customer.name}</p>
+                <p className="text-sm text-muted">{r.customer.phone}</p>
+              </>
+            ) },
+          { key: "orders", label: "Xaridlar", right: true, value: (r) => r.orders,
+            cell: (r) => <span className="font-bold">{r.orders}</span>,
+            total: (rs) => rs.reduce((a, r) => a + r.orders, 0).toLocaleString("ru-RU") },
+          { key: "spent", label: "Jami xarid", right: true, value: (r) => r.spent,
+            cell: (r) => <span className="font-extrabold">{fmtUSD(r.spent)}</span>,
+            total: (rs) => fmtUSD(rs.reduce((a, r) => a + r.spent, 0)) },
+          { key: "daraja", label: "Daraja",
+            value: (r) => totalPurchasesOf(r.customer),
+            cell: (r) => {
+              const tr = tierOf(totalPurchasesOf(r.customer));
+              return <span className="text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap"
+                style={{ background: tr.color + "22", color: tr.color }}>{t(tr.name)}</span>;
+            } },
+          { key: "balans", label: "Balans", right: true, value: (r) => r.customer.balance ?? 0,
+            cell: (r) => ((r.customer.balance ?? 0) > 0
+              ? <span className="font-bold">{fmtUSD(r.customer.balance)}</span>
+              : <span className="text-muted">—</span>),
+            total: (rs) => fmtUSD(rs.reduce((a, r) => a + (r.customer.balance ?? 0), 0)) },
+          { key: "cashback", label: "Cashback", right: true, value: (r) => r.customer.cashback ?? 0,
+            cell: (r) => <span className="font-semibold text-ok">{fmtUSD(r.customer.cashback)}</span>,
+            total: (rs) => <span className="text-ok">{fmtUSD(rs.reduce((a, r) => a + (r.customer.cashback ?? 0), 0))}</span> },
+          { key: "qarz", label: "Qarzdorlik", right: true, value: (r) => r.debt.openAmount,
+            cell: (r) => (r.debt.openAmount > 0
+              ? <span className="font-extrabold text-danger">{fmtUSD(r.debt.openAmount)}</span>
+              : <span className="text-muted">—</span>),
+            total: (rs) => <span className="text-danger">{fmtUSD(rs.reduce((a, r) => a + r.debt.openAmount, 0))}</span> },
+          { key: "qaytarish", label: "O'rtacha qaytarish", right: true,
+            value: (r) => r.debt.weightedAvgDays ?? null,
+            cell: (r) => <span className="font-bold text-muted">
+              {r.debt.weightedAvgDays != null ? tt("{n} kun", { n: r.debt.weightedAvgDays }) : "—"}</span> },
+          {
+            key: "harakat", label: "Harakat", harakat: true, right: true, width: "7rem",
+            cell: (r) => (
+              <span onClick={(e) => e.stopPropagation()} className="flex justify-end gap-1">
+                <Button olcham="kichik" korinish="yassi" icon={Pencil}
+                  onClick={() => setModal({ mode: "edit", customer: r.customer })}
+                  className="text-muted hover:text-brand" />
+                <Button olcham="kichik" korinish="yassi" icon={Trash2}
+                  onClick={() => del(r.customer)}
+                  className="text-muted hover:text-danger" />
+              </span>
+            ),
+          },
+        ]}
+      />
 
       {modal && (
         <CustomerModal

@@ -9,6 +9,8 @@ import {
 import ProductModal from "@/components/ProductModal";
 import FilterBar, { applyFilters } from "@/components/FilterBar";
 import StatsStrip from "@/components/StatsStrip";
+import DataTable from "@/components/ui/DataTable";
+import Button from "@/components/ui/Button";
 
 export default function Products() {
   const [items, setItems] = useState(listProducts);
@@ -124,60 +126,60 @@ export default function Products() {
       </p>
 
       {/* Jadval */}
-      <div className="card overflow-hidden">
-        <table className="w-full text-[0.9375rem]">
-          <thead>
-            <tr className="text-left text-muted text-sm border-b border-line">
-              <th className="px-6 py-4 font-bold">{t("Tovar")}</th>
-              <th className="px-4 py-4 font-bold">{t("Kategoriya")}</th>
-              <th className="px-4 py-4 font-bold">{t("Shtrix-kod")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Tannarx")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Sotuv narxi")}</th>
-              {demoStores.map((s) => (
-                <th key={s.id} className="px-3 py-4 font-bold text-center">{s.name.replace("NScamera ", "")}</th>
-              ))}
-              <th className="px-4 py-4 font-bold text-center">{t("Jami")}</th>
-              <th className="px-4 py-4"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((p) => {
-              const total = totalQty(p);
-              return (
-                <tr key={p.id} className="border-b border-line last:border-0 hover:bg-surface/70">
-                  <td className="px-6 py-4">
-                    <p className="font-bold">{p.name}</p>
-                    <p className="text-sm text-muted">{p.sku}</p>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className="bg-brand-soft text-brand text-sm font-bold px-3 py-1 rounded-lg">{catName(p.categoryId)}</span>
-                  </td>
-                  <td className="px-4 py-4 font-mono text-sm text-muted">{p.barcode}</td>
-                  <td className="px-4 py-4 text-right font-semibold text-muted">{p.costPrice.toFixed(2)}</td>
-                  <td className="px-4 py-4 text-right font-extrabold">{p.salePrice.toFixed(2)} $</td>
-                  {demoStores.map((s) => (
-                    <td key={s.id} className="px-3 py-4 text-center font-bold">
-                      <span className={p.stock[s.id] === 0 ? "text-danger" : ""}>{p.stock[s.id] ?? 0}</span>
-                    </td>
-                  ))}
-                  <td className="px-4 py-4 text-center font-extrabold">{total}</td>
-                  <td className="px-4 py-4">
-                    <div className="flex justify-end gap-1">
-                      <button onClick={() => setModal({ mode: "edit", product: p })}
-                        className="p-2 rounded-lg text-muted hover:bg-brand-soft hover:text-brand"><Pencil size={17} /></button>
-                      <button onClick={() => del(p)}
-                        className="p-2 rounded-lg text-muted hover:bg-danger-soft hover:text-danger"><Trash2 size={17} /></button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-            {filtered.length === 0 && (
-              <tr><td colSpan={9} className="px-6 py-12 text-center text-muted font-semibold">{t("Hech narsa topilmadi")}</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        id="products-list"
+        name={t("Tovarlar")}
+        rows={filtered}
+        rowKey={(p) => p.id}
+        boshSort={{ key: "nom", dir: "asc" }}
+        limit={200}
+        minWidth="72rem"
+        empty={{ icon: Package, title: "Hech narsa topilmadi",
+                 hint: "Qidiruv yoki filtrni tozalab ko'ring" }}
+        columns={[
+          { key: "nom", label: "Tovar", locked: true, value: (p) => p.name,
+            cell: (p) => (
+              <>
+                <p className="font-bold">{p.name}</p>
+                <p className="text-sm text-muted">{p.sku}</p>
+              </>
+            ) },
+          { key: "kategoriya", label: "Kategoriya", value: (p) => catName(p.categoryId),
+            cell: (p) => <span className="bg-brand-soft text-brand text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap">
+              {catName(p.categoryId)}</span> },
+          { key: "barcode", label: "Shtrix-kod", value: (p) => p.barcode,
+            cell: (p) => <span className="font-mono text-sm text-muted">{p.barcode}</span> },
+          /* Ilgari bu ikki ustun `toFixed(2)` bilan chizilardi: tannarx
+             VALYUTASIZ ("197.00"), sotuv narxi esa minglik ajratgichsiz
+             ("1234.50 $"). Endi ikkalasi ham umumiy formatlovchidan. */
+          { key: "cost", label: "Tannarx", right: true, value: (p) => p.costPrice,
+            cell: (p) => <span className="font-semibold text-muted">{fmtUSD(p.costPrice)}</span> },
+          { key: "price", label: "Sotuv narxi", right: true, value: (p) => p.salePrice,
+            cell: (p) => <span className="font-extrabold">{fmtUSD(p.salePrice)}</span> },
+          ...demoStores.map((st) => ({
+            key: `st-${st.id}`, label: st.name.replace("NScamera ", ""), right: true,
+            value: (p) => p.stock[st.id] ?? 0,
+            cell: (p) => <span className={`font-bold ${p.stock[st.id] === 0 ? "text-danger" : ""}`}>
+              {p.stock[st.id] ?? 0}</span>,
+            total: (rs) => rs.reduce((a, p) => a + (p.stock[st.id] ?? 0), 0).toLocaleString("ru-RU"),
+          })),
+          { key: "jami", label: "Jami", right: true, value: (p) => totalQty(p),
+            cell: (p) => <span className="font-extrabold">{totalQty(p)}</span>,
+            total: (rs) => rs.reduce((a, p) => a + totalQty(p), 0).toLocaleString("ru-RU") },
+          {
+            key: "harakat", label: "Harakat", harakat: true, right: true, width: "7rem",
+            cell: (p) => (
+              <span className="flex justify-end gap-1">
+                <Button olcham="kichik" korinish="yassi" icon={Pencil}
+                  onClick={() => setModal({ mode: "edit", product: p })}
+                  className="text-muted hover:text-brand" />
+                <Button olcham="kichik" korinish="yassi" icon={Trash2}
+                  onClick={() => del(p)} className="text-muted hover:text-danger" />
+              </span>
+            ),
+          },
+        ]}
+      />
 
       {modal && (
         <ProductModal
