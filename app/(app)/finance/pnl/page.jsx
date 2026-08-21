@@ -81,6 +81,12 @@ function PnlView({ range, rows }) {
           hint={tt("Marja {n}%", { n: p.netMargin })} />
       </div>
 
+      {/* Sharshara: tushumdan sof foydagacha pul qayerda kamayadi.
+          U `profitAndLoss` ning to'liq obyektini kutadi, shuning
+          uchun AYNAN shu komponentda turishi shart — pastdagi
+          "Billz bilan solishtirish" bo'limida `p` umuman yo'q. */}
+      <PnlWaterfall pnl={p} />
+
       <div className="card p-8 max-w-3xl">
         <h2 className="text-xl font-extrabold mb-4">{t("Foyda va zarar hisoboti")}</h2>
 
@@ -301,7 +307,6 @@ function BillzCompare({ uploads }) {
       </div>
 
       <h2 className="text-2xl font-extrabold mb-4">{t("Do'konlar kesimida")}</h2>
-      <PnlWaterfall pnl={p} />
 
       {/* Do'kon kesimi. Ilgari bu jadvalda "Jami" ham, saralash ham,
           Excel ham yo'q edi — holbuki rahbar birinchi navbatda

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "tekshir": "node --import ./scripts/lib/register.mjs --no-warnings scripts/tekshir.mjs",
-    "billz": "node --import ./scripts/lib/register.mjs --no-warnings scripts/billz-sync.mjs"
+    "billz": "node --import ./scripts/lib/register.mjs --no-warnings scripts/billz-sync.mjs",
+    "nomlar": "eslint --config scripts/eslint-nomlar.mjs lib components app"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
@@ -21,6 +22,7 @@
   },
   "devDependencies": {
     "autoprefixer": "^10.4.19",
+    "eslint": "^9.39.5",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4"
   }

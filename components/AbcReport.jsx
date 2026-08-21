@@ -6,6 +6,12 @@ import FilterBar, { applyFilters } from "@/components/FilterBar";
 import { findColumn } from "@/lib/analyses";
 import { numberOf, textOf } from "@/lib/datasets";
 import ParetoChart from "@/components/finance/ParetoChart";
+// Bu to'rttasi ISHLATILARDI, lekin import qilinmagan edi — sahifa
+// brauzerda "useColumns is not defined" bilan qulardi.
+import { SlidersHorizontal } from "lucide-react";
+import { useColumns } from "@/components/useColumns";
+import ColumnSettings from "@/components/ColumnSettings";
+import TotalsRow from "@/components/TotalsRow";
 
 // ══════════════════════════════════════════════════════════════
 // ABC TAHLILI

@@ -25,19 +25,25 @@ SERVER="${NSPOS_SERVER:-root@169.58.216.246}"
 KALIT="${NSPOS_KEY:-$HOME/.ssh/nspos}"
 YOL="/opt/nspos/app"
 
-echo "── 1/4 Fayllar ko'chirilmoqda → $SERVER:$YOL"
+echo "── 1/5 Import qilinmagan nomlar tekshirilmoqda"
+# `next build` bu xatoni KO'RMAYDI: webpack import qilinmagan nomni
+# global deb hisoblaydi. Sayt esa brauzerda ochilmay qoladi.
+npm run --silent nomlar || { echo "   ✗ import xatosi — chiqarilmadi"; exit 1; }
+echo "   ✓ toza"
+
+echo "── 2/5 Fayllar ko'chirilmoqda → $SERVER:$YOL"
 rsync -az --delete -e "ssh -i $KALIT" \
   --exclude node_modules --exclude .next --exclude .git \
   --exclude .tmp --exclude '.env*' \
   ./ "$SERVER:$YOL/"
 
-echo "── 2/4 Qurilmoqda (npm ci + next build)"
+echo "── 3/5 Qurilmoqda (npm ci + next build)"
 ssh -i "$KALIT" "$SERVER" "cd $YOL && npm ci --silent && npm run build" 2>&1 | tail -25
 
-echo "── 3/4 Qayta ishga tushirilmoqda"
+echo "── 4/5 Qayta ishga tushirilmoqda"
 ssh -i "$KALIT" "$SERVER" "systemctl restart nspos && sleep 3 && systemctl is-active nspos"
 
-echo "── 4/4 Sahifalar tekshirilmoqda"
+echo "── 5/5 Sahifalar tekshirilmoqda"
 # `systemctl is-active` qayta-qayta o'chib yonayotgan xizmatni ham
 # "active" deb ko'rsatadi — shuning uchun HAQIQIY so'rov yuboriladi.
 ssh -i "$KALIT" "$SERVER" 'bash -s' <<'UZOQ'
@@ -60,4 +66,10 @@ else
 fi
 [ "$xato" -eq 0 ] && echo "   ── hammasi joyida" || { echo "   ── $xato ta muammo"; exit 1; }
 UZOQ
+# HAQIQIY brauzer. Javob kodi hech narsani isbotlamaydi — 2026-08-22
+# da hamma sahifa 200 qaytarib turgan holda sayt brauzerda umuman
+# ochilmasdi.
+echo "── Brauzerda ochilmoqda"
+bash "$(dirname "$0")/brauzer-tekshir.sh" "http://${SERVER#*@}" || exit 1
+
 echo "✓ Tayyor: http://169.58.216.246"

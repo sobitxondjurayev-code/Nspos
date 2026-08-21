@@ -3,6 +3,17 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getUser, setUser as applyUser, setUserFromProfile } from "@/lib/auth";
 import { supabase, DEMO_MODE } from "@/lib/db";
+// DIQQAT: bu ikkisi 2026-08-22 gacha IMPORT QILINMAGAN edi. Fayl
+// Supabase Auth'dan o'z tizimimizga o'tkazilganda `supabase.auth.
+// getSession()` o'rniga `sessiyaOl()` yozilgan, lekin import
+// qo'shilmagan. Natijada BUTUN SAYT brauzerda ochilmasdi:
+// "ReferenceError: sessiyaOl is not defined".
+//
+// Serverdagi tekshiruv buni KO'RMAGAN: `curl` 200 qaytaradi, chunki
+// Next.js HTML qobiqni beradi — ishdan chiqish esa brauzerda,
+// hidratsiyada bo'ladi. Shu sabab endi chiqarishda haqiqiy brauzer
+// ochiladi (`scripts/server/brauzer-tekshir.sh`).
+import { sessiyaOl, ozgarishda, chiqish } from "@/lib/sessiya";
 
 const AuthCtx = createContext({ user: getUser(), ready: DEMO_MODE, setRole: () => {}, signOut: () => {} });
 export const useAuth = () => useContext(AuthCtx);
