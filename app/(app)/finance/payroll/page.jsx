@@ -13,6 +13,8 @@ import {
 import { addOp, COMPANY } from "@/lib/kassaData";
 import { useAuth } from "@/components/AuthProvider";
 import StatCard from "@/components/finance/StatCard";
+import DataTable from "@/components/ui/DataTable";
+import Button from "@/components/ui/Button";
 
 export default function FinancePayroll() {
   const { user } = useAuth();
@@ -163,83 +165,76 @@ export default function FinancePayroll() {
 
       {/* Xodimlar */}
       <h2 className="text-2xl font-extrabold mb-4">{t("Xodimlar bo'yicha")}</h2>
-      <div className="card overflow-auto max-h-[70vh]">
-        <table className="w-full text-[0.9375rem]">
-          <thead>
-            <tr className="[&>th]:sticky [&>th]:top-0 [&>th]:z-20 text-left text-muted text-sm border-b border-line [&>th]:bg-panel">
-              <th className="px-6 py-4 font-bold">{t("Xodim")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Qat'iy")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Shaxsiy sotuv")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Foiz")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Xizmat ulushi")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Bonus")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Jami")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("To'langan")}</th>
-              <th className="px-6 py-4"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
+      <DataTable
+        id="payroll-staff"
+        name={t("Ish haqi")}
+        rows={rows}
+        rowKey={(r) => r.staff.id}
+        boshSort={{ key: "total", dir: "desc" }}
+        minWidth="72rem"
+        jamiIzoh={tt("{n} ta xodim", { n: rows.length })}
+        empty={{ title: "Bu davrda hisoblanadigan ish haqi yo'q" }}
+        columns={[
+          { key: "xodim", label: "Xodim", locked: true, value: (r) => r.staff.name,
+            cell: (r) => (
+              <>
+                <p className="font-bold">{r.staff.name}</p>
+                <p className="text-sm text-muted">{t(ROLES[r.staff.role]?.label ?? r.staff.role)}</p>
+              </>
+            ) },
+          { key: "fixed", label: "Qat'iy", right: true, value: (r) => r.fixed,
+            cell: (r) => <span className="font-semibold">{fmtUSD(r.fixed)}</span>,
+            total: (rs) => fmtUSD(rs.reduce((a, r) => a + r.fixed, 0)) },
+          { key: "personalSales", label: "Shaxsiy sotuv", right: true, value: (r) => r.personalSales,
+            cell: (r) => <span className="font-semibold text-muted">{r.personalSales > 0 ? fmtUSD(r.personalSales) : "—"}</span>,
+            total: (rs) => <span className="text-muted">{fmtUSD(rs.reduce((a, r) => a + r.personalSales, 0))}</span> },
+          { key: "salesBonus", label: "Foiz", right: true, value: (r) => r.salesBonus,
+            cell: (r) => <span className="font-semibold text-ok">{r.salesBonus > 0 ? fmtUSD(r.salesBonus) : "—"}</span>,
+            total: (rs) => <span className="text-ok">{fmtUSD(rs.reduce((a, r) => a + r.salesBonus, 0))}</span> },
+          { key: "serviceShare", label: "Xizmat ulushi", right: true, value: (r) => r.serviceShare,
+            cell: (r) => (r.serviceShare > 0
+              ? <span className="font-semibold text-ok" title={tt("{n} buyurtma", { n: r.serviceOrders })}>{fmtUSD(r.serviceShare)}</span>
+              : <span className="text-muted">—</span>),
+            total: (rs) => <span className="text-ok">{fmtUSD(rs.reduce((a, r) => a + r.serviceShare, 0))}</span> },
+          { key: "planBonus", label: "Bonus", right: true, value: (r) => r.planBonus,
+            cell: (r) => <span className="font-semibold text-warn">{r.planBonus > 0 ? fmtUSD(r.planBonus) : "—"}</span>,
+            total: (rs) => <span className="text-warn">{fmtUSD(rs.reduce((a, r) => a + r.planBonus, 0))}</span> },
+          { key: "total", label: "Jami", right: true, value: (r) => r.total,
+            cell: (r) => <span className="font-extrabold">{fmtUSD(r.total)}</span>,
+            total: (rs) => <span className="text-lg">{fmtUSD(rs.reduce((a, r) => a + r.total, 0))}</span> },
+          { key: "paid", label: "To'langan", right: true,
+            value: (r) => paidFor(r.staff.id, range.from, range.to),
+            cell: (r) => {
+              const already = paidFor(r.staff.id, range.from, range.to);
+              return already > 0
+                ? <span className="font-semibold text-ok">{fmtUSD(already)}</span>
+                : <span className="text-muted">—</span>;
+            },
+            total: (rs) => <span className="text-ok">
+              {fmtUSD(rs.reduce((a, r) => a + paidFor(r.staff.id, range.from, range.to), 0))}
+            </span> },
+          {
+            key: "harakat", label: "Harakat", harakat: true, right: true, width: "11rem",
+            cell: (r) => {
               const already = paidFor(r.staff.id, range.from, range.to);
               const left = +(r.total - already).toFixed(2);
-              return (
-                <tr key={r.staff.id} className="border-b border-line last:border-0 hover:bg-surface/70">
-                  <td className="px-6 py-4">
-                    <p className="font-bold">{r.staff.name}</p>
-                    <p className="text-sm text-muted">{t(ROLES[r.staff.role]?.label ?? r.staff.role)}</p>
-                  </td>
-                  <td className="px-4 py-4 text-right font-semibold">{fmtUSD(r.fixed)}</td>
-                  <td className="px-4 py-4 text-right font-semibold text-muted">
-                    {r.personalSales > 0 ? fmtUSD(r.personalSales) : "—"}
-                  </td>
-                  <td className="px-4 py-4 text-right font-semibold text-ok">
-                    {r.salesBonus > 0 ? fmtUSD(r.salesBonus) : "—"}
-                  </td>
-                  <td className="px-4 py-4 text-right font-semibold text-ok">
-                    {r.serviceShare > 0
-                      ? <span title={tt("{n} buyurtma", { n: r.serviceOrders })}>{fmtUSD(r.serviceShare)}</span>
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-4 text-right font-semibold text-warn">
-                    {r.planBonus > 0 ? fmtUSD(r.planBonus) : "—"}
-                  </td>
-                  <td className="px-4 py-4 text-right font-extrabold">{fmtUSD(r.total)}</td>
-                  <td className="px-4 py-4 text-right font-semibold">
-                    {already > 0 ? <span className="text-ok">{fmtUSD(already)}</span> : <span className="text-muted">—</span>}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    {left > 0.001 ? (
-                      <button onClick={() => pay(r)}
-                        className="rounded-xl bg-brand hover:bg-brand-dark text-white font-bold px-4 py-2 whitespace-nowrap">
-                        {tt("To'lash {n}", { n: fmtUSD(left) })}
-                      </button>
-                    ) : r.total > 0 ? (
-                      <span className="inline-flex items-center gap-1.5 text-ok font-bold">
-                        <Check size={16} /> {t("To'langan")}
-                      </span>
-                    ) : (
-                      // Ish haqi hisoblanmaydigan xodim (masalan egasi) —
-                      // "to'langan" deb ko'rsatish chalg'itadi
-                      <span className="text-muted font-semibold">—</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {rows.length === 0 && (
-              <tr><td colSpan={9} className="px-6 py-12 text-center text-muted font-semibold">
-                {t("Bu davrda hisoblanadigan ish haqi yo'q")}
-              </td></tr>
-            )}
-          </tbody>
-        </table>
-        {rows.length > 0 && (
-          <div className="border-t border-line px-6 py-4 flex justify-between font-bold bg-surface/50">
-            <span className="text-muted">{t("Jami")}</span>
-            <span className="text-lg font-extrabold">{fmtUSD(sum.total)}</span>
-          </div>
-        )}
-      </div>
+              if (left > 0.001) {
+                return <Button olcham="kichik" korinish="asosiy" onClick={() => pay(r)}>
+                  {tt("To'lash {n}", { n: fmtUSD(left) })}
+                </Button>;
+              }
+              if (r.total > 0) {
+                return <span className="inline-flex items-center gap-1.5 text-ok font-bold">
+                  <Check size={16} /> {t("To'langan")}
+                </span>;
+              }
+              // Ish haqi hisoblanmaydigan xodim (masalan egasi) —
+              // "to'langan" deb ko'rsatish chalg'itadi
+              return <span className="text-muted font-semibold">—</span>;
+            },
+          },
+        ]}
+      />
     </div>
   );
 }

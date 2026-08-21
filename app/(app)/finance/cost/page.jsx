@@ -10,6 +10,8 @@ import {
 } from "@/lib/shipmentsData";
 import { invoiceFromShipment } from "@/lib/suppliersData";
 import StatCard from "@/components/finance/StatCard";
+import DataTable from "@/components/ui/DataTable";
+import Button from "@/components/ui/Button";
 
 const fmtDay = (iso) => {
   const d = new Date(iso);
@@ -320,60 +322,56 @@ export default function FinanceCost() {
           value={tt("{n} ta", { n: totals.drafts })} hint={t("Tannarx hali yozilmagan")} />
       </div>
 
-      <div className="card overflow-auto max-h-[70vh]">
-        <table className="w-full text-[0.9375rem]">
-          <thead>
-            <tr className="[&>th]:sticky [&>th]:top-0 [&>th]:z-20 text-left text-muted text-sm border-b border-line [&>th]:bg-panel">
-              <th className="px-6 py-4 font-bold">{t("Partiya")}</th>
-              <th className="px-4 py-4 font-bold">{t("Yetkazib beruvchi")}</th>
-              <th className="px-4 py-4 font-bold">{t("Ombor")}</th>
-              <th className="px-4 py-4 font-bold text-center">{t("Tovarlar")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Qiymati")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Xarajatlar")}</th>
-              <th className="px-4 py-4 font-bold">{t("Holati")}</th>
-              <th className="px-6 py-4"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {shipments.map((s) => {
-              const c = computeLanded(s);
-              return (
-                <tr key={s.id} onClick={() => setOpenId(s.id)}
-                  className="border-b border-line last:border-0 hover:bg-surface/70 cursor-pointer">
-                  <td className="px-6 py-4">
-                    <p className="font-bold">{s.no}</p>
-                    <p className="text-sm text-muted">{fmtDay(s.date)}</p>
-                  </td>
-                  <td className="px-4 py-4 font-semibold">{s.supplier || "—"}</td>
-                  <td className="px-4 py-4 font-semibold text-muted">{storeName(s.storeId)}</td>
-                  <td className="px-4 py-4 text-center font-bold">{c.totalQty}</td>
-                  <td className="px-4 py-4 text-right font-extrabold">{fmtUSD(c.totalValue)}</td>
-                  <td className="px-4 py-4 text-right font-semibold text-warn">+{fmtUSD(c.totalCosts)}</td>
-                  <td className="px-4 py-4">
-                    <span className={`text-sm font-bold px-3 py-1 rounded-lg ${
-                      s.status === "applied" ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn"}`}>
-                      {s.status === "applied" ? t("Qo'llangan") : t("Qoralama")}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                    {s.status !== "applied" && (
-                      <button onClick={() => del(s)}
-                        className="p-2 rounded-lg text-muted hover:bg-danger-soft hover:text-danger">
-                        <Trash2 size={17} />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {shipments.length === 0 && (
-              <tr><td colSpan={8} className="px-6 py-12 text-center text-muted font-semibold">
-                {t("Hali partiya yo'q")}
-              </td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        id="cost-shipments"
+        name={t("Import partiyalari")}
+        rows={shipments}
+        rowKey={(s) => s.id}
+        onRowClick={(s) => setOpenId(s.id)}
+        boshSort={{ key: "qiymat", dir: "desc" }}
+        minWidth="66rem"
+        jamiIzoh={tt("{n} ta partiya", { n: shipments.length })}
+        empty={{ title: "Hali partiya yo'q",
+                 hint: "Import partiyasi qo'shilsa, bojxona va yetkazish xarajati tannarxga taqsimlanadi" }}
+        columns={[
+          { key: "no", label: "Partiya", locked: true, value: (s) => s.no,
+            cell: (s) => (
+              <>
+                <p className="font-bold">{s.no}</p>
+                <p className="text-sm text-muted">{fmtDay(s.date)}</p>
+              </>
+            ) },
+          { key: "supplier", label: "Yetkazib beruvchi", value: (s) => s.supplier || "—",
+            cell: (s) => <span className="font-semibold">{s.supplier || "—"}</span> },
+          { key: "ombor", label: "Ombor", value: (s) => storeName(s.storeId),
+            cell: (s) => <span className="font-semibold text-muted">{storeName(s.storeId)}</span> },
+          { key: "soni", label: "Tovarlar", right: true, value: (s) => computeLanded(s).totalQty,
+            cell: (s) => <span className="font-bold">{computeLanded(s).totalQty}</span>,
+            total: (rs) => rs.reduce((a, s) => a + computeLanded(s).totalQty, 0) },
+          { key: "qiymat", label: "Qiymati", right: true, value: (s) => computeLanded(s).totalValue,
+            cell: (s) => <span className="font-extrabold">{fmtUSD(computeLanded(s).totalValue)}</span>,
+            total: (rs) => fmtUSD(rs.reduce((a, s) => a + computeLanded(s).totalValue, 0)) },
+          { key: "xarajat", label: "Xarajatlar", right: true, value: (s) => computeLanded(s).totalCosts,
+            cell: (s) => <span className="font-semibold text-warn">+{fmtUSD(computeLanded(s).totalCosts)}</span>,
+            total: (rs) => <span className="text-warn">+{fmtUSD(rs.reduce((a, s) => a + computeLanded(s).totalCosts, 0))}</span> },
+          { key: "holat", label: "Holati", value: (s) => (s.status === "applied" ? 1 : 0),
+            cell: (s) => (
+              <span className={`text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap ${
+                s.status === "applied" ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn"}`}>
+                {s.status === "applied" ? t("Qo'llangan") : t("Qoralama")}
+              </span>
+            ) },
+          {
+            key: "harakat", label: "Harakat", harakat: true, right: true, width: "5rem",
+            cell: (s) => (s.status !== "applied" && (
+              <span onClick={(e) => e.stopPropagation()}>
+                <Button olcham="kichik" korinish="yassi" icon={Trash2}
+                  onClick={() => del(s)} className="text-muted hover:text-danger" />
+              </span>
+            )),
+          },
+        ]}
+      />
     </div>
   );
 }

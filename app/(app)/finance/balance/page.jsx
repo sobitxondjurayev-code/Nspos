@@ -137,7 +137,11 @@ export default function FinanceBalance() {
               {demoStores.map((s) => (
                 <tr key={s.id} className="border-t border-line">
                   <td className="py-3 font-bold">{s.name}</td>
-                  <td className="py-3 text-right font-extrabold">{fmtUSD(b.inventory.byStore[s.id])}</td>
+                  {/* `tabular-nums` — raqamlar bir-birining tagiga tushsin.
+                      Proporsional raqamda "1 284.00" va "947.50" xonalari
+                      siljib turadi va ustunni ko'z bilan solishtirib
+                      bo'lmaydi. */}
+                  <td className="py-3 text-right font-extrabold tabular-nums">{fmtUSD(b.inventory.byStore[s.id])}</td>
                 </tr>
               ))}
             </tbody>
