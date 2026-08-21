@@ -35,6 +35,8 @@ import { getStaff } from "@/lib/staffData";
 import { listDatasets, loadRows } from "@/lib/datasets";
 import { billzKassaFlow } from "@/lib/kassaIncome";
 import DataSourceModal from "@/components/DataSourceModal";
+import DataTable from "@/components/ui/DataTable";
+import Button from "@/components/ui/Button";
 
 // ДДС yuklamasi uchun manba ta'rifi — mavjud yuklash oynasi shu
 // ko'rinishni kutadi (yo'riqnoma + fayl tekshiruvi).
@@ -482,78 +484,94 @@ export default function KassaPage() {
         <div className="px-6 py-5 border-b border-line">
           <p className="text-lg font-extrabold">{t("Harakatlar")}</p>
         </div>
-        <table className="w-full">
-          <thead className="bg-surface text-left text-sm">
-            <tr className="[&>th]:sticky [&>th]:top-0 [&>th]:z-20 border-b border-line [&>th]:bg-surface">
-              <th className="px-6 py-4 font-bold">{t("Kassa")}</th>
-              <th className="px-4 py-4 font-bold">{t("Turi")}</th>
-              <th className="px-4 py-4 font-bold">{t("Hamyon")}</th>
-              {/* Billz ДДС hisobotida ham "Пользователь" ustuni bor —
-                  pulga kim tekkanini bilmasa, jurnalning foydasi yo'q */}
-              <th className="px-4 py-4 font-bold">{t("Kim")}</th>
-              <th className="px-4 py-4 font-bold">{t("Sana")}</th>
-              <th className="px-6 py-4 font-bold text-right">{t("Summa")}</th>
-              <th className="px-4 py-4" />
-            </tr>
-          </thead>
-          <tbody>
-            {ops.slice(0, OPS_LIMIT).map((o) => {
-              const out = o.kind === "out" || (o.kind === "transfer" && o.status === "approved");
-              return (
-                <tr key={o.id} className="border-b border-line last:border-0 hover:bg-surface/70">
-                  <td className="px-6 py-4 font-bold">{t(KASSAS[o.kassa]?.label ?? o.kassa)}</td>
-                  <td className="px-4 py-4">
-                    <p className="font-semibold">
-                      {o.kind === "transfer"
-                        ? (o.category === CLOSE
-                            ? tt("Kun yopildi · {d}", { d: fmtDay(o.date) })
-                            : t("Rahbarga o'tkazma"))
-                        : o.expense
-                          ? t(expenseCategoryLabel(o.category))
-                          : t(categoryLabel(o.category))}
-                    </p>
-                    {o.kind === "transfer" && (
-                      <span className={`text-sm font-bold ${
-                        o.status === "approved" ? "text-ok"
-                          : o.status === "rejected" ? "text-danger" : "text-warn"}`}>
-                        {t(o.status === "approved" ? "Tasdiqlangan"
-                          : o.status === "rejected" ? "Rad etilgan" : "Kutilmoqda")}
-                      </span>
-                    )}
-                    {o.note && <p className="text-sm text-muted">{o.note}</p>}
-                  </td>
-                  <td className="px-4 py-4 font-semibold">{t(WALLETS[o.wallet])}</td>
-                  <td className="px-4 py-4 font-semibold text-muted">
-                    {o.staffId ? (getStaff(o.staffId)?.name ?? "—") : "—"}
-                  </td>
-                  <td className="px-4 py-4 font-semibold text-muted">{fmtDay(o.date)}</td>
-                  <td className={`px-6 py-4 text-right font-extrabold ${out ? "text-danger" : "text-ok"}`}>
-                    {out ? "−" : "+"}{fmtUSD(o.amount)}
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    {o.kind !== "transfer" && !o.expense && canOperate(user, o.kassa) && (
-                      <button onClick={() => { removeOp(o.id); refresh(); }}
-                        className="text-muted hover:text-danger">
-                        <Trash2 size={18} />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {ops.length === 0 && (
-              <tr><td colSpan={7} className="px-6 py-12 text-center text-muted font-semibold">
-                {t("Hali harakat yo'q. Kunlik kirim KPI jadvali to'ldirilgach o'zi hisoblanadi.")}
-              </td></tr>
-            )}
-          </tbody>
-        </table>
-        {ops.length > OPS_LIMIT && (
-          <p className="px-6 py-4 text-sm text-muted font-semibold border-t border-line">
-            {tt("Oxirgi {k} harakat ko'rsatildi ({n} tadan) — to'liq ro'yxat kassa ichida, kunma-kun",
-                { k: OPS_LIMIT, n: ops.length })}
-          </p>
-        )}
+        <DataTable
+          id="kassa-ops"
+          name={t("Kassa harakatlari")}
+          rows={ops}
+          rowKey={(o) => o.id}
+          limit={OPS_LIMIT}
+          boshSort={{ key: "sana", dir: "desc" }}
+          minWidth="60rem"
+          maxHeight="60vh"
+          empty={{ title: "Hali harakat yo'q",
+                   hint: "Kunlik kirim KPI jadvali to'ldirilgach o'zi hisoblanadi" }}
+          columns={[
+            { key: "kassa", label: "Kassa", locked: true,
+              value: (o) => t(KASSAS[o.kassa]?.label ?? o.kassa),
+              cell: (o) => <span className="font-bold">{t(KASSAS[o.kassa]?.label ?? o.kassa)}</span> },
+            {
+              key: "turi", label: "Turi",
+              value: (o) => (o.kind === "transfer"
+                ? (o.category === CLOSE ? t("Kun yopildi") : t("Rahbarga o'tkazma"))
+                : o.expense ? t(expenseCategoryLabel(o.category)) : t(categoryLabel(o.category))),
+              cell: (o) => (
+                <>
+                  <p className="font-semibold">
+                    {o.kind === "transfer"
+                      ? (o.category === CLOSE
+                          ? tt("Kun yopildi · {d}", { d: fmtDay(o.date) })
+                          : t("Rahbarga o'tkazma"))
+                      : o.expense
+                        ? t(expenseCategoryLabel(o.category))
+                        : t(categoryLabel(o.category))}
+                  </p>
+                  {o.kind === "transfer" && (
+                    <span className={`text-sm font-bold ${
+                      o.status === "approved" ? "text-ok"
+                        : o.status === "rejected" ? "text-danger" : "text-warn"}`}>
+                      {t(o.status === "approved" ? "Tasdiqlangan"
+                        : o.status === "rejected" ? "Rad etilgan" : "Kutilmoqda")}
+                    </span>
+                  )}
+                  {o.note && <p className="text-sm text-muted">{o.note}</p>}
+                </>
+              ),
+            },
+            { key: "hamyon", label: "Hamyon", value: (o) => t(WALLETS[o.wallet]),
+              cell: (o) => <span className="font-semibold">{t(WALLETS[o.wallet])}</span> },
+            /* Billz ДДС hisobotida ham "Пользователь" ustuni bor —
+               pulga kim tekkanini bilmasa, jurnalning foydasi yo'q */
+            { key: "kim", label: "Kim",
+              value: (o) => (o.staffId ? (getStaff(o.staffId)?.name ?? "—") : "—"),
+              cell: (o) => <span className="font-semibold text-muted">
+                {o.staffId ? (getStaff(o.staffId)?.name ?? "—") : "—"}</span> },
+            { key: "sana", label: "Sana", value: (o) => o.date,
+              cell: (o) => <span className="font-semibold text-muted">{fmtDay(o.date)}</span> },
+            {
+              key: "summa", label: "Summa", right: true,
+              // Chiqim MANFIY qiymat bilan saralanadi — aks holda
+              // "eng katta summa" da kirim va chiqim aralashib ketadi
+              value: (o) => (o.kind === "out" || (o.kind === "transfer" && o.status === "approved")
+                ? -o.amount : o.amount),
+              cell: (o) => {
+                const out = o.kind === "out" || (o.kind === "transfer" && o.status === "approved");
+                return <span className={`font-extrabold ${out ? "text-danger" : "text-ok"}`}>
+                  {out ? "−" : "+"}{fmtUSD(o.amount)}
+                </span>;
+              },
+              total: (rows) => {
+                const kirim = rows.filter((o) => !(o.kind === "out" || (o.kind === "transfer" && o.status === "approved")))
+                  .reduce((a, o) => a + o.amount, 0);
+                const chiqim = rows.filter((o) => o.kind === "out" || (o.kind === "transfer" && o.status === "approved"))
+                  .reduce((a, o) => a + o.amount, 0);
+                return (
+                  <>
+                    <span className="text-ok">+{fmtUSD(kirim)}</span>
+                    <span className="block text-danger">−{fmtUSD(chiqim)}</span>
+                  </>
+                );
+              },
+            },
+            {
+              key: "harakat", label: "Harakat", harakat: true, right: true, width: "4rem",
+              cell: (o) => (o.kind !== "transfer" && !o.expense && canOperate(user, o.kassa) && (
+                <Button olcham="kichik" korinish="yassi" icon={Trash2}
+                  onClick={() => { removeOp(o.id); refresh(); }}
+                  className="text-muted hover:text-danger" />
+              )),
+            },
+          ]}
+        />
       </div>
 
       {upload && (
