@@ -178,7 +178,7 @@ export async function loadApp() {
   await Promise.all([
     "companyData", "storesData", "staffData", "kpiData", "expensesData",
     "kassaData", "payoutsData", "payrollData", "datasets", "debtsData",
-    "customersData", "salesData", "productsData", "servicesData",
+    "customersData", "salesData", "productsData", "categoriesData", "servicesData",
     "warehouseData", "suppliersData", "financeData", "ratesData", "npsData",
   ].map((m) => import(`../../lib/${m}.js`)));
 
