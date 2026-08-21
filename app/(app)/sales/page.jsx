@@ -10,6 +10,8 @@ import { ymd } from "@/lib/dates";
 import PaymentModal from "@/components/PaymentModal";
 import ReceiptModal from "@/components/ReceiptModal";
 import ReturnModal from "@/components/ReturnModal";
+import DataTable from "@/components/ui/DataTable";
+import Button from "@/components/ui/Button";
 
 const tabs = ["Kassa", "Cheklar tarixi"];
 
@@ -308,63 +310,58 @@ export default function Sales() {
         </div>
       ) : (
         /* Cheklar tarixi */
-        <div className="card overflow-hidden">
-          <table className="w-full text-[0.9375rem]">
-            <thead>
-              <tr className="text-left text-muted text-sm border-b border-line">
-                <th className="px-6 py-4 font-bold">{t("Chek")}</th>
-                <th className="px-4 py-4 font-bold">{t("Sana")}</th>
-                <th className="px-4 py-4 font-bold">{t("Do'kon")}</th>
-                <th className="px-4 py-4 font-bold">{t("Kassir")}</th>
-                <th className="px-4 py-4 font-bold text-center">{t("Tovarlar")}</th>
-                <th className="px-4 py-4 font-bold">{t("To'lov")}</th>
-                <th className="px-4 py-4 font-bold text-right">{t("Summa")}</th>
-                <th className="px-6 py-4"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {sales.slice(0, 100).map((s) => (
-                <tr key={s.id} onClick={() => setReceipt(s)}
-                  className="border-b border-line last:border-0 hover:bg-surface/70 cursor-pointer">
-                  <td className="px-6 py-4 font-bold flex items-center gap-2">
-                    {s.type === "return"
-                      ? <Undo2 size={16} className="text-danger" />
-                      : <Receipt size={16} className="text-brand" />}
-                    {s.no}
-                  </td>
-                  <td className="px-4 py-4 font-semibold text-muted">{fmtWhen(s.at)}</td>
-                  <td className="px-4 py-4 font-semibold">{storeName(s.storeId)}</td>
-                  <td className="px-4 py-4 font-semibold text-muted">{s.cashier}</td>
-                  <td className="px-4 py-4 text-center font-bold">{s.itemCount ?? s.items.length}</td>
-                  <td className="px-4 py-4">
-                    <span className={`text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap ${
-                      s.type === "return" ? "bg-danger-soft text-danger" : "bg-brand-soft text-brand"}`}>
-                      {s.type === "return" ? (s.originalNo ? tt("Qaytarish · {n}", { n: s.originalNo }) : t("Qaytarish"))
-                        : s.type === "exchange" ? t("Almashtirish") : payLabel(s)}
-                    </span>
-                  </td>
-                  <td className={`px-4 py-4 text-right font-extrabold ${
-                    s.type === "return" ? "text-danger" : ""}`}>{fmtUSD(s.total)}</td>
-                  <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                    {s.type === "sale" && !s.imported && (
-                      <button onClick={() => setReturnFor(s)}
-                        className="rounded-xl border border-line font-bold px-4 py-2 hover:border-brand hover:text-brand whitespace-nowrap">
-                        {t("Qaytarish")}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {sales.length === 0 && (
-                <tr><td colSpan={8} className="px-6 py-12 text-center text-muted font-semibold">{t("Hali cheklar yo'q")}</td></tr>
-              )}
-            </tbody>
-          </table>
-          {sales.length > 100 && (
-            <p className="px-6 py-4 text-sm text-muted font-semibold border-t border-line">
-              {tt("Oxirgi 100 chek ko'rsatildi ({n} tadan) — kerakli chekni qidiruv orqali toping", { n: sales.length })}
-            </p>
-          )}
+        <DataTable
+          id="sales-list"
+          name={t("Cheklar")}
+          rows={sales}
+          rowKey={(s) => s.id}
+          onRowClick={(s) => setReceipt(s)}
+          boshSort={{ key: "sana", dir: "desc" }}
+          limit={100}
+          minWidth="70rem"
+          empty={{ icon: Receipt, title: "Hali cheklar yo'q" }}
+          columns={[
+            { key: "no", label: "Chek", locked: true, value: (s) => s.no,
+              cell: (s) => (
+                <span className="font-bold flex items-center gap-2">
+                  {s.type === "return"
+                    ? <Undo2 size={16} className="text-danger" />
+                    : <Receipt size={16} className="text-brand" />}
+                  {s.no}
+                </span>
+              ) },
+            { key: "sana", label: "Sana", value: (s) => s.at,
+              cell: (s) => <span className="font-semibold text-muted">{fmtWhen(s.at)}</span> },
+            { key: "dokon", label: "Do'kon", value: (s) => storeName(s.storeId),
+              cell: (s) => <span className="font-semibold">{storeName(s.storeId)}</span> },
+            { key: "kassir", label: "Kassir", value: (s) => s.cashier,
+              cell: (s) => <span className="font-semibold text-muted">{s.cashier}</span> },
+            { key: "tovarlar", label: "Tovarlar", right: true,
+              value: (s) => s.itemCount ?? s.items.length,
+              cell: (s) => <span className="font-bold">{s.itemCount ?? s.items.length}</span>,
+              total: (rs) => rs.reduce((a, s) => a + (s.itemCount ?? s.items.length), 0).toLocaleString("ru-RU") },
+            { key: "tolov", label: "To'lov", value: (s) => s.type,
+              cell: (s) => (
+                <span className={`text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap ${
+                  s.type === "return" ? "bg-danger-soft text-danger" : "bg-brand-soft text-brand"}`}>
+                  {s.type === "return" ? (s.originalNo ? tt("Qaytarish · {n}", { n: s.originalNo }) : t("Qaytarish"))
+                    : s.type === "exchange" ? t("Almashtirish") : payLabel(s)}
+                </span>
+              ) },
+            { key: "summa", label: "Summa", right: true, value: (s) => s.total,
+              cell: (s) => <span className={`font-extrabold ${s.type === "return" ? "text-danger" : ""}`}>
+                {fmtUSD(s.total)}</span>,
+              total: (rs) => fmtUSD(rs.reduce((a, s) => a + s.total, 0)) },
+            {
+              key: "harakat", label: "Harakat", harakat: true, right: true, width: "8rem",
+              cell: (s) => (s.type === "sale" && !s.imported && (
+                <span onClick={(e) => e.stopPropagation()}>
+                  <Button olcham="kichik" onClick={() => setReturnFor(s)}>Qaytarish</Button>
+                </span>
+              )),
+            },
+          ]}
+        />
         </div>
       )}
 
