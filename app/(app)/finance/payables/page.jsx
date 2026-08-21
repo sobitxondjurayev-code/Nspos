@@ -11,6 +11,8 @@ import { overallDebtStats } from "@/lib/debtsData";
 import { addOperation } from "@/lib/financeData";
 import SupplierPayModal from "@/components/SupplierPayModal";
 import StatCard from "@/components/finance/StatCard";
+import DataTable from "@/components/ui/DataTable";
+import Button from "@/components/ui/Button";
 import useUploadRows from "@/components/useUploadRows";
 
 const fmtDay = (iso) => {
@@ -138,117 +140,113 @@ export default function FinancePayables() {
 
       {/* To'lov jadvali */}
       <h2 className="text-2xl font-extrabold mb-4">{t("To'lov jadvali")}</h2>
-      <div className="card overflow-auto max-h-[70vh] mb-8">
-        <table className="w-full text-[0.9375rem]">
-          <thead>
-            <tr className="[&>th]:sticky [&>th]:top-0 [&>th]:z-20 text-left text-muted text-sm border-b border-line [&>th]:bg-panel">
-              <th className="px-6 py-4 font-bold">{t("Faktura")}</th>
-              <th className="px-4 py-4 font-bold">{t("Yetkazib beruvchi")}</th>
-              <th className="px-4 py-4 font-bold">{t("Sana")}</th>
-              <th className="px-4 py-4 font-bold">{t("Muddat")}</th>
-              <th className="px-4 py-4 font-bold">{t("Holati")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Qoldiq")}</th>
-              <th className="px-6 py-4"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {schedule.map((i) => {
-              const s = getSupplier(i.supplierId);
-              return (
-                <tr key={i.id} className="border-b border-line last:border-0 hover:bg-surface/70">
-                  <td className="px-6 py-4">
-                    <p className="font-bold">{i.no}</p>
-                    {i.note && <p className="text-sm text-muted">{i.note}</p>}
-                  </td>
-                  <td className="px-4 py-4 font-semibold">{s?.name ?? "—"}</td>
-                  <td className="px-4 py-4 font-semibold text-muted">{fmtDay(i.invoiceDate)}</td>
-                  <td className="px-4 py-4 font-semibold">{fmtDay(i.dueDate)}</td>
-                  <td className="px-4 py-4">
-                    {i.overdue > 0 ? (
-                      <span className="bg-danger-soft text-danger text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap">
-                        {tt("{n} kun kechikkan", { n: i.overdue })}
-                      </span>
-                    ) : i.overdue > -8 ? (
-                      <span className="bg-warn-soft text-warn text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap">
-                        {tt("{n} kun qoldi", { n: -i.overdue })}
-                      </span>
-                    ) : (
-                      <span className="bg-track text-muted text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap">
-                        {tt("{n} kun qoldi", { n: -i.overdue })}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-right font-extrabold text-danger">{fmtUSD(i.remaining)}</td>
-                  <td className="px-6 py-4 text-right">
-                    <button onClick={() => setPayFor({ supplier: s, invoiceId: i.id })}
-                      className="rounded-xl bg-brand hover:bg-brand-dark text-white font-bold px-4 py-2">
-                      {t("To'lash")}
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-            {schedule.length === 0 && (
-              <tr><td colSpan={7} className="px-6 py-12 text-center text-muted font-semibold">
-                {t("Ochiq faktura yo'q — barcha to'lovlar qilingan")}
-              </td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        id="payables-schedule"
+        name={t("To'lov jadvali")}
+        rows={schedule}
+        rowKey={(i) => i.id}
+        boshSort={{ key: "muddat", dir: "asc" }}
+        minWidth="58rem"
+        className="mb-8"
+        empty={{ icon: Truck, title: "Ochiq faktura yo'q — barcha to'lovlar qilingan" }}
+        columns={[
+          {
+            key: "no", label: "Faktura", locked: true, value: (i) => i.no,
+            cell: (i) => (
+              <>
+                <p className="font-bold">{i.no}</p>
+                {i.note && <p className="text-sm text-muted">{i.note}</p>}
+              </>
+            ),
+          },
+          { key: "supplier", label: "Yetkazib beruvchi",
+            value: (i) => getSupplier(i.supplierId)?.name ?? "—",
+            cell: (i) => <span className="font-semibold">{getSupplier(i.supplierId)?.name ?? "—"}</span> },
+          { key: "sana", label: "Sana", value: (i) => i.invoiceDate,
+            cell: (i) => <span className="font-semibold text-muted">{fmtDay(i.invoiceDate)}</span> },
+          { key: "muddat", label: "Muddat", value: (i) => i.dueDate,
+            cell: (i) => <span className="font-semibold">{fmtDay(i.dueDate)}</span> },
+          {
+            key: "holat", label: "Holati", value: (i) => -i.overdue,
+            cell: (i) => (
+              i.overdue > 0 ? (
+                <span className="bg-danger-soft text-danger text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap">
+                  {tt("{n} kun kechikkan", { n: i.overdue })}
+                </span>
+              ) : (
+                <span className={`text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap ${
+                  i.overdue > -8 ? "bg-warn-soft text-warn" : "bg-track text-muted"}`}>
+                  {tt("{n} kun qoldi", { n: -i.overdue })}
+                </span>
+              )
+            ),
+          },
+          {
+            key: "qoldiq", label: "Qoldiq", right: true, value: (i) => i.remaining,
+            cell: (i) => <span className="font-extrabold text-danger">{fmtUSD(i.remaining)}</span>,
+            total: (rows) => <span className="text-danger">{fmtUSD(rows.reduce((a, i) => a + i.remaining, 0))}</span>,
+          },
+          {
+            key: "harakat", label: "Harakat", harakat: true, right: true, width: "8rem",
+            cell: (i) => (
+              <Button olcham="kichik" korinish="asosiy"
+                onClick={() => setPayFor({ supplier: getSupplier(i.supplierId), invoiceId: i.id })}>
+                To'lash
+              </Button>
+            ),
+          },
+        ]}
+      />
 
       {/* Yetkazib beruvchilar kesimi */}
       <h2 className="text-2xl font-extrabold mb-4">{t("Yetkazib beruvchilar kesimi")}</h2>
-      <div className="card overflow-auto max-h-[70vh]">
-        <table className="w-full text-[0.9375rem]">
-          <thead>
-            <tr className="[&>th]:sticky [&>th]:top-0 [&>th]:z-20 text-left text-muted text-sm border-b border-line [&>th]:bg-panel">
-              <th className="px-6 py-4 font-bold">{t("Yetkazib beruvchi")}</th>
-              <th className="px-4 py-4 font-bold text-center">{t("Fakturalar")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Jami olingan")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Ochiq qarz")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Muddati o'tgan")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Eng uzoq kechikish")}</th>
-              <th className="px-6 py-4"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.supplier.id} className="border-b border-line last:border-0 hover:bg-surface/70">
-                <td className="px-6 py-4">
-                  <p className="font-bold">{r.supplier.name}</p>
-                  <p className="text-sm text-muted">{r.supplier.contact}</p>
-                </td>
-                <td className="px-4 py-4 text-center font-bold">{r.invoiceCount}</td>
-                <td className="px-4 py-4 text-right font-semibold text-muted">{fmtUSD(r.totalInvoiced)}</td>
-                <td className="px-4 py-4 text-right font-extrabold">
-                  {r.openAmount > 0
-                    ? <span className="text-danger">{fmtUSD(r.openAmount)}</span>
-                    : <span className="text-muted">—</span>}
-                </td>
-                <td className="px-4 py-4 text-right font-semibold">
-                  {r.overdueAmount > 0
-                    ? <span className="text-danger">{fmtUSD(r.overdueAmount)}</span>
-                    : <span className="text-muted">—</span>}
-                </td>
-                <td className="px-4 py-4 text-right font-bold">
-                  {r.maxOverdueDays > 0
-                    ? <span className="text-danger">{tt("{n} kun", { n: r.maxOverdueDays })}</span>
-                    : <span className="text-muted">—</span>}
-                </td>
-                <td className="px-6 py-4 text-right">
-                  {r.openAmount > 0 && (
-                    <button onClick={() => setPayFor({ supplier: r.supplier })}
-                      className="rounded-xl border border-line font-bold px-4 py-2 hover:border-brand hover:text-brand">
-                      {t("To'lash")}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+<DataTable
+        id="payables-suppliers"
+        name={t("Yetkazib beruvchilar kesimi")}
+        rows={rows}
+        rowKey={(r) => r.supplier.id}
+        boshSort={{ key: "ochiq", dir: "desc" }}
+        minWidth="60rem"
+        empty={{ icon: Truck, title: "Yetkazib beruvchi yo'q" }}
+        columns={[
+          {
+            key: "nom", label: "Yetkazib beruvchi", locked: true,
+            value: (r) => r.supplier.name,
+            cell: (r) => (
+              <>
+                <p className="font-bold">{r.supplier.name}</p>
+                <p className="text-sm text-muted">{r.supplier.contact}</p>
+              </>
+            ),
+          },
+          { key: "soni", label: "Fakturalar", right: true, value: (r) => r.invoiceCount,
+            cell: (r) => <span className="font-bold">{r.invoiceCount}</span>,
+            total: (rows) => rows.reduce((a, r) => a + r.invoiceCount, 0) },
+          { key: "olingan", label: "Jami olingan", right: true, value: (r) => r.totalInvoiced,
+            cell: (r) => <span className="font-semibold text-muted">{fmtUSD(r.totalInvoiced)}</span>,
+            total: (rows) => fmtUSD(rows.reduce((a, r) => a + r.totalInvoiced, 0)) },
+          { key: "ochiq", label: "Ochiq qarz", right: true, value: (r) => r.openAmount,
+            cell: (r) => (r.openAmount > 0
+              ? <span className="font-extrabold text-danger">{fmtUSD(r.openAmount)}</span>
+              : <span className="text-muted">—</span>),
+            total: (rows) => <span className="text-danger">{fmtUSD(rows.reduce((a, r) => a + r.openAmount, 0))}</span> },
+          { key: "kechikkan", label: "Muddati o'tgan", right: true, value: (r) => r.overdueAmount,
+            cell: (r) => (r.overdueAmount > 0
+              ? <span className="font-semibold text-danger">{fmtUSD(r.overdueAmount)}</span>
+              : <span className="text-muted">—</span>),
+            total: (rows) => <span className="text-danger">{fmtUSD(rows.reduce((a, r) => a + r.overdueAmount, 0))}</span> },
+          { key: "uzoq", label: "Eng uzoq kechikish", right: true, value: (r) => r.maxOverdueDays,
+            cell: (r) => (r.maxOverdueDays > 0
+              ? <span className="font-bold text-danger">{tt("{n} kun", { n: r.maxOverdueDays })}</span>
+              : <span className="text-muted">—</span>) },
+          {
+            key: "harakat", label: "Harakat", harakat: true, right: true, width: "8rem",
+            cell: (r) => (r.openAmount > 0 && (
+              <Button olcham="kichik" onClick={() => setPayFor({ supplier: r.supplier })}>To'lash</Button>
+            )),
+          },
+        ]}
+      />
 
       {payFor && (
         <SupplierPayModal supplier={payFor.supplier} preselectId={payFor.invoiceId}

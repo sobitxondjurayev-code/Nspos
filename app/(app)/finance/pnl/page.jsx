@@ -9,6 +9,8 @@ import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
 import DateRangePicker from "@/components/DateRangePicker";
 import { profitAndLoss, cashFlow, billzPnl, billzPnlTotals, billzCashflow, pnlSourceGap } from "@/lib/pnlData";
 import useUploadRows from "@/components/useUploadRows";
+import DataTable from "@/components/ui/DataTable";
+import { foiz } from "@/lib/format";
 import { demoStores } from "@/lib/demoData";
 import StatCard from "@/components/finance/StatCard";
 
@@ -298,36 +300,53 @@ function BillzCompare({ uploads }) {
       </div>
 
       <h2 className="text-2xl font-extrabold mb-4">{t("Do'konlar kesimida")}</h2>
-      <div className="card overflow-auto max-h-[70vh] mb-8">
-        <table className="w-full text-[0.9375rem]">
-          <thead>
-            <tr className="[&>th]:sticky [&>th]:top-0 [&>th]:z-20 text-left text-muted text-sm border-b border-line [&>th]:bg-panel">
-              <th className="px-6 py-4 font-bold">{t("Do'kon")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Tushum")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Chegirma")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Qaytarish")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Sof tushum")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Tannarx")}</th>
-              <th className="px-4 py-4 font-bold text-right">{t("Yalpi foyda")}</th>
-              <th className="px-6 py-4 font-bold text-right">{t("Marja")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.store} className="border-b border-line last:border-0 hover:bg-surface/70">
-                <td className="px-6 py-4 font-bold">{storeName(r.storeId) ?? r.store}</td>
-                <td className="px-4 py-4 text-right font-semibold">{fmtUSD(r.revenue)}</td>
-                <td className="px-4 py-4 text-right font-semibold text-muted">{fmtUSD(r.discounts)}</td>
-                <td className="px-4 py-4 text-right font-semibold text-muted">{fmtUSD(r.returns)}</td>
-                <td className="px-4 py-4 text-right font-extrabold">{fmtUSD(r.netRevenue)}</td>
-                <td className="px-4 py-4 text-right font-semibold text-danger">{fmtUSD(r.cogs)}</td>
-                <td className="px-4 py-4 text-right font-extrabold text-ok">{fmtUSD(r.grossProfit)}</td>
-                <td className="px-6 py-4 text-right font-bold">{r.grossMarginPct?.toFixed(1)}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Do'kon kesimi. Ilgari bu jadvalda "Jami" ham, saralash ham,
+          Excel ham yo'q edi — holbuki rahbar birinchi navbatda
+          do'konlarni bir-biri bilan solishtiradi. */}
+      <DataTable
+        id="pnl-stores"
+        name={t("Foyda va zarar — do'kon kesimi")}
+        rows={rows}
+        rowKey={(r) => r.store}
+        boshSort={{ key: "netRevenue", dir: "desc" }}
+        minWidth="64rem"
+        className="mb-8"
+        jamiIzoh={tt("{n} ta do'kon", { n: rows.length })}
+        empty={{ title: "Bu davrda savdo yo'q" }}
+        columns={[
+          { key: "store", label: "Do'kon", locked: true,
+            value: (r) => storeName(r.storeId) ?? r.store,
+            cell: (r) => <span className="font-bold">{storeName(r.storeId) ?? r.store}</span> },
+          { key: "revenue", label: "Tushum", right: true, value: (r) => r.revenue,
+            cell: (r) => <span className="font-semibold">{fmtUSD(r.revenue)}</span>,
+            total: (rs) => fmtUSD(rs.reduce((a, r) => a + r.revenue, 0)) },
+          { key: "discounts", label: "Chegirma", right: true, value: (r) => r.discounts,
+            cell: (r) => <span className="font-semibold text-muted">{fmtUSD(r.discounts)}</span>,
+            total: (rs) => <span className="text-muted">{fmtUSD(rs.reduce((a, r) => a + r.discounts, 0))}</span> },
+          { key: "returns", label: "Qaytarish", right: true, value: (r) => r.returns,
+            cell: (r) => <span className="font-semibold text-muted">{fmtUSD(r.returns)}</span>,
+            total: (rs) => <span className="text-muted">{fmtUSD(rs.reduce((a, r) => a + r.returns, 0))}</span> },
+          { key: "netRevenue", label: "Sof tushum", right: true, value: (r) => r.netRevenue,
+            cell: (r) => <span className="font-extrabold">{fmtUSD(r.netRevenue)}</span>,
+            total: (rs) => fmtUSD(rs.reduce((a, r) => a + r.netRevenue, 0)) },
+          { key: "cogs", label: "Tannarx", right: true, value: (r) => r.cogs,
+            cell: (r) => <span className="font-semibold text-danger">{fmtUSD(r.cogs)}</span>,
+            total: (rs) => <span className="text-danger">{fmtUSD(rs.reduce((a, r) => a + r.cogs, 0))}</span> },
+          { key: "grossProfit", label: "Yalpi foyda", right: true, value: (r) => r.grossProfit,
+            cell: (r) => <span className="font-extrabold text-ok">{fmtUSD(r.grossProfit)}</span>,
+            total: (rs) => <span className="text-ok">{fmtUSD(rs.reduce((a, r) => a + r.grossProfit, 0))}</span> },
+          { key: "marja", label: "Marja", right: true, value: (r) => r.grossMarginPct ?? 0,
+            cell: (r) => <span className="font-bold">{foiz(r.grossMarginPct ?? 0)}</span>,
+            // Marja JAMISI ustun yig'indisi EMAS — u yalpi foydaning sof
+            // tushumga nisbati. Qo'shib chiqarsak "o'rtachaning o'rtachasi"
+            // degan yolg'on raqam chiqadi.
+            total: (rs) => {
+              const net = rs.reduce((a, r) => a + r.netRevenue, 0);
+              const gp = rs.reduce((a, r) => a + r.grossProfit, 0);
+              return <span>{foiz(net > 0 ? (gp / net) * 100 : 0)}</span>;
+            } },
+        ]}
+      />
 
       <h2 className="text-2xl font-extrabold mb-4">{t("Billz ДДС: pul oqimi")}</h2>
       <div className="grid grid-cols-2 gap-6 items-start">
