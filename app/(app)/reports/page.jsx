@@ -1,7 +1,7 @@
 "use client";
 import { t, tt } from "@/lib/i18n";
 import Link from "next/link";
-import { CircleCheck, CircleDashed, ChevronRight } from "lucide-react";
+import { CircleCheck, CircleDashed, ChevronRight, Database } from "lucide-react";
 import { ANALYSES } from "@/lib/analyses";
 import { listDatasets } from "@/lib/datasets";
 import { canOpen } from "@/lib/auth";
@@ -32,7 +32,7 @@ export default function Reports() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         {visible.map((a) => {
-          const ds = byReport.get(a.source.reportId);
+          const ds = a.source ? byReport.get(a.source.reportId) : null;
           return (
             <Link key={a.id} href={`/reports/${a.id}`}
               className="card p-6 flex items-start gap-4 hover:border-brand transition-colors">
@@ -44,7 +44,13 @@ export default function Reports() {
                 <p className="text-lg font-extrabold text-ink mb-1">{t(a.label)}</p>
                 <p className="text-sm text-muted font-semibold mb-3">{t(a.hint)}</p>
 
-                {ds ? (
+                {a.bazadan ? (
+                  // Bazadan ishlaydigan tahlilga fayl kerak emas —
+                  // "Ma'lumot yuklanmagan" deb turishi yolg'on bo'lardi.
+                  <span className="inline-flex items-center gap-2 text-sm font-bold text-brand">
+                    <Database size={16} /> {t("Bazadan — doim yangi")}
+                  </span>
+                ) : ds ? (
                   <span className="inline-flex items-center gap-2 text-sm font-bold text-ok">
                     <CircleCheck size={16} />
                     {tt("{n} qator · {d}", {

@@ -18,6 +18,7 @@ import ImportsReport from "@/components/ImportsReport";
 import WriteoffsReport from "@/components/WriteoffsReport";
 import ReorderReport from "@/components/ReorderReport";
 import ServiceReport from "@/components/ServiceReport";
+import ProductProfitReport from "@/components/ProductProfitReport";
 
 const fmtWhen = (iso) => {
   const d = new Date(iso);
@@ -34,7 +35,10 @@ export default function AnalysisPage() {
   const [tick, setTick] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const dataset = listDatasets().find((d) => d.reportId === analysis?.source.reportId) ?? null;
+  // Bazadan ishlaydigan tahlilga yuklama umuman kerak emas.
+  const dataset = analysis?.source
+    ? (listDatasets().find((d) => d.reportId === analysis.source.reportId) ?? null)
+    : null;
 
   // Qatorlar ro'yxat bilan birga kelmaydi — tahlil ochilganda tortiladi
   useEffect(() => {
@@ -69,6 +73,26 @@ export default function AnalysisPage() {
   }
 
   const src = analysis.source;
+
+  // ── Bazadan ishlaydigan tahlil ──────────────────────────────
+  // Fayl yuklash bosqichi butunlay o'tkazib yuboriladi: yuklama
+  // kutilmaydi, "Ma'lumotni yangilash" tugmasi ko'rsatilmaydi.
+  // Aks holda ekranda "Bu tahlil uchun ma'lumot kerak" degan
+  // yolg'on turardi — ma'lumot bazada, doim tayyor.
+  if (analysis.bazadan) {
+    return (
+      <div>
+        <Link href="/reports" className="inline-flex items-center gap-2 text-muted hover:text-ink font-bold mb-4">
+          <ArrowLeft size={18} /> {t("Hisobotlar")}
+        </Link>
+        <div className="mb-7">
+          <h1 className="text-4xl font-extrabold tracking-tight mb-2">{t(analysis.label)}</h1>
+          <p className="text-muted font-semibold">{t(analysis.hint)}</p>
+        </div>
+        {analysis.kind === "productProfit" ? <ProductProfitReport /> : null}
+      </div>
+    );
+  }
 
   return (
     <div>
