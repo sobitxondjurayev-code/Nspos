@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   PieChart,
   Wallet, Briefcase, Settings, ChevronRight, ChevronsLeft, MessageCircle,
-  Sun, Moon, LogOut, Upload, Target, Trophy, Star, LayoutDashboard,
+  Sun, Moon, LogOut, Upload, Target, Trophy, Star, LayoutDashboard, Users,
 } from "lucide-react";
 import { canOpen, ROLES } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
@@ -27,6 +27,19 @@ const menu = [
   { href: "/dashboard", label: "Bosh sahifa", icon: LayoutDashboard },
   { href: "/data", label: "Ma'lumot yuklash", icon: Upload },
   { href: "/reports", label: "Hisobotlar", icon: PieChart },
+  // MIJOZLAR MENYUGA QAYTARILDI (2026-08-21). Ilgari u ataylab olib
+  // tashlangan edi — "kundalik ish Billz'da yuriladi" degan qoida
+  // bo'yicha, va bu to'g'ri edi: mijoz kartochkasini Billz yuritadi.
+  //
+  // Lekin bu sahifada endi Billz BERMAYDIGAN narsa bor: mijoz
+  // segmentatsiyasi (kim asosiy, kim uxlab qolgan, kim ketgan) va
+  // qarz bo'yicha xulq — o'rtacha necha kunda qaytaradi. Bular
+  // 9 087 mijoz va 16 000 to'lov yozuvidan hisoblanadi.
+  //
+  // Qolgan besh sahifa (Tovarlar, Cheklar, Xizmatlar, Smenalar,
+  // Yetkazib beruvchilar) menyudan TASHQARIDA qoladi — ular bo'yicha
+  // qoida o'zgarmadi.
+  { href: "/clients", label: "Mijozlar", icon: Users },
   { href: "/kpi", label: "KPI va oylik", icon: Target },
   { href: "/installers", label: "Ustalar reytingi", icon: Trophy },
   { href: "/nps", label: "NPS baholari", icon: Star },
