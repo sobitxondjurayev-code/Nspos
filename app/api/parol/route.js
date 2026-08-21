@@ -22,12 +22,15 @@ export async function POST(req) {
     return Response.json({ xato: "Parol kamida 6 belgi bo'lishi kerak" }, { status: 400 });
   }
 
+  // To'g'ridan-to'g'ri `update auth.users` QILINMAYDI: ilova roli
+  // o'sha jadvalga yozish huquqiga ega emas va bo'lmasligi ham kerak —
+  // u yerda hamma xodimning paroli turadi. Funksiya esa faqat bitta
+  // qatorning faqat parol ustunini o'zgartiradi.
   try {
-    await sorov(
-      "update auth.users set encrypted_password = crypt($2, gen_salt('bf')), updated_at = now() where id = $1",
-      [claim.sub, parol]);
+    const r = await sorov("select auth.parol_almashtir($1, $2) as ok", [claim.sub, parol]);
+    if (!r[0]?.ok) return Response.json({ xato: "Saqlab bo'lmadi" }, { status: 400 });
   } catch {
-    return Response.json({ xato: "Saqlab bo'lmadi" }, { status: 500 });
+    return Response.json({ xato: "Baza javob bermayapti" }, { status: 503 });
   }
   return Response.json({ ok: true });
 }
