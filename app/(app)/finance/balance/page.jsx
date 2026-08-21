@@ -29,7 +29,7 @@ export default function FinanceBalance() {
         })}
       </p>
 
-      <div className="grid grid-cols-4 gap-5 mb-7">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
         <StatCard icon={Landmark} label="Jami aktiv" value={fmtUSD(b.totalAssets)}
           hint={t("Korxonada nima bor")} />
         <StatCard icon={Scale} label="Jami majburiyat" tone="red" value={fmtUSD(b.totalLiabilities)}
@@ -43,7 +43,7 @@ export default function FinanceBalance() {
       </div>
 
       {/* Aktiv / Passiv */}
-      <div className="grid grid-cols-2 gap-6 mb-7">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-7">
         <div className="card p-7">
           <h2 className="text-2xl font-extrabold mb-1">{t("AKTIV")}</h2>
           <p className="text-sm text-muted font-semibold mb-6">{t("Korxona mablag'lari")}</p>
@@ -115,10 +115,10 @@ export default function FinanceBalance() {
       </div>
 
       {/* Ombor tafsiloti */}
-      <div className="grid grid-cols-2 gap-6 mb-7">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-7">
         <div className="card p-7">
           <h2 className="text-2xl font-extrabold mb-5">{t("Omborda bog'lanib qolgan pul")}</h2>
-          <div className="grid grid-cols-2 gap-5 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-5">
             <div>
               <p className="text-sm font-bold text-muted mb-1">{t("Tannarxda")}</p>
               <p className="text-2xl font-extrabold">{fmtUSD(b.inventory.cost)}</p>

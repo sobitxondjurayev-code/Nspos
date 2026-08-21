@@ -361,7 +361,7 @@ export default function FinanceExpenses() {
               o'z ro'yxati yetarli, umumiy raqamlar uning ishi emas. */}
           {isOwner && (
           <>
-          <div className="grid grid-cols-5 gap-5 mb-7">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 mb-7">
             <StatCard icon={Wallet} label="Jami xarajat" tone="red" value={money(struct.total, struct.totalSom)}
               hint={tt("{n} ta yozuv", { n: rows.length })} />
             <StatCard icon={Lock} label="Doimiy xarajat" value={money(struct.fixed, struct.fixedSom)}
@@ -402,7 +402,7 @@ export default function FinanceExpenses() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-6 mb-7">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-7">
             {/* Kategoriya kesimi */}
             <div className="card p-7">
               <h2 className="text-2xl font-extrabold mb-5">{t("Kategoriya kesimida")}</h2>

@@ -37,7 +37,7 @@ export default function FinanceShifts() {
       <h1 className="text-4xl font-extrabold tracking-tight mb-7">{t("Smenalar")}</h1>
 
       {/* Har do'kon uchun joriy holat */}
-      <div className="grid grid-cols-2 gap-5 mb-7">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-7">
         {active.map(({ store, shift }) => {
           const s = shift ? shiftSummary(shift) : null;
           return (

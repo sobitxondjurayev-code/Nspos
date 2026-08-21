@@ -99,7 +99,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-[1fr_360px] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
         {/* Grafik */}
         <div className="card p-7">
           <h2 className="text-2xl font-extrabold mb-6">{t("Sotuvlar")}</h2>

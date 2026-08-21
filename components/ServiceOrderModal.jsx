@@ -79,7 +79,7 @@ export default function ServiceOrderModal({ initial, onClose, onSave }) {
         </div>
 
         {/* Asosiy ma'lumot */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-sm font-bold mb-2">{t("Mijoz")}</label>
             <select value={f.customerId ?? ""} onChange={(e) => set("customerId", e.target.value || null)}
@@ -100,7 +100,7 @@ export default function ServiceOrderModal({ initial, onClose, onSave }) {
         <input value={f.address} onChange={(e) => set("address", e.target.value)}
           className="inp mb-4" placeholder={t("Masalan: Chilonzor 12-kvartal, 34-uy")} />
 
-        <div className="grid grid-cols-[1fr_140px_160px] gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px_160px] gap-4 mb-6">
           <div>
             <label className="block text-sm font-bold mb-2">{t("Usta")} *</label>
             <select value={f.installerId ?? ""} onChange={(e) => changeInstaller(e.target.value)} className="inp">

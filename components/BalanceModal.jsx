@@ -48,7 +48,7 @@ export default function BalanceModal({ customer, onClose, onDone }) {
           className="inp mb-5" placeholder="0.00" autoFocus />
 
         <p className="text-sm font-bold mb-2">{t("To'lov turi")}</p>
-        <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
           {[
             { k: "cash", lbl: "Naqd", icon: Banknote },
             { k: "payme", lbl: "Payme", icon: Smartphone },

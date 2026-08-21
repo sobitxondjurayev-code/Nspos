@@ -156,7 +156,7 @@ export default function PayoutModal({ initial = null, dueDate: preset = null, ba
           ))}
         </select>
 
-        <div className={`grid gap-2 mb-1 ${wallets.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+        <div className={`grid gap-2 mb-1 ${wallets.length === 3 ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1 sm:grid-cols-2"}`}>
           {wallets.map((w) => (
             <button key={w} onClick={() => setWallet(w)}
               className={`rounded-xl py-2.5 text-sm font-bold border transition-colors ${

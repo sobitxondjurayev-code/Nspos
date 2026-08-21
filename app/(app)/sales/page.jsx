@@ -168,7 +168,7 @@ export default function Sales() {
       </div>
 
       {tab === "Kassa" ? (
-        <div className="grid grid-cols-[1fr_400px] gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6 items-start">
           {/* Tovarlar */}
           <div>
             <div className="card flex items-center gap-3 px-4 mb-5">
@@ -179,7 +179,7 @@ export default function Sales() {
               <Barcode size={20} className="text-muted" />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filtered.map((p) => {
                 const stock = stockOf(p);
                 return (
@@ -362,7 +362,6 @@ export default function Sales() {
             },
           ]}
         />
-        </div>
       )}
 
       {payOpen && (

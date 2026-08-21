@@ -173,7 +173,7 @@ export default function ExpenseModal({ initial = null, onClose, onSave, onDelete
         </div>
 
         {!initial && (
-          <div className="grid grid-cols-2 gap-3 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
             {[
               { k: "one", lbl: "Bir martalik", icon: Calendar },
               { k: "recurring", lbl: "Doimiy (har oy)", icon: Repeat },
@@ -248,7 +248,7 @@ export default function ExpenseModal({ initial = null, onClose, onSave, onDelete
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-bold mb-2">{t("Boshlangan oy")}</label>
                 <input type="month" value={from} onChange={(e) => setFrom(e.target.value)} className="inp" />
@@ -277,7 +277,7 @@ export default function ExpenseModal({ initial = null, onClose, onSave, onDelete
         {/* Pul qaysi kassadan chiqqani balansga to'g'ridan-to'g'ri ta'sir
             qiladi — shuning uchun hamyondan oldin so'raladi. */}
         <p className="text-sm font-bold mb-2">{t("Qaysi kassadan")}</p>
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
           {allowedKassas.map((k) => (
             <button key={k} onClick={() => setKassa(k)}
               className={`rounded-xl py-2.5 text-sm font-bold border transition-colors ${
@@ -296,7 +296,7 @@ export default function ExpenseModal({ initial = null, onClose, onSave, onDelete
         <p className="text-sm font-bold mb-2">{t("Qaysi hamyondan")}</p>
         {/* Hamyonlar tanlangan kassaga bog'liq: B2B kassada servis yo'q.
             Servis xarajatida esa hamyon o'zgartirilmaydi. */}
-        <div className={`grid gap-2 mb-1 ${allowedWallets.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+        <div className={`grid gap-2 mb-1 ${allowedWallets.length === 3 ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1 sm:grid-cols-2"}`}>
           {allowedWallets.map((k) => (
             <button key={k} disabled={forcedService && k !== "service"}
               onClick={() => setMethod(k)}

@@ -754,7 +754,7 @@ export default function Settings() {
       {demo && (
       <Section title={t("Rol va huquqlar")}
         hint={t("Har rol tizimning faqat o'ziga kerakli qismini ko'radi. Sinab ko'rish uchun almashtiring.")}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {Object.entries(ROLES).map(([key, r]) => (
             <button key={key} onClick={() => setRole(key)}
               className={`rounded-2xl border-2 p-5 text-left transition-colors ${
@@ -776,7 +776,7 @@ export default function Settings() {
       {/* Rejim */}
       <Section title={t("Ko'rinish rejimi")}
         hint={t("\"Tizim bo'yicha\" tanlansa, qurilma sozlamasiga moslashadi")}>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {MODES.map((m) => {
             const Icon = MODE_ICONS[m.key];
             const active = mode === m.key;
@@ -800,7 +800,7 @@ export default function Settings() {
         hint={resolved === "dark"
           ? t("Tanlov darhol qo'llanadi")
           : t("Hozir yorug' rejim yoqilgan — bu tanlov qorong'i rejimga o'tganda ko'rinadi")}>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Object.entries(DARK_PRESETS).map(([key, p]) => {
             const active = darkPreset === key;
             return (
@@ -847,7 +847,7 @@ export default function Settings() {
 
       {/* Til */}
       <Section title={t("Interfeys tili")}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {LANGS.map((l) => {
             const active = lang === l.code;
             return (

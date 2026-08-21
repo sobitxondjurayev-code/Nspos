@@ -199,7 +199,7 @@ export default function DataUpload() {
           {t("Hali hech narsa yuklanmagan")}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {datasets.map((d) => (
             <div key={d.id} className="card p-5 flex items-start gap-4">
               <span className="w-11 h-11 rounded-xl bg-brand-soft text-brand flex items-center justify-center shrink-0">

@@ -158,7 +158,7 @@ export default function DatasetDashboard({ dataset, preset }) {
           <ListFilter size={18} className="text-brand" />
           <h2 className="font-extrabold">{t("Kesim va ko'rsatkich")}</h2>
         </div>
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <label className="block">
             <span className="block text-sm font-bold mb-2">{t("Nima bo'yicha guruhlash")}</span>
             <select className="inp" value={dim ?? ""} onChange={(e) => setDim(e.target.value)}>

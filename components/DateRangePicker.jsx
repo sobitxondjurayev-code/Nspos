@@ -51,8 +51,14 @@ export default function DateRangePicker({ from, to, onApply, onClose }) {
   const canApply = start && end;
 
   return (
-    <div ref={box} className="absolute right-0 top-full mt-3 z-40 card shadow-pop w-[45rem] overflow-hidden">
-      <div className="grid grid-cols-[1fr_280px]">
+    // Telefonda `w-[45rem]` (720px) 375px lik ekrandan chiqib ketardi
+    // va `right-0` bo'lgani uchun chap tomonga oshib qolardi — kalendar
+    // yarmi ko'rinmasdi. Endi ekran kengligidan oshmaydi
+    // (`max-w-[calc(100vw-2rem)]`), tayyor davrlar esa tor ekranda
+    // kalendarning TAGIGA tushadi.
+    <div ref={box} className="absolute right-0 top-full mt-3 z-40 card shadow-pop overflow-hidden
+                              w-[45rem] max-w-[calc(100vw-2rem)]">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_280px]">
         {/* Kalendar */}
         <div className="p-6">
           <div className="flex items-center justify-between mb-5">

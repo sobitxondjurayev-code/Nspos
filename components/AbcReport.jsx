@@ -136,7 +136,7 @@ export default function AbcReport({ analysis, dataset }) {
   return (
     <div>
       {/* Uch sinf */}
-      <div className="grid grid-cols-3 gap-5 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
         {["A", "B", "C"].map((k) => (
           <div key={k} className="card p-6">
             <div className="flex items-center gap-3 mb-3">
@@ -160,7 +160,7 @@ export default function AbcReport({ analysis, dataset }) {
       {/* Chegaralarni sozlash */}
       <div className="card p-6 mb-6">
         <p className="font-extrabold mb-4">{t("Sinf chegaralari")}</p>
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <label className="block">
             <span className="block text-sm font-bold mb-2">{tt("A sinfi — {n}% gacha", { n: cutA })}</span>
             <input type="range" min="50" max="90" value={cutA} className="w-full accent-brand"

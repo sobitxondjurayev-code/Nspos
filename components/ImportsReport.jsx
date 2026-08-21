@@ -171,7 +171,7 @@ export default function ImportsReport({ dataset }) {
         <p className="text-sm text-muted font-semibold mb-5">
           {t("Partiya qancha eski bo'lsa, undagi pul shuncha uzoq muzlab turibdi")}
         </p>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {AGES.map((a, i) => {
             const v = aging[a.key];
             const share = tot.restCost > 0 ? (v.rest / tot.restCost) * 100 : 0;

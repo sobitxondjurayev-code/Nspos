@@ -68,7 +68,7 @@ function PnlView({ range, rows }) {
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-5 mb-7">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
         <StatCard icon={TrendingUp} label="Jami tushum" tone="green" value={fmtUSD(p.revenue.total)}
           hint={tt("{n} ta sotuv", { n: p.revenue.salesCount })} />
         <StatCard icon={Landmark} label="Yalpi foyda" value={fmtUSD(p.grossProfit)}
@@ -160,7 +160,7 @@ function CashFlowView({ range, rows }) {
 
   return (
     <div>
-      <div className="grid grid-cols-4 gap-5 mb-7">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
         <StatCard icon={TrendingUp} label="Pul kirimi" tone="green" value={fmtUSD(c.in.total)} />
         <StatCard icon={TrendingDown} label="Pul chiqimi" tone="red" value={fmtUSD(c.out.total)} />
         <StatCard icon={Banknote} label="Sof pul oqimi"
@@ -169,7 +169,7 @@ function CashFlowView({ range, rows }) {
           hint={t("Tushum bor, pul yo'q")} />
       </div>
 
-      <div className="grid grid-cols-2 gap-6 items-start">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
         <div className="card p-8">
           <h2 className="text-xl font-extrabold mb-4 text-ok">{t("Pul kirimi")}</h2>
           <Row label={t("Naqd sotuv")} value={c.in.salesCash} />
@@ -289,7 +289,7 @@ function BillzCompare({ uploads }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-5 mb-7">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
         <StatCard icon={TrendingUp} label="Billz: tushum" value={fmtUSD(tot.revenue)}
           hint={tt("{d} sanasiga", { d: tot.date.split("-").reverse().join(".") })} />
         <StatCard icon={TrendingUp} label="Billz: sof tushum" tone="green" value={fmtUSD(tot.netRevenue)}
@@ -349,7 +349,7 @@ function BillzCompare({ uploads }) {
       />
 
       <h2 className="text-2xl font-extrabold mb-4">{t("Billz ДДС: pul oqimi")}</h2>
-      <div className="grid grid-cols-2 gap-6 items-start">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
         <div className="card p-8">
           <Row label={t("Naqd")} value={cf.cash} />
           <Row label="Payme" value={cf.payme} />

@@ -121,7 +121,7 @@ export default function FinancePayables() {
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-5 mb-7">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
         <StatCard icon={Truck} label="Kreditor qarz (biz qarzdormiz)" tone="red"
           value={fmtUSD(summary.totalOpen)}
           hint={tt("{n} ta ochiq faktura", { n: summary.openCount })} />

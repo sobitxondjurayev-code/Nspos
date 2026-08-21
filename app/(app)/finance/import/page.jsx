@@ -165,7 +165,7 @@ export default function FinanceImport() {
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(IMPORT_TYPES).map(([k, v]) => (
               <button key={k} onClick={() => chooseType(k)}
                 className="card p-6 text-left hover:shadow-pop transition-shadow">
@@ -237,7 +237,7 @@ export default function FinanceImport() {
       {/* 4 — Ko'rib chiqish */}
       {step === 3 && preview && (
         <div>
-          <div className="grid grid-cols-3 gap-5 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
             <div className="card p-6">
               <p className="text-sm font-bold text-muted mb-2">{t("Qo'shiladi")}</p>
               <p className="text-3xl font-extrabold text-ok">{preview.create}</p>
@@ -319,7 +319,7 @@ export default function FinanceImport() {
           </span>
           <h2 className="text-2xl font-extrabold mb-6">{t("Import yakunlandi")}</h2>
 
-          <div className="grid grid-cols-3 gap-5 mb-8 max-w-lg mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8 max-w-lg mx-auto">
             <div>
               <p className="text-3xl font-extrabold text-ok">{result.created}</p>
               <p className="text-sm font-bold text-muted">{t("qo'shildi")}</p>

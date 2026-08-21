@@ -79,7 +79,7 @@ function PartRule({ partKey, r, onRule }) {
   const box = (title, children) => (
     <div>
       <p className="font-extrabold mb-3">{t(title)}</p>
-      <div className="grid grid-cols-3 gap-3">{children}</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">{children}</div>
     </div>
   );
 
@@ -107,7 +107,7 @@ function PartRule({ partKey, r, onRule }) {
     return (
       <div>
         <p className="font-extrabold mb-3">{t("Reviziya")}</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Num label="Bonus (so'm)" value={o.bonus} onChange={(v) => onRule({ revision: { ...o, bonus: v } })} />
           <Num label="Yarim bonus ($ gacha)" value={o.halfUpTo} onChange={(v) => onRule({ revision: { ...o, halfUpTo: v } })} />
         </div>
@@ -183,7 +183,7 @@ function RulesEditor({ m, onRule, onPlan }) {
 
       {/* Oylik reja — tur bo'yicha maydonlar */}
       <p className="font-extrabold mb-3">{t("Oylik reja")}</p>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-7">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 mb-7">
         {conf.planFields.map((f) => (
           <Num key={f.key} label={f.label} value={plan[f.key]} hint={f.hint}
             onChange={(v) => setPlan({ [f.key]: v })} />

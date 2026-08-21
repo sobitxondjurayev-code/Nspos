@@ -46,7 +46,7 @@ export default function FinanceDebts() {
     <div>
       <h1 className="text-4xl font-extrabold tracking-tight mb-7">{t("Qarz to'lovlari")}</h1>
 
-      <div className="grid grid-cols-3 gap-5 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
         <StatCard icon={Wallet} label="Umumiy ochiq qarz" tone="red" value={fmtUSD(totalOpen)}
           hint={tt("{n} ta qarzdor", { n: debtors.length })} />
         <StatCard icon={Wallet} label="30 kundan oshgan" tone="amber" value={tt("{n} ta", { n: overdue })}

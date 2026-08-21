@@ -29,7 +29,7 @@ export default function ProductModal({ initial, onClose, onSave }) {
         <input value={f.name} onChange={(e) => set("name", e.target.value)}
           className="inp mb-4" placeholder={t("Masalan: Canon EOS R6")} />
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-sm font-bold mb-2">{t("SKU / Artikul")}</label>
             <input value={f.sku} onChange={(e) => set("sku", e.target.value)} className="inp" placeholder="CAN-R6" />
@@ -49,7 +49,7 @@ export default function ProductModal({ initial, onClose, onSave }) {
           {demoCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
 
-        <div className="grid grid-cols-2 gap-4 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
           <div>
             <label className="block text-sm font-bold mb-2">{t("Tannarx (USD)")}</label>
             <input type="number" value={f.costPrice} onChange={(e) => set("costPrice", e.target.value)} className="inp" placeholder="0.00" />
@@ -61,7 +61,7 @@ export default function ProductModal({ initial, onClose, onSave }) {
         </div>
 
         <p className="text-sm font-bold mb-2">{t("Qoldiqlar")}</p>
-        <div className="grid grid-cols-3 gap-3 mb-7">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-7">
           {demoStores.map((s) => (
             <div key={s.id} className="bg-surface rounded-xl p-3">
               <p className="text-xs font-bold text-muted mb-1 truncate">{s.name}</p>

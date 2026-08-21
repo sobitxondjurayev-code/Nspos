@@ -82,7 +82,7 @@ export default function Management() {
 
       {/* Ogohlantirishlar */}
       {warn.length > 0 && (
-        <div className="grid grid-cols-2 gap-4 mb-7">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-7">
           {warn.map((a, i) => {
             const L = LEVELS[a.level];
             return (
@@ -103,7 +103,7 @@ export default function Management() {
       )}
 
       {/* KPI */}
-      <div className="grid grid-cols-5 gap-5 mb-7">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 mb-7">
         <StatCard icon={TrendingUp} label="Sof tushum" value={fmtUSD(k.revenue)}
           hint={tt("{n} ta chek", { n: k.checkCount })} />
         <StatCard icon={Percent} label="Yalpi foyda" tone="green" value={fmtUSD(k.grossProfit)}
@@ -190,7 +190,7 @@ export default function Management() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6 mb-7">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-7">
         {/* Do'kon reytingi */}
         <div className="card p-7 col-span-2 overflow-auto max-h-[70vh]">
           <h2 className="text-2xl font-extrabold mb-1">{t("Do'konlar kesimida")}</h2>
@@ -278,7 +278,7 @@ export default function Management() {
             {t("Balansga o'tish")} <ChevronRight size={18} />
           </Link>
         </div>
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { lbl: "Jami aktiv", val: bal.totalAssets, cls: "" },
             { lbl: "Ombordagi tovar", val: bal.inventory.cost, cls: "" },

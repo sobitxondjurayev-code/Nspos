@@ -74,7 +74,7 @@ function ShipmentEditor({ id, onBack, onChanged }) {
       </div>
 
       {/* Asosiy ma'lumot */}
-      <div className="card p-6 mb-6 grid grid-cols-3 gap-5">
+      <div className="card p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         <div>
           <label className="block text-sm font-bold mb-2">{t("Sana")}</label>
           <input type="date" value={shipment.date} disabled={locked}
@@ -94,7 +94,7 @@ function ShipmentEditor({ id, onBack, onChanged }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-[1fr_340px] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
         {/* Tovarlar */}
         <div className="card overflow-auto max-h-[70vh]">
           <div className="flex items-center justify-between px-6 py-4 border-b border-line">
@@ -312,7 +312,7 @@ export default function FinanceCost() {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-5 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
         <StatCard icon={Package} label="Partiyalar qiymati" value={fmtUSD(totals.value)} />
         <StatCard icon={Truck} label="Import xarajatlari" tone="amber" value={fmtUSD(totals.costs)}
           hint={totals.value > 0

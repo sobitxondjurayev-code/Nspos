@@ -103,7 +103,7 @@ export default function KassaModal({ kassa, mode = "in", balance, canIncome = tr
         {!incomeNote && <div className="mb-4" />}
 
         {!isTransfer && canIncome && (
-          <div className="grid grid-cols-2 gap-3 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
             {[
               { k: "in", lbl: "Kirim", icon: ArrowDownLeft },
               { k: "out", lbl: "Chiqim", icon: ArrowUpRight },
@@ -120,7 +120,7 @@ export default function KassaModal({ kassa, mode = "in", balance, canIncome = tr
         )}
 
         <p className="text-sm font-bold mb-2">{t("Qaysi hamyondan")}</p>
-        <div className={`grid gap-2 mb-1 ${wallets.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+        <div className={`grid gap-2 mb-1 ${wallets.length === 3 ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1 sm:grid-cols-2"}`}>
           {wallets.map((k) => (
             <button key={k} disabled={forcedService && k !== "service"}
               onClick={() => setWallet(k)}

@@ -138,7 +138,7 @@ export default function DebtorsReport({ analysis, dataset }) {
   return (
     <div>
       {/* Yig'ma kartalar */}
-      <div className="grid grid-cols-4 gap-5 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
         <div className="card p-6">
           <div className="flex items-center gap-3 mb-3">
             <span className="w-10 h-10 rounded-xl bg-danger-soft text-danger flex items-center justify-center">
@@ -186,7 +186,7 @@ export default function DebtorsReport({ analysis, dataset }) {
             ? "Qarzning to'lov muddatidan necha kun o'tgani bo'yicha"
             : "Diqqat: bu faylda to'lov muddati yo'q — berish sanasidan hisoblanmoqda")}
         </p>
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {["Birinchi guruh", "Ikkinchi guruh", "Uchinchi guruh"].map((lbl, i) => (
             <label key={i} className="block">
               <span className="block text-sm font-bold mb-2">{t(lbl)}</span>

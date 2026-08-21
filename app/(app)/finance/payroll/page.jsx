@@ -116,7 +116,7 @@ export default function FinancePayroll() {
         </div>
       )}
 
-      <div className="grid grid-cols-5 gap-5 mb-7">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 mb-7">
         <StatCard icon={Wallet} label="Qat'iy maosh" value={fmtUSD(sum.fixed)} />
         <StatCard icon={Percent} label="Sotuvdan foiz" tone="green" value={fmtUSD(sum.salesBonus)} />
         <StatCard icon={Wrench} label="Xizmat ulushi" tone="green" value={fmtUSD(sum.serviceShare)} />
@@ -127,7 +127,7 @@ export default function FinancePayroll() {
 
       {/* Do'kon rejalari */}
       <h2 className="text-2xl font-extrabold mb-4">{t("Do'kon rejalari")}</h2>
-      <div className="grid grid-cols-3 gap-5 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
         {demoStores.map((s) => {
           const p = perf[s.id];
           return (

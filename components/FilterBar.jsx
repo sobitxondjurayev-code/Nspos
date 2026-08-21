@@ -196,7 +196,7 @@ export default function FilterBar({
       {/* Ochiladigan panel */}
       {open && (
         <div className="card p-6 mt-3">
-          <div className="grid grid-cols-3 gap-5 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
             {fields.map((f) => (
               <Field key={f.key} field={f} value={draft[f.key]} onChange={change} />
             ))}

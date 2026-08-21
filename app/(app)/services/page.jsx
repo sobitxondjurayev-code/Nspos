@@ -328,7 +328,7 @@ export default function Services() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-5 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
         <StatCard icon={Wrench} label="Bajarilgan buyurtmalar" value={tt("{n} ta", { n: sum.count })} />
         <StatCard icon={Coins} label="Xizmat daromadi" tone="green" value={fmtUSD(sum.servicesTotal)}
           hint={sum.materialsTotal > 0

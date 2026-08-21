@@ -30,7 +30,7 @@ export default function Reports() {
         {t("Billz'dan yuklangan ma'lumot asosidagi tahlillar. Har biri o'ziga kerakli hisobotni aytadi.")}
       </p>
 
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         {visible.map((a) => {
           const ds = byReport.get(a.source.reportId);
           return (

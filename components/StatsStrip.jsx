@@ -26,7 +26,7 @@ export default function StatsStrip({ items = [], filtered = false }) {
 
       {open && (
         <>
-          <div className="grid grid-cols-4 gap-5">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
             {items.map((s) => (
               <div key={s.label} className="card p-6">
                 <div className="flex items-center gap-3 mb-3">

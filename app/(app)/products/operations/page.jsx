@@ -90,7 +90,7 @@ function OperationEditor({ id, onBack, onChanged }) {
       </div>
 
       {/* Sarlavha maydonlari */}
-      <div className="card p-6 mb-6 grid grid-cols-3 gap-5">
+      <div className="card p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {cfg.needsFrom && (
           <div>
             <label className="block text-sm font-bold mb-2">
@@ -137,7 +137,7 @@ function OperationEditor({ id, onBack, onChanged }) {
         </div>
       )}
 
-      <div className="grid grid-cols-[1fr_320px] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
         <div className="card overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-line">
             <p className="font-extrabold">{t("Tovarlar")}</p>
@@ -349,7 +349,7 @@ export default function WarehouseOperations() {
         {t("Transfer, inventarizatsiya, qayta baholash va hisobdan chiqarish")}
       </p>
 
-      <div className="grid grid-cols-4 gap-5 mb-7">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
         <StatCard icon={ClipboardCheck} label="Qoralama operatsiyalar" tone="amber"
           value={tt("{n} ta", { n: sum.draftCount })} hint={t("Hali qo'llanmagan")} />
         <StatCard icon={CheckCircle2} label="Qo'llangan operatsiyalar"
@@ -361,7 +361,7 @@ export default function WarehouseOperations() {
       </div>
 
       {/* Yangi operatsiya tugmalari */}
-      <div className="grid grid-cols-4 gap-4 mb-7">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
         {Object.entries(OP_TYPES).map(([k, v]) => {
           const Icon = ICONS[k];
           return (

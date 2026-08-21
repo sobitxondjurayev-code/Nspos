@@ -85,7 +85,7 @@ export default function ReturnModal({ sale, onClose, onConfirm }) {
             </div>
 
             <p className="text-sm font-bold mb-2">{t("Pul qaytariladi")}</p>
-            <div className="grid grid-cols-2 gap-3 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
               {[
                 { k: "cash", lbl: "Naqd", icon: Banknote },
                 { k: "payme", lbl: "Payme", icon: Smartphone },
