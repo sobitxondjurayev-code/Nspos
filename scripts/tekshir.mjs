@@ -23,6 +23,7 @@
 // Yozish xavfi yo'q: modullar DEMO rejimda ishga tushadi (yuk.mjs),
 // ya'ni insert/update/delete umuman bazaga bormaydi.
 import { loadApp } from "./lib/yuk.mjs";
+import { kodMuammolari } from "./lib/kod-tekshir.mjs";
 
 const t0 = Date.now();
 let report;
@@ -84,6 +85,13 @@ function chiqar(sarlavha, groups) {
   }
   console.log("");
 }
+
+// Kod tuzilishi. Bu raqamda ham, ma'lumotda ham ko'rinmaydi — faqat
+// brauzerda ochilib qoladi, shuning uchun alohida tekshiriladi.
+chiqar("── Kod tuzilishi ────────────────────────────────", [{
+  name: "Maxfiy ma'lumot brauzer to'plamiga tushmaydi",
+  problems: kodMuammolari().map((m) => ({ level: "error", title: m.text, detail: m.hint })),
+}]);
 
 chiqar("── Sahifalararo moslik ──────────────────────────", moslik.runChecks());
 

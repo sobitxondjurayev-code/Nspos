@@ -8,7 +8,7 @@ import { demoCategories, genBarcode } from "@/lib/productsData";
 export default function ProductModal({ initial, onClose, onSave }) {
   const [f, setF] = useState(
     initial ?? {
-      name: "", sku: "", barcode: genBarcode(), categoryId: demoCategories[0].id,
+      name: "", sku: "", barcode: genBarcode(), categoryId: demoCategories[0]?.id ?? null,
       costPrice: "", salePrice: "",
       stock: Object.fromEntries(demoStores.map((s) => [s.id, 0])),
     }
