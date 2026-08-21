@@ -43,6 +43,19 @@ export default function Management() {
   const k = useMemo(() => kpis(range.from, range.to), [range, rows]);
   const board = useMemo(() => storeScoreboard(range.from, range.to), [range, rows]);
   const series = useMemo(() => trend(range.from, range.to), [range, rows]);
+
+  // Kartochka trendi va o'zgarishi. Joriy (tugallanmagan) oy
+  // solishtirishga KIRMAYDI — yarim oy to'liq oy bilan solishtirilsa
+  // har doim "tushib ketdi" degan yolg'on chiqadi.
+  const qator = (key) => series.map((r) => r[key] ?? 0);
+  const oz = (key) => {
+    const v = series.map((r) => r[key] ?? 0);
+    if (v.length < 3) return null;              // ikki to'liq oy ham yo'q
+    const oxirgi = v[v.length - 2];             // oldingi TO'LIQ oy
+    const undan = v[v.length - 3];
+    if (!undan) return null;
+    return ((oxirgi - undan) / Math.abs(undan)) * 100;
+  };
   const be = useMemo(() => breakEven(range.from, range.to), [range, rows]);
   const warn = useMemo(() => alerts(range.from, range.to), [range, rows]);
   const bal = useMemo(() => balanceSheet(new Date()), [rows]);
@@ -102,18 +115,29 @@ export default function Management() {
         </div>
       )}
 
-      {/* KPI */}
+      {/* KPI. Har kartochkada uch narsa: RAQAM (hozir qancha),
+          TREND (oxirgi oylar chizig'i) va O'ZGARISH (o'tgan oyga
+          nisbatan). Ilgari faqat raqam turardi — u "bu ko'pmi yoki
+          kammi?" degan savolga javob bermasdi.
+
+          `oz(...)` — oxirgi ikki to'liq oyni solishtiradi. Joriy oy
+          hali tugamagani uchun u OLINMAYDI: yarim oy to'liq oy bilan
+          solishtirilsa har doim "tushib ketdi" chiqadi. */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 mb-7">
         <StatCard icon={TrendingUp} label="Sof tushum" value={fmtUSD(k.revenue)}
-          hint={tt("{n} ta chek", { n: k.checkCount })} />
+          hint={tt("{n} ta chek", { n: k.checkCount })}
+          trend={qator("revenue")} delta={oz("revenue")} yaxshi="yuqori" />
         <StatCard icon={Percent} label="Yalpi foyda" tone="green" value={fmtUSD(k.grossProfit)}
-          hint={tt("Marja {n}%", { n: k.grossMargin })} />
+          hint={tt("Marja {n}%", { n: k.grossMargin })}
+          trend={qator("grossProfit")} delta={oz("grossProfit")} yaxshi="yuqori" />
         <StatCard icon={Wallet} label="Operatsion xarajat" tone="red"
           value={fmtUSD(+(k.opex + k.wages).toFixed(2))}
-          hint={tt("shundan ish haqi {n}", { n: fmtUSD(k.wages) })} />
+          hint={tt("shundan ish haqi {n}", { n: fmtUSD(k.wages) })}
+          trend={qator("expense")} delta={oz("expense")} yaxshi="past" />
         <StatCard icon={Landmark} label="Sof foyda"
           tone={k.netProfit >= 0 ? "green" : "red"} value={fmtUSD(k.netProfit)}
-          hint={tt("Rentabellik {n}%", { n: k.netMargin })} />
+          hint={tt("Rentabellik {n}%", { n: k.netMargin })}
+          trend={qator("netProfit")} delta={oz("netProfit")} yaxshi="yuqori" />
         <StatCard icon={Receipt} label="O'rtacha chek" value={fmtUSD(k.avgCheck)}
           hint={tt("Qarzga {n}", { n: fmtUSD(k.onCredit) })} />
       </div>
@@ -182,8 +206,8 @@ export default function Management() {
               <Legend wrapperStyle={{ fontWeight: 700, fontSize: 13 }} />
               {/* name — izohda ham, pastdagi ro'yxatda ham shu nom chiqadi.
                   Berilmasa Recharts dataKey'ni ko'rsatardi ("grossProfit"). */}
-              <Bar name={t("Yalpi foyda")} dataKey="grossProfit" fill="#22c55e" radius={[8, 8, 0, 0]} maxBarSize={38} />
-              <Bar name={t("Xarajat")} dataKey="expense" fill="#ef4444" radius={[8, 8, 0, 0]} maxBarSize={38} />
+              <Bar name={t("Yalpi foyda")} dataKey="grossProfit" fill={chart.ok} radius={[8, 8, 0, 0]} maxBarSize={38} />
+              <Bar name={t("Xarajat")} dataKey="expense" fill={chart.danger} radius={[8, 8, 0, 0]} maxBarSize={38} />
               <Line name={t("Tushum")} type="monotone" dataKey="revenue" stroke={chart.brand} strokeWidth={3.5} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>

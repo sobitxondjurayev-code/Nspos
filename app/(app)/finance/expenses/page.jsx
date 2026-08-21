@@ -396,7 +396,7 @@ export default function FinanceExpenses() {
                   <Bar name={t("Doimiy")} dataKey={inSom ? "fixedSom" : "fixed"}
                     stackId="a" fill={chart.brand} radius={[0, 0, 0, 0]} />
                   <Bar name={t("O'zgaruvchan")} dataKey={inSom ? "variableSom" : "variable"}
-                    stackId="a" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+                    stackId="a" fill={chart.warn} radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
