@@ -3,6 +3,7 @@ import { t } from "@/lib/i18n";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase, DEMO_MODE } from "@/lib/db";
+import { kirish } from "@/lib/sessiya";
 import { toCredential, formatPhoneInput } from "@/lib/loginId";
 
 export default function Login() {
@@ -20,10 +21,15 @@ export default function Login() {
     setLoading(true);
 
     // Telefon bo'lsa ichkarida email'ga o'giriladi, "@" bo'lsa email deb olinadi
-    const { error } = await supabase.auth.signInWithPassword(toCredential(login, password));
+    const cred = toCredential(login, password);
+    const { error } = await kirish(cred.email, cred.password);
     setLoading(false);
-    if (error) setError(t("Telefon yoki parol noto'g'ri"));
-    else router.push("/dashboard");
+    if (error) { setError(t("Telefon yoki parol noto'g'ri")); return; }
+    // `router.push` EMAS: `lib/db.js` baza mijozini modul
+    // yuklanganda tokendan yaratadi. Yumshoq o'tishda modul
+    // qaytadan yuklanmaydi va mijoz eski (bo'sh) token bilan
+    // qolib ketardi — sahifa ochiladi, lekin ma'lumot bo'sh.
+    window.location.href = "/dashboard";
   }
 
   return (

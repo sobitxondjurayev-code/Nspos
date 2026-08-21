@@ -56,11 +56,13 @@ export default function AuthProvider({ children }) {
       setReady(true);
     }
 
-    supabase.auth.getSession().then(({ data }) => load(data.session));
+    // Sessiya cookie'dan o'qiladi (`lib/sessiya.js`). Supabase Auth
+    // o'rniga o'z tizimimiz — interfeys ataylab o'xshash qilingan.
+    load(sessiyaOl());
 
-    // Kirish/chiqish yoki tokenning yangilanishini kuzatamiz
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => load(session));
-    return () => { alive = false; sub.subscription.unsubscribe(); };
+    // Kirish/chiqishni kuzatamiz
+    const bekor = ozgarishda((s) => load(s));
+    return () => { alive = false; bekor(); };
   }, [pathname, router]);
 
   const setRole = (role) => {
@@ -71,8 +73,11 @@ export default function AuthProvider({ children }) {
 
   const signOut = async () => {
     if (DEMO_MODE) return;
-    await supabase.auth.signOut();
-    router.replace("/login");
+    await chiqish();
+    // TO'LIQ qayta yuklash: `lib/db.js` mijozni modul yuklanganda
+    // bir marta yaratadi, ya'ni tokenni almashtirish uchun sahifa
+    // qaytadan boshlanishi kerak.
+    window.location.href = "/login";
   };
 
   return (

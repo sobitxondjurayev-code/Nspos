@@ -17,6 +17,7 @@ import { demoStores } from "@/lib/demoData";
 import { listStaff, updateStaff, removeStaff, reloadStaff } from "@/lib/staffData";
 import { listInvites, addInvite, removeInvite } from "@/lib/invitesData";
 import { supabase, DEMO_MODE } from "@/lib/db";
+import { sessiyaOl } from "@/lib/sessiya";
 import { setInstallerRate, getPlan, monthKey } from "@/lib/kpiData";
 import { saveRate } from "@/lib/ratesData";
 import { getUsdRate, isRateAuto, setRateAuto, refreshUsdRate, getRateDate,
@@ -65,7 +66,7 @@ function StaffManager({ onlyInstallers = false }) {
   const viaApi = onlyInstallers;
 
   async function call(method, body) {
-    const { data: sess } = await supabase.auth.getSession();
+    const sess = { session: sessiyaOl() };
     const res = await fetch("/api/staff", {
       method,
       headers: {
@@ -252,7 +253,15 @@ function PasswordCard() {
     if (pw.length < 6) { setMsg({ ok: false, text: t("Parol kamida 6 belgidan iborat bo'lsin") }); return; }
     if (pw !== pw2) { setMsg({ ok: false, text: t("Parollar bir xil emas") }); return; }
     setBusy(true);
-    const { error } = await supabase.auth.updateUser({ password: pw });
+    // Supabase Auth o'rniga o'z yo'limiz. Parol xeshi bazada
+    // yasaladi (`crypt`), ya'ni ochiq parol hech qayerda saqlanmaydi.
+    const r = await fetch("/api/parol", {
+      method: "POST",
+      headers: { "content-type": "application/json",
+                 authorization: `Bearer ${sessiyaOl()?.token ?? ""}` },
+      body: JSON.stringify({ parol: pw }),
+    });
+    const error = r.ok ? null : { message: (await r.json().catch(() => ({}))).xato ?? "Xato" };
     setBusy(false);
     if (error) { setMsg({ ok: false, text: error.message }); return; }
     setPw(""); setPw2(""); setShow(false);
@@ -481,8 +490,7 @@ function BackupCard() {
   const [res, setRes] = useState(null);
 
   async function token() {
-    const { data } = await supabase.auth.getSession();
-    return data?.session?.access_token ?? "";
+    return sessiyaOl()?.token ?? "";
   }
 
   async function download() {
@@ -579,8 +587,7 @@ function BillzCard() {
   }, [log]);
 
   async function token() {
-    const { data } = await supabase.auth.getSession();
-    return data?.session?.access_token ?? "";
+    return sessiyaOl()?.token ?? "";
   }
 
   async function call(query, kind) {

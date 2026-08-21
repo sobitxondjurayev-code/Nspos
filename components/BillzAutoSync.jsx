@@ -21,6 +21,7 @@
 //     boshlab, Billz'ning 2 so'rov/sek chegarasiga urilardi
 import { useEffect, useRef } from "react";
 import { supabase, DEMO_MODE } from "@/lib/db";
+import { sessiyaOl } from "@/lib/sessiya";
 import { useAuth } from "@/components/AuthProvider";
 import { can } from "@/lib/auth";
 
@@ -59,8 +60,7 @@ export default function BillzAutoSync() {
         const last = data?.[0]?.finished_at ? new Date(data[0].finished_at).getTime() : 0;
         if (Date.now() - last < STALE_MS) return;
 
-        const { data: s } = await supabase.auth.getSession();
-        const token = s?.session?.access_token;
+        const token = sessiyaOl()?.token;
         if (!token) return;
 
         localStorage.setItem(LOCK_KEY, String(Date.now()));
