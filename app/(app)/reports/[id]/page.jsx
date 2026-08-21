@@ -19,6 +19,7 @@ import WriteoffsReport from "@/components/WriteoffsReport";
 import ReorderReport from "@/components/ReorderReport";
 import ServiceReport from "@/components/ServiceReport";
 import ProductProfitReport from "@/components/ProductProfitReport";
+import StockHealthReport from "@/components/StockHealthReport";
 
 const fmtWhen = (iso) => {
   const d = new Date(iso);
@@ -89,7 +90,9 @@ export default function AnalysisPage() {
           <h1 className="text-4xl font-extrabold tracking-tight mb-2">{t(analysis.label)}</h1>
           <p className="text-muted font-semibold">{t(analysis.hint)}</p>
         </div>
-        {analysis.kind === "productProfit" ? <ProductProfitReport /> : null}
+        {analysis.kind === "productProfit" ? <ProductProfitReport />
+          : analysis.kind === "stockHealth" ? <StockHealthReport />
+          : null}
       </div>
     );
   }
