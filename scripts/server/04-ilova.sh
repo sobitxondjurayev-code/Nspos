@@ -37,9 +37,14 @@ cd /opt/nspos/app
 npm ci --silent 2>&1 | tail -2 || npm install --silent 2>&1 | tail -2
 npm run build 2>&1 | tail -3
 
-# Yig'ilgandan keyin yig'ish vositalari kerak emas — o'chiramiz,
-# server diskida ~200 MB joy bo'shaydi.
-npm prune --omit=dev --silent 2>&1 | tail -1 || true
+# `npm prune --omit=dev` QILINMAYDI.
+#
+# Bir marta qilingan va sayt STILSIZ chiqqan edi. Sabab: prune
+# Tailwind'ni o'chiradi, keyingi safar kod yangilanib QAYTA
+# yig'ilganda esa u yo'q — `next build` xato BERMAYDI, shunchaki
+# CSS yasamaydi. Sahifa ochiladi, lekin butunlay bezaksiz.
+#
+# Disk 96 GB, node_modules ~300 MB. Tejash arzimaydi.
 chown -R nspos:nspos /opt/nspos/app
 
 echo "── Xizmat"
