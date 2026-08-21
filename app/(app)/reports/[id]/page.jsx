@@ -20,6 +20,8 @@ import ReorderReport from "@/components/ReorderReport";
 import ServiceReport from "@/components/ServiceReport";
 import ProductProfitReport from "@/components/ProductProfitReport";
 import StockHealthReport from "@/components/StockHealthReport";
+import RfmReport from "@/components/RfmReport";
+import ArAgingReport from "@/components/ArAgingReport";
 
 const fmtWhen = (iso) => {
   const d = new Date(iso);
@@ -92,6 +94,8 @@ export default function AnalysisPage() {
         </div>
         {analysis.kind === "productProfit" ? <ProductProfitReport />
           : analysis.kind === "stockHealth" ? <StockHealthReport />
+          : analysis.kind === "rfm" ? <RfmReport />
+          : analysis.kind === "arAging" ? <ArAgingReport />
           : null}
       </div>
     );
