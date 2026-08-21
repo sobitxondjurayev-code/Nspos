@@ -15,6 +15,20 @@ import { t } from "@/lib/i18n";
 
 const isEmpty = (v) => v === null || v === undefined || v === "";
 
+// `DataTable` ham shu qoidalar bilan saralaydi — solishtirish
+// mantig'i ikki joyda yozilmasin (bir tushuncha — bitta funksiya).
+// Farqi: u qiymatni `row[key]` dan emas, ustunning o'z `value()`
+// funksiyasidan oladi, shuning uchun tayyor qiymat beriladi.
+export function solishtir(va, vb, dir = "desc") {
+  const mul = dir === "asc" ? 1 : -1;
+  const ea = isEmpty(va), eb = isEmpty(vb);
+  if (ea && eb) return 0;
+  if (ea) return 1;
+  if (eb) return -1;
+  if (typeof va === "number" && typeof vb === "number") return (va - vb) * mul;
+  return String(va).localeCompare(String(vb), "ru") * mul;
+}
+
 function compare(a, b, key, dir) {
   const mul = dir === "asc" ? 1 : -1;
   const va = a[key], vb = b[key];
