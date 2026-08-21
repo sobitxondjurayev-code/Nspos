@@ -5,6 +5,7 @@ import { fmtUSD } from "@/lib/demoData";
 import FilterBar, { applyFilters } from "@/components/FilterBar";
 import { findColumn } from "@/lib/analyses";
 import { numberOf, textOf } from "@/lib/datasets";
+import ParetoChart from "@/components/finance/ParetoChart";
 
 // ══════════════════════════════════════════════════════════════
 // ABC TAHLILI
@@ -173,6 +174,12 @@ export default function AbcReport({ analysis, dataset }) {
           </label>
         </div>
       </div>
+
+      {/* Pareto — jadvaldan oldin. Rahbar avval "nechta pozitsiya
+          tushumning 80 % ini beradi" ni ko'radi, keyin ro'yxatga
+          tushadi. Grafik filtrdan O'TGAN ro'yxat bo'yicha chiziladi,
+          ya'ni jadval bilan bir xil ma'lumot. */}
+      <ParetoChart rows={shown} cutA={cutA} cutB={cutB} />
 
       <FilterBar
         tabs={[

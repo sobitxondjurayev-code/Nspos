@@ -10,6 +10,7 @@ import DateRangePicker from "@/components/DateRangePicker";
 import { profitAndLoss, cashFlow, billzPnl, billzPnlTotals, billzCashflow, pnlSourceGap } from "@/lib/pnlData";
 import useUploadRows from "@/components/useUploadRows";
 import DataTable from "@/components/ui/DataTable";
+import PnlWaterfall from "@/components/finance/PnlWaterfall";
 import { foiz } from "@/lib/format";
 import { demoStores } from "@/lib/demoData";
 import StatCard from "@/components/finance/StatCard";
@@ -300,6 +301,8 @@ function BillzCompare({ uploads }) {
       </div>
 
       <h2 className="text-2xl font-extrabold mb-4">{t("Do'konlar kesimida")}</h2>
+      <PnlWaterfall pnl={p} />
+
       {/* Do'kon kesimi. Ilgari bu jadvalda "Jami" ham, saralash ham,
           Excel ham yo'q edi — holbuki rahbar birinchi navbatda
           do'konlarni bir-biri bilan solishtiradi. */}
