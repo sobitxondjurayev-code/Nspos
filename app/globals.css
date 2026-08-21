@@ -1,10 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+/* Shrift Google'dan EMAS, o'z serverimizdan keladi (`app/layout.jsx`,
+   next/font). Ilgari bu yerda `@import url('https://fonts.googleapis.com/...')`
+   turardi va u CSP tomonidan BLOKLANARDI ("style-src 'self' 'unsafe-inline'") —
+   ya'ni saytda Manrope hech qachon ko'rinmagan, zaxira shrift chizilgan.
+   next/font shriftni build paytida yuklab olib /_next/static ga qo'yadi:
+   tashqi so'rov yo'q, CSP bilan urishmaydi, sahifa tezroq ochiladi. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-ui: 'Manrope', ui-sans-serif, system-ui, sans-serif;
+  --font-ui: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 
   /* Yorug' rejim — asl Billz palitrasi */
   --c-brand: 37 99 235;

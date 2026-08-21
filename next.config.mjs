@@ -15,8 +15,11 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  // Supabase — baza va realtime; cbu.uz — valyuta kursi
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://cbu.uz",
+  // Baza endi O'Z serverimizda (PostgREST, /rest/v1) — ya'ni `self`.
+  // Supabase manzillari 2026-08-22 da olib tashlandi: ular ishlatilmaydi
+  // va CSP da turgan har ortiqcha manzil hujum yuzasini kengaytiradi.
+  // cbu.uz — valyuta kursi (yagona tashqi manba).
+  "connect-src 'self' https://cbu.uz",
   "form-action 'self'",
   "base-uri 'self'",
   "object-src 'none'",
