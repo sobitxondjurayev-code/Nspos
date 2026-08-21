@@ -11,6 +11,7 @@ import { demoStores, fmtUSD } from "@/lib/demoData";
 import { salesSeries, storeTotalsInRange, granularityFor, MONTHS_SHORT } from "@/lib/salesData";
 import { PERIODS, periodRange, fmtDate, MONTHS } from "@/lib/dates";
 import DateRangePicker from "@/components/DateRangePicker";
+import { useLive } from "@/components/DataProvider";
 
 function ChartTooltip({ active, payload, label, granularity, combined, brand }) {
   if (!active || !payload?.length) return null;
@@ -52,9 +53,16 @@ export default function Dashboard() {
   const [combined, setCombined] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const { chart } = useTheme();
+  // `useLive()` — modul xotirasidan o'qiydigan har useMemo bog'lamiga
+  // kerak (CLAUDE.md, 2026-08-13). Busiz bu sahifa `salesData` ning
+  // BOSHLANG'ICH qiymatida qotib qolardi — u esa `lib/billzExport.js`
+  // dagi muzlatilgan Excel nusxasi (01.01–22.07.2026). Ya'ni bosh
+  // sahifa bazadagi 9 032 chekni emas, iyulda to'xtagan nusxani
+  // ko'rsatardi va buni hech narsa bildirmasdi.
+  const live = useLive();
 
-  const data = useMemo(() => salesSeries(range.from, range.to), [range]);
-  const totals = useMemo(() => storeTotalsInRange(range.from, range.to), [range]);
+  const data = useMemo(() => salesSeries(range.from, range.to), [range, live]);
+  const totals = useMemo(() => storeTotalsInRange(range.from, range.to), [range, live]);
   const granularity = granularityFor(range.from, range.to);
   const grandTotal = +demoStores.reduce((a, s) => a + (totals[s.id] || 0), 0).toFixed(2);
 

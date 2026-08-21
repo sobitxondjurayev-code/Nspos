@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   PieChart,
   Wallet, Briefcase, Settings, ChevronRight, ChevronsLeft, MessageCircle,
-  Sun, Moon, LogOut, Upload, Target, Trophy, Star,
+  Sun, Moon, LogOut, Upload, Target, Trophy, Star, LayoutDashboard,
 } from "lucide-react";
 import { canOpen, ROLES } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
@@ -22,18 +22,29 @@ import { useTheme } from "@/components/ThemeProvider";
 // Smenalar ham shu sababdan olindi: kassa smenasi Billz'da yuritiladi,
 // bu yerda ikkinchi marta yuritish shart emas.
 const menu = [
+  // Bosh sahifa ilgari MENYUDA YO'Q edi — unga faqat logotip orqali
+  // tushilardi va ko'p foydalanuvchi uning borligini bilmasdi.
+  { href: "/dashboard", label: "Bosh sahifa", icon: LayoutDashboard },
   { href: "/data", label: "Ma'lumot yuklash", icon: Upload },
   { href: "/reports", label: "Hisobotlar", icon: PieChart },
   { href: "/kpi", label: "KPI va oylik", icon: Target },
   { href: "/installers", label: "Ustalar reytingi", icon: Trophy },
   { href: "/nps", label: "NPS baholari", icon: Star },
   {
-    // Ichki ro'yxat menyuda ochilmaydi: Moliya bosh sahifasining o'zida
-    // har bo'lim kartochka bo'lib, asosiy raqami bilan turibdi — bir xil
-    // ro'yxatni ikki joyda ko'rsatish ortiqcha. Bolalar ro'yxati kodda
-    // qoldi: ruxsat tekshiruvi va yopiq bo'limda birinchi ochiq sahifaga
-    // yo'naltirish o'sha orqali ishlaydi.
-    href: "/finance", label: "Moliya", icon: Wallet, hideChildren: true,
+    // Ichki ro'yxat MENYUDA OCHILADI (2026-08-21 dan). Ilgari
+    // `hideChildren: true` turgan va sabab shunday izohlangan edi:
+    // "Moliya bosh sahifasida har bo'lim kartochka bo'lib turibdi,
+    // bir xil ro'yxatni ikki joyda ko'rsatish ortiqcha".
+    //
+    // Amalda buning narxi bor edi: Xarajatlardan Kassaga o'tish uchun
+    // MENYU → MOLIYA → kartochkani topish → bosish kerak bo'lardi.
+    // Ya'ni qo'shni bo'limga o'tish uchun har safar hub orqali
+    // aylanib chiqiladi. Foydalanuvchi shuni "kerakli raqamgacha
+    // uzoq" deb aytdi.
+    //
+    // Endi ikkalasi ham bor: hub kartochkalari asosiy raqamni
+    // ko'rsatadi, menyu esa TEZ o'tish uchun.
+    href: "/finance", label: "Moliya", icon: Wallet,
     children: [
       { href: "/finance/kassa", label: "Kassalar va balans" },
       { href: "/finance/plan", label: "Pul rejasi" },
