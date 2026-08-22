@@ -33,7 +33,14 @@ import { probe, isConfigured } from "@/lib/billzApi";
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+// Bu marshrut SERVERNING O'ZIDA ishlaydi, shuning uchun bazaga
+// ICHKI manzil orqali boradi (`NSPOS_REST_INTERNAL`).
+//
+// Nega: `NEXT_PUBLIC_SUPABASE_URL` endi `https://tizim.enes.uz` —
+// u BRAUZER uchun. Server o'sha manzilni ishlatsa, o'ziga tashqi
+// internet va TLS orqali aylanib boradi: bekorga sekin, va DNS
+// yoki sertifikat buzilsa Billz sinxronizatsiyasi ham to'xtaydi.
+const url = process.env.NSPOS_REST_INTERNAL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const CRON_SECRET = process.env.CRON_SECRET;
 

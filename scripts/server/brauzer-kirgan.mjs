@@ -21,7 +21,7 @@ import { writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const MANZIL = process.argv[2] ?? "http://169.58.216.246";
+const MANZIL = process.argv[2] ?? "https://tizim.enes.uz";
 const SERVER = process.env.NSPOS_SERVER ?? "root@169.58.216.246";
 const KALIT = process.env.NSPOS_KEY ?? `${process.env.HOME}/.ssh/nspos`;
 const CHROME = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -123,8 +123,13 @@ await yubor("Network.enable", {}, sessionId);
 
 // Sessiya cookie'si. `lib/jwt.js` dagi COOKIE nomi.
 const host = new URL(MANZIL).hostname;
+// `secure` — manzil HTTPS bo'lsa SHART. Ilova cookie'ni
+// `Secure` bilan qo'yadi va brauzer uni faqat xavfsiz ulanishda
+// saqlaydi; busiz tekshiruv "22 sahifa ham /login ga tushdi" deb
+// qichqirardi va sabab ko'rinmasdi.
 await yubor("Network.setCookie", {
-  name: "nspos_token", value: token, domain: host, path: "/", sameSite: "Strict",
+  name: "nspos_token", value: token, domain: host, path: "/",
+  sameSite: "Strict", secure: MANZIL.startsWith("https:"),
 }, sessionId);
 
 const SHOVQIN = /Cross-Origin-Opener-Policy|fonts\.googleapis|Password field|Autofill|favicon|DevTools/i;

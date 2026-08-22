@@ -22,6 +22,10 @@
 set -euo pipefail
 
 SERVER="${NSPOS_SERVER:-root@169.58.216.246}"
+# Saytning OMMAVIY manzili. SSH manzilidan farq qiladi: SSH IP bilan
+# boradi, brauzer esa domen bilan — sertifikat aynan domenga berilgan
+# va IP bilan ochilsa brauzer ogohlantirish beradi.
+MANZIL="${NSPOS_MANZIL:-https://tizim.enes.uz}"
 KALIT="${NSPOS_KEY:-$HOME/.ssh/nspos}"
 YOL="/opt/nspos/app"
 
@@ -70,11 +74,11 @@ UZOQ
 # da hamma sahifa 200 qaytarib turgan holda sayt brauzerda umuman
 # ochilmasdi.
 echo "── Brauzerda ochilmoqda"
-bash "$(dirname "$0")/brauzer-tekshir.sh" "http://${SERVER#*@}" || exit 1
+bash "$(dirname "$0")/brauzer-tekshir.sh" "$MANZIL" || exit 1
 
 # Kirgan holat — kirmasdan tekshirilganda hamma sahifa /login ga
 # yo'naltiriladi va ichkaridagi xato ko'rinmaydi.
 echo "── Kirgan holatda"
-node "$(dirname "$0")/brauzer-kirgan.mjs" "http://${SERVER#*@}" || exit 1
+node "$(dirname "$0")/brauzer-kirgan.mjs" "$MANZIL" || exit 1
 
-echo "✓ Tayyor: http://169.58.216.246"
+echo "✓ Tayyor: $MANZIL"

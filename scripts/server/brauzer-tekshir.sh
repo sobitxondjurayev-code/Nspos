@@ -35,7 +35,7 @@
 # Ular uchun `npm run nomlar` va `npm run tekshir` ishlaydi.
 set -uo pipefail
 
-MANZIL="${1:-http://169.58.216.246}"
+MANZIL="${1:-https://tizim.enes.uz}"
 CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
 ISH="$(mktemp -d)"
 trap 'rm -rf "$ISH"; pkill -9 -f "Google Chrome.*--headless.*nspos-brauzer" 2>/dev/null || true' EXIT

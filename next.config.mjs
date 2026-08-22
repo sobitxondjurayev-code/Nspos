@@ -24,6 +24,11 @@ const csp = [
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'none'",
+  // Kodda qolib ketgan biror `http://` havola bo'lsa, brauzer uni
+  // BLOKLAMASDAN HTTPS'ga ko'taradi. HTTPS'ga o'tishda eng ko'p
+  // uchraydigan nosozlik — "aralash kontent": sahifa https, ichidagi
+  // so'rov esa http, va brauzer uni jimgina tashlab yuboradi.
+  "upgrade-insecure-requests",
 ].join("; ");
 
 const nextConfig = {

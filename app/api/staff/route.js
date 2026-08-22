@@ -13,7 +13,14 @@
 import { createClient } from "@supabase/supabase-js";
 import { phoneToEmail, normalizePhone } from "@/lib/loginId";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+// Bu marshrut SERVERNING O'ZIDA ishlaydi, shuning uchun bazaga
+// ICHKI manzil orqali boradi (`NSPOS_REST_INTERNAL`).
+//
+// Nega: `NEXT_PUBLIC_SUPABASE_URL` endi `https://tizim.enes.uz` —
+// u BRAUZER uchun. Server o'sha manzilni ishlatsa, o'ziga tashqi
+// internet va TLS orqali aylanib boradi: bekorga sekin, va DNS
+// yoki sertifikat buzilsa Billz sinxronizatsiyasi ham to'xtaydi.
+const url = process.env.NSPOS_REST_INTERNAL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
