@@ -235,7 +235,7 @@ export default function DatasetDashboard({ dataset, preset }) {
         <table className="w-full text-[0.9375rem]">
           <thead>
             <tr className="[&>th]:sticky [&>th]:top-0 [&>th]:z-20 text-left text-muted text-sm border-b border-line [&>th]:bg-panel">
-              <th className="px-6 py-4 font-bold">{dim}</th>
+              <th className="px-6 py-4 font-bold sticky left-0 bg-panel z-30">{dim}</th>
               <th className="px-4 py-4 font-bold text-right">{t("Qatorlar")}</th>
               <th className="px-4 py-4 font-bold text-right">{measure || t("Soni")}</th>
               <th className="px-6 py-4 font-bold text-right">{t("Ulushi")}</th>
@@ -244,7 +244,7 @@ export default function DatasetDashboard({ dataset, preset }) {
           <tbody>
             {grouped.slice(0, 200).map((g) => (
               <tr key={g.label} className="border-b border-line last:border-0 hover:bg-surface/70">
-                <td className="px-6 py-3.5 font-bold">{g.label}</td>
+                <td className="px-6 py-3.5 font-bold sticky left-0 bg-panel z-10">{g.label}</td>
                 <td className="px-4 py-3.5 text-right font-semibold text-muted">{g.count}</td>
                 <td className="px-4 py-3.5 text-right font-extrabold">{fmtVal(g.value)}</td>
                 <td className="px-6 py-3.5 text-right font-semibold text-muted">

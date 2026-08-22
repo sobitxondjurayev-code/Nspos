@@ -221,7 +221,7 @@ export default function ServiceReport({ dataset }) {
           <table className="w-full text-[0.9375rem] whitespace-nowrap">
             <thead>
               <tr className="[&>th]:sticky [&>th]:top-0 [&>th]:z-20 text-left text-muted text-sm border-b border-line [&>th]:bg-panel">
-                <th className="px-5 py-4 font-bold">#</th>
+                <th className="px-5 py-4 font-bold w-14 sticky left-0 bg-panel z-30">#</th>
                 <th className="px-3 py-4 font-bold">{t("Usta")}</th>
                 <th className="px-3 py-4 font-bold text-right">{t("Kamera (dona)")}</th>
                 <th className="px-3 py-4 font-bold text-right">{t("Oyligi (so'm)")}</th>
@@ -231,7 +231,7 @@ export default function ServiceReport({ dataset }) {
             <tbody>
               {wage.byStaff.map((x, i) => (
                 <tr key={x.name} className={`border-b border-line last:border-0 ${i % 2 ? "bg-surface/30" : ""}`}>
-                  <td className="px-5 py-3.5 font-semibold text-muted tabular-nums">{i + 1}</td>
+                  <td className="px-5 py-3.5 font-semibold text-muted tabular-nums w-14 sticky left-0 bg-panel z-10">{i + 1}</td>
                   <td className="px-3 py-3.5 font-bold">{x.name}</td>
                   <td className="px-3 py-3.5 text-right font-extrabold">{x.cameras}</td>
                   <td className="px-3 py-3.5 text-right font-semibold">{Math.round(x.som).toLocaleString("ru-RU")}</td>
@@ -265,8 +265,8 @@ export default function ServiceReport({ dataset }) {
         <table className="w-full text-[0.9375rem] whitespace-nowrap">
           <thead className="sticky top-0 z-20">
             <tr className="text-left text-muted text-sm border-b border-line [&>th]:bg-panel">
-              <th className="px-5 py-4 font-bold">#</th>
-              <SortTh label="Xizmat" sortKey="name" sort={sort} onSort={toggle} className="px-5" />
+              <th className="px-5 py-4 font-bold w-14 sticky left-0 bg-panel z-30">#</th>
+              <SortTh label="Xizmat" sortKey="name" sort={sort} onSort={toggle} className="px-5 sticky left-14 bg-panel z-30" />
               {tableCols.map((c) => (
                 <SortTh key={c.key} label={c.label} sortKey={c.sortKey} sort={sort} onSort={toggle}
                   align={c.align} />
@@ -279,8 +279,8 @@ export default function ServiceReport({ dataset }) {
             {sortRows(service.map((x) => ({ ...x, avg: x.qty > 0 ? x.revenue / x.qty : 0 })))
               .map((x, i) => (
               <tr key={`${x.name}-${x.store}-${i}`} className={`border-b border-line last:border-0 ${i % 2 ? "bg-surface/30" : ""}`}>
-                <td className="px-5 py-3.5 font-semibold text-muted tabular-nums">{i + 1}</td>
-                <td className="px-5 py-3.5 font-bold">{x.name}</td>
+                <td className="px-5 py-3.5 font-semibold text-muted tabular-nums w-14 sticky left-0 bg-panel z-10">{i + 1}</td>
+                <td className="px-5 py-3.5 font-bold sticky left-14 bg-panel z-10">{x.name}</td>
                 {tableCols.map((c) => (
                   <td key={c.key}
                     className={`px-3 py-3.5 ${c.align === "right" ? "text-right" : ""} ${c.cellClass?.(x) ?? ""}`}>

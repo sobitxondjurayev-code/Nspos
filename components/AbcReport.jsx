@@ -6,12 +6,7 @@ import FilterBar, { applyFilters } from "@/components/FilterBar";
 import { findColumn } from "@/lib/analyses";
 import { numberOf, textOf } from "@/lib/datasets";
 import ParetoChart from "@/components/finance/ParetoChart";
-// Bu to'rttasi ISHLATILARDI, lekin import qilinmagan edi — sahifa
-// brauzerda "useColumns is not defined" bilan qulardi.
-import { SlidersHorizontal } from "lucide-react";
-import { useColumns } from "@/components/useColumns";
-import ColumnSettings from "@/components/ColumnSettings";
-import TotalsRow from "@/components/TotalsRow";
+import DataTable from "@/components/ui/DataTable";
 
 // ══════════════════════════════════════════════════════════════
 // ABC TAHLILI
@@ -117,8 +112,41 @@ export default function AbcReport({ analysis, dataset }) {
         </span>
       ) },
   ], [cols.count]);
-  const colPrefs = useColumns("report-abc", ALL_COLS);
-  const tableCols = colPrefs.columns;
+  // ── DataTable ustunlari ──────────────────────────────────────
+  // Jadval qo'lda chizilardi: sarlavha pin bor edi, lekin CHAP USTUN
+  // PIN, SARALASH va EXCEL yo'q edi — holbuki CLAUDE.md da bular har
+  // jadval uchun majburiy. `DataTable` shularning hammasini o'zi
+  // beradi, ya'ni ularni bu yerda qayta yozish shart emas.
+  //
+  // Mijoz nomi BIRINCHI ustun — DataTable aynan birinchisini chapda
+  // yopishtiradi. O'ngga surilganda "bu qaysi mijoz edi?" degan savol
+  // tug'ilmasin.
+  const jadvalCols = useMemo(() => [
+    { key: "label", label: cols.label ?? "Nom", locked: true, width: "16rem",
+      value: (r) => r.label,
+      cell: (r) => (
+        <div>
+          <p className="font-bold">{r.label}</p>
+          {r.phone && <p className="text-sm text-muted">{r.phone}</p>}
+        </div>
+      ) },
+    { key: "rank", label: "#", locked: true, right: true, width: "4rem",
+      cell: (r) => <span className="font-semibold text-muted">{r.rank}</span> },
+    ...ALL_COLS.map((c) => ({
+      key: c.key,
+      label: c.label,
+      right: c.align === "right",
+      value: (r) => r[c.key],
+      cell: (r) => {
+        const kl = c.cellClass?.(r);
+        const ich = c.cell(r);
+        return kl ? <span className={kl}>{ich}</span> : ich;
+      },
+      // Eski `total` `{ value, className }` qaytarardi — DataTable
+      // esa katakning O'ZINI kutadi.
+      ...(c.total ? { total: (rs) => c.total(rs).value } : {}),
+    })),
+  ], [ALL_COLS, cols.label]);
 
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -199,55 +227,20 @@ export default function AbcReport({ analysis, dataset }) {
         fields={FIELDS} filters={filters} onChange={setFilters}
       />
 
-      <div className="flex justify-end mb-3">
-        <button onClick={colPrefs.openSettings}
-          className="flex items-center gap-2 rounded-xl border border-line px-4 py-2 font-bold hover:border-brand hover:text-brand transition-colors">
-          <SlidersHorizontal size={16} /> {t("Ustunlar")}
-        </button>
-      </div>
+      <DataTable
+        id="report-abc"
+        name={t("ABC tahlili")}
+        rows={shown}
+        rowKey={(r) => r.rank}
+        count={shown.length}
+        limit={300}
+        minWidth="60rem"
+        boshSort={{ key: "value", dir: "desc" }}
+        columns={jadvalCols}
+        empty={{ title: "Mos qator topilmadi",
+                 hint: "Filtr yoki qidiruvni o'zgartiring." }}
+      />
 
-      <div className="card overflow-auto max-h-[70vh]">
-        <table className="w-full text-[0.9375rem]">
-          <thead className="sticky top-0 z-20">
-            <tr className="text-left text-muted text-sm border-b border-line [&>th]:bg-panel">
-              <th className="px-6 py-4 font-bold">#</th>
-              <th className="px-4 py-4 font-bold">{cols.label}</th>
-              {tableCols.map((c) => (
-                <th key={c.key}
-                  className={`px-4 py-4 font-bold ${c.align === "right" ? "text-right" : c.align === "center" ? "text-center" : ""}`}>
-                  {t(c.label)}
-                </th>
-              ))}
-            </tr>
-            <TotalsRow count={shown.length} span={2}
-              cells={tableCols.map((c) => (c.total ? c.total(shown) : null))} />
-          </thead>
-          <tbody>
-            {shown.slice(0, 300).map((r) => (
-              <tr key={r.rank} className="border-b border-line last:border-0 hover:bg-surface/70">
-                <td className="px-6 py-3.5 font-semibold text-muted">{r.rank}</td>
-                <td className="px-4 py-3.5">
-                  <p className="font-bold">{r.label}</p>
-                  {r.phone && <p className="text-sm text-muted">{r.phone}</p>}
-                </td>
-                {tableCols.map((c) => (
-                  <td key={c.key}
-                    className={`px-4 py-3.5 ${c.align === "right" ? "text-right" : c.align === "center" ? "text-center" : ""} ${c.cellClass?.(r) ?? ""}`}>
-                    {c.cell(r)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {shown.length > 300 && (
-          <p className="px-6 py-4 text-sm text-muted font-semibold border-t border-line">
-            {tt("Yana {n} qator — filtr bilan toraytiring", { n: shown.length - 300 })}
-          </p>
-        )}
-      </div>
-
-      {colPrefs.open && <ColumnSettings {...colPrefs.dialogProps} />}
     </div>
   );
 }

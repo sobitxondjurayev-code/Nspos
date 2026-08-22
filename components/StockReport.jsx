@@ -433,8 +433,8 @@ export default function StockReport({ dataset }) {
         <table className="w-full text-[0.9375rem] whitespace-nowrap">
           <thead className="sticky top-0 z-20">
             <tr className="text-left text-muted text-sm border-b border-line [&>th]:bg-panel">
-              <th className="px-5 py-4 font-bold">#</th>
-              <SortTh label="Tovar" sortKey="name" sort={sort} onSort={toggle} className="px-5" />
+              <th className="px-5 py-4 font-bold w-14 sticky left-0 bg-panel z-30">#</th>
+              <SortTh label="Tovar" sortKey="name" sort={sort} onSort={toggle} className="px-5 sticky left-14 bg-panel z-30" />
               {tableCols.map((c) => (
                 <SortTh key={c.key} label={c.label} sortKey={c.sortKey} sort={sort} onSort={toggle}
                   align={c.align} />
@@ -447,8 +447,8 @@ export default function StockReport({ dataset }) {
           <tbody>
             {shown.slice(0, 300).map((x, i) => (
               <tr key={`${x.name}-${x.store}-${i}`} className={`border-b border-line last:border-0 ${i % 2 ? "bg-surface/30" : ""}`}>
-                <td className="px-5 py-3.5 font-semibold text-muted tabular-nums">{i + 1}</td>
-                <td className="px-5 py-3.5 font-bold max-w-xs truncate" title={x.name}>{x.name}</td>
+                <td className="px-5 py-3.5 font-semibold text-muted tabular-nums w-14 sticky left-0 bg-panel z-10">{i + 1}</td>
+                <td className="px-5 py-3.5 font-bold max-w-xs truncate sticky left-14 bg-panel z-10" title={x.name}>{x.name}</td>
                 {tableCols.map((c) => (
                   <td key={c.key}
                     className={`px-3 py-3.5 ${c.align === "right" ? "text-right" : ""} ${c.cellClass?.(x) ?? ""}`}>

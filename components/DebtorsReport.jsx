@@ -7,7 +7,7 @@ import FilterBar, { applyFilters } from "@/components/FilterBar";
 import { findColumn } from "@/lib/analyses";
 import { numberOf, dateOf, textOf, listDatasets } from "@/lib/datasets";
 import NumberField from "@/components/NumberField";
-import TotalsRow from "@/components/TotalsRow";
+import DataTable from "@/components/ui/DataTable";
 
 // ══════════════════════════════════════════════════════════════
 // QARZDORLAR TAHLILI — MUDDAT MATRITSASI
@@ -206,48 +206,45 @@ export default function DebtorsReport({ analysis, dataset }) {
         {tt("{n} ta muddati o'tgan qarzdor", { n: shown.length })}
       </p>
 
-      {/* Matritsa: mijoz × guruh */}
-      <div className="card overflow-auto max-h-[70vh]">
-        <table className="w-full text-[0.9375rem] whitespace-nowrap">
-          <thead className="sticky top-0 z-20">
-            <tr className="text-left text-muted text-sm border-b border-line [&>th]:bg-panel">
-              <th className="px-5 py-4 font-bold">#</th>
-              <th className="px-4 py-4 font-bold">{t("Mijoz")}</th>
-              {bucketDefs.map((b, i) => (
-                <th key={i} className={`px-4 py-4 font-bold text-right ${b.tone}`}>{b.label}</th>
-              ))}
-              <th className="px-5 py-4 font-bold text-right">{t("Jami")}</th>
-            </tr>
-            <TotalsRow count={shown.length} cells={[
-            ...totals.cols4.map((v) => ({ value: fmtUSD(+v.toFixed(2)) })),
-            { value: fmtUSD(+totals.all.toFixed(2)), className: "text-danger" },
-            ]} />
-          </thead>
-          <tbody>
-            {shown.slice(0, 300).map((d, i) => (
-              <tr key={d.name} className="border-b border-line last:border-0 hover:bg-surface/70">
-                <td className="px-5 py-3.5 font-semibold text-muted">{i + 1}</td>
-                <td className="px-4 py-3.5">
-                  <p className="font-bold">{d.name}</p>
-                  {d.phone && <p className="text-sm text-muted">{d.phone}</p>}
-                </td>
-                {d.buckets.map((v, j) => (
-                  <td key={j} className={`px-4 py-3.5 text-right font-semibold ${
-                    v > 0 ? "" : "text-muted"}`}>
-                    {v > 0 ? fmtUSD(+v.toFixed(2)) : "—"}
-                  </td>
-                ))}
-                <td className="px-5 py-3.5 text-right font-extrabold">{fmtUSD(+d.total.toFixed(2))}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {shown.length > 300 && (
-          <p className="px-6 py-4 text-sm text-muted font-semibold border-t border-line">
-            {tt("Yana {n} qator — filtr bilan toraytiring", { n: shown.length - 300 })}
-          </p>
-        )}
-      </div>
+      {/* Matritsa: mijoz × muddat guruhi.
+          Jadval qo'lda chizilardi — sarlavha pin bor edi, lekin chap
+          ustun pin, saralash va Excel yo'q edi. `DataTable` ularni
+          o'zi beradi. Muddat guruhlari ro'yxatdan yasaladi, ya'ni
+          guruh qo'shilsa ustun ham, "Jami" katagi ham o'zi qo'shiladi. */}
+      <DataTable
+        id="report-debtors"
+        name={t("Qarzdorlar")}
+        rows={shown}
+        rowKey={(d) => d.name}
+        count={shown.length}
+        limit={300}
+        minWidth="56rem"
+        boshSort={{ key: "total", dir: "desc" }}
+        empty={{ title: "Muddati o'tgan qarzdor yo'q" }}
+        columns={[
+          { key: "name", label: "Mijoz", locked: true, width: "16rem",
+            value: (d) => d.name,
+            cell: (d) => (
+              <div>
+                <p className="font-bold">{d.name}</p>
+                {d.phone && <p className="text-sm text-muted">{d.phone}</p>}
+              </div>
+            ) },
+          ...bucketDefs.map((b, i) => ({
+            key: `b${i}`, label: b.label, right: true,
+            value: (d) => d.buckets[i] ?? 0,
+            cell: (d) => (d.buckets[i] > 0
+              ? <span className="font-semibold">{fmtUSD(+d.buckets[i].toFixed(2))}</span>
+              : <span className="text-muted">—</span>),
+            total: (rs) => fmtUSD(+rs.reduce((a, d) => a + (d.buckets[i] ?? 0), 0).toFixed(2)),
+          })),
+          { key: "total", label: "Jami", right: true,
+            cell: (d) => <span className="font-extrabold">{fmtUSD(+d.total.toFixed(2))}</span>,
+            total: (rs) => (
+              <span className="text-danger">{fmtUSD(+rs.reduce((a, d) => a + d.total, 0).toFixed(2))}</span>
+            ) },
+        ]}
+      />
     </div>
   );
 }

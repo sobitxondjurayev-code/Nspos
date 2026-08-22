@@ -203,7 +203,7 @@ export default function ImportsReport({ dataset }) {
         <table className="w-full text-[0.9375rem] whitespace-nowrap">
           <thead>
             <tr className="text-left text-muted text-sm border-b border-line">
-              <th className="px-5 py-4 font-bold">{t(CUTS.find((c) => c.key === cut).label)}</th>
+              <th className="px-5 py-4 font-bold sticky left-0 bg-panel z-30">{t(CUTS.find((c) => c.key === cut).label)}</th>
               {cut === "batch" && <th className="px-3 py-4 font-bold">{t("Sana")}</th>}
               {cut === "batch" && <th className="px-3 py-4 font-bold text-right">{t("Yosh")}</th>}
               <th className="px-3 py-4 font-bold text-right">{t("Import")}</th>
@@ -217,7 +217,7 @@ export default function ImportsReport({ dataset }) {
               const pct = g.impQty > 0 ? (g.soldQty / g.impQty) * 100 : 0;
               return (
                 <tr key={g.key} className={`border-b border-line last:border-0 ${i % 2 ? "bg-surface/30" : ""}`}>
-                  <td className="px-5 py-3.5 font-bold max-w-xs truncate" title={g.key}>{g.key}</td>
+                  <td className="px-5 py-3.5 font-bold max-w-xs truncate sticky left-0 bg-panel z-10" title={g.key}>{g.key}</td>
                   {cut === "batch" && <td className="px-3 py-3.5 font-semibold text-muted">{g.date}</td>}
                   {cut === "batch" && (
                     <td className={`px-3 py-3.5 text-right font-bold ${g.age > 180 ? "text-danger" : g.age > 90 ? "text-warn" : "text-muted"}`}>
@@ -274,8 +274,8 @@ export default function ImportsReport({ dataset }) {
         <table className="w-full text-[0.9375rem] whitespace-nowrap">
           <thead className="sticky top-0 z-20">
             <tr className="text-left text-muted text-sm border-b border-line [&>th]:bg-panel">
-              <th className="px-5 py-4 font-bold">#</th>
-              <SortTh label="Tovar" sortKey="name" sort={sort} onSort={toggle} className="px-5" />
+              <th className="px-5 py-4 font-bold w-14 sticky left-0 bg-panel z-30">#</th>
+              <SortTh label="Tovar" sortKey="name" sort={sort} onSort={toggle} className="px-5 sticky left-14 bg-panel z-30" />
               <SortTh label="Sana" sortKey="date" sort={sort} onSort={toggle} />
               <SortTh label="Yosh" sortKey="age" sort={sort} onSort={toggle} align="right" />
               <SortTh label="Import (dona)" sortKey="impQty" sort={sort} onSort={toggle} align="right" />
@@ -296,8 +296,8 @@ export default function ImportsReport({ dataset }) {
           <tbody>
             {sortRows(shown).slice(0, 300).map((x, i) => (
               <tr key={`${x.batch}-${x.name}-${i}`} className={`border-b border-line last:border-0 ${i % 2 ? "bg-surface/30" : ""}`}>
-                <td className="px-5 py-3.5 font-semibold text-muted tabular-nums">{i + 1}</td>
-                <td className="px-5 py-3.5 font-bold max-w-xs truncate" title={x.name}>{x.name}</td>
+                <td className="px-5 py-3.5 font-semibold text-muted tabular-nums w-14 sticky left-0 bg-panel z-10">{i + 1}</td>
+                <td className="px-5 py-3.5 font-bold max-w-xs truncate sticky left-14 bg-panel z-10" title={x.name}>{x.name}</td>
                 <td className="px-3 py-3.5 font-semibold text-muted">{x.date}</td>
                 <td className={`px-3 py-3.5 text-right font-semibold ${x.age > 180 ? "text-danger" : x.age > 90 ? "text-warn" : "text-muted"}`}>
                   {x.age}

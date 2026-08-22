@@ -2,15 +2,13 @@
 import { t, tt } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import { fmtUSD } from "@/lib/demoData";
+import DataTable from "@/components/ui/DataTable";
+import { eskiUstunlar } from "@/components/ui/eskiUstun";
 import FilterBar, { applyFilters } from "@/components/FilterBar";
-import SortTh, { useSort } from "@/components/SortTh";
 import ExportButton from "@/components/ExportButton";
-import TotalsRow from "@/components/TotalsRow";
 import NumberField from "@/components/NumberField";
 import { numberOf, textOf } from "@/lib/datasets";
 import { AlertTriangle, SlidersHorizontal } from "lucide-react";
-import ColumnSettings from "@/components/ColumnSettings";
-import { useColumns } from "@/components/useColumns";
 
 // ══════════════════════════════════════════════════════════════
 // BUYURTMA TAKLIFI
@@ -49,10 +47,12 @@ export default function ReorderReport({ dataset }) {
   const [lead, setLead] = useState(30);      // yetkazib berish muddati
   const [target, setTarget] = useState(45);  // shundan keyingi zaxira
   const [onlyUrgent, setOnlyUrgent] = useState(false);
-  const { sort, toggle, sortRows } = useSort("cover", "asc");
+  // Saralash endi `DataTable` ichida — `useSort` olib tashlandi.
+  // Ikki joyda saralash bo'lsa ular bir-birini bosadi va "nega
+  // bosganimda tartib o'zgarmadi?" degan savol tug'iladi.
 
   // —— Ustunlar ————————————————————————————————————
-  // "#" va "Tovar" doim chapda; qolganini rahbar o'zi tartiblaydi.
+  // "Tovar" doim chapda; qolganini rahbar o'zi tartiblaydi.
   const ALL_COLS = useMemo(() => [
     { key: "category", label: "Kategoriya", sortKey: "category",
       cellClass: () => "font-semibold text-muted", cell: (x) => x.category },
@@ -83,8 +83,20 @@ export default function ReorderReport({ dataset }) {
         </span>
       ) },
   ], []);
-  const colPrefs = useColumns("report-reorder", ALL_COLS);
-  const tableCols = colPrefs.columns;
+  // Jadval `DataTable` orqali chiziladi: sarlavha pin, CHAP USTUN
+  // PIN, saralash, "Jami", "Ustunlar" va Excel — hammasi o'zi.
+  // Ilgari bularning faqat bir qismi bor edi va har biri qo'lda
+  // yozilgandi.
+  //
+  // Tovar nomi BIRINCHI ustun — chapda yopishib turadigan aynan
+  // o'sha bo'lishi kerak. Tartib raqami ("#") olib tashlandi: u
+  // saralanadigan jadvalda ma'no tashimaydi (saralasangiz raqamlar
+  // aralashib ketadi).
+  const jadvalCols = useMemo(() => ([
+    { key: "name", label: "Tovar", locked: true, width: "18rem",
+      cell: (x) => <span className="font-bold">{x.name}</span> },
+    ...eskiUstunlar(ALL_COLS, { jami: () => tot }),
+  ]), [ALL_COLS, tot]);
 
 
   const { header, rows } = dataset;
@@ -184,7 +196,7 @@ export default function ReorderReport({ dataset }) {
       .filter((x) => !needle || x.name.toLowerCase().includes(needle));
   }, [items, FIELDS, filters, q, onlyUrgent]);
 
-  const shown = useMemo(() => sortRows(filtered), [filtered, sort]);
+  const shown = filtered;
 
   const tot = useMemo(() => filtered.reduce((a, x) => ({
     n: a.n + 1, cost: a.cost + x.cost, need: a.need + x.need,
@@ -280,55 +292,20 @@ export default function ReorderReport({ dataset }) {
           { label: "Holat", get: (x) => (x.urgent ? "Shoshilinch" : "Normal") },
         ]} />
 
-      <div className="flex justify-end mb-3">
-        <button onClick={colPrefs.openSettings}
-          className="flex items-center gap-2 rounded-xl border border-line px-4 py-2 font-bold hover:border-brand hover:text-brand transition-colors">
-          <SlidersHorizontal size={16} /> {t("Ustunlar")}
-        </button>
-      </div>
+      <DataTable
+        id="report-reorder"
+        name={t("Buyurtma ro'yxati")}
+        rows={shown}
+        rowKey={(x) => x.name}
+        count={shown.length}
+        limit={300}
+        minWidth="62rem"
+        boshSort={{ key: "cover", dir: "asc" }}
+        columns={jadvalCols}
+        empty={{ title: "Buyurtma qilinadigan tovar yo'q",
+                 hint: "Filtrni kengaytiring yoki boshqa davrni tanlang." }}
+      />
 
-      <div className="card overflow-auto max-h-[70vh]">
-        <table className="w-full text-[0.9375rem] whitespace-nowrap">
-          <thead className="sticky top-0 z-20">
-            <tr className="text-left text-muted text-sm border-b border-line [&>th]:bg-panel">
-              <th className="px-5 py-4 font-bold">#</th>
-              <SortTh label="Tovar" sortKey="name" sort={sort} onSort={toggle} className="px-5" />
-              {tableCols.map((c) => (
-                <SortTh key={c.key} label={c.label} sortKey={c.sortKey} sort={sort} onSort={toggle}
-                  align={c.align} />
-              ))}
-            </tr>
-            <TotalsRow count={tot.n} span={2}
-              cells={tableCols.map((c) => (c.total ? c.total(tot) : null))} />
-          </thead>
-          <tbody>
-            {shown.slice(0, 300).map((x, i) => (
-              <tr key={x.name} className={`border-b border-line last:border-0 ${i % 2 ? "bg-surface/30" : ""}`}>
-                <td className="px-5 py-3.5 font-semibold text-muted tabular-nums">{i + 1}</td>
-                <td className="px-5 py-3.5 font-bold max-w-xs truncate" title={x.name}>{x.name}</td>
-                {tableCols.map((c) => (
-                  <td key={c.key}
-                    className={`px-3 py-3.5 ${c.align === "right" ? "text-right" : ""} ${c.cellClass?.(x) ?? ""}`}>
-                    {c.cell(x)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {shown.length > 300 && (
-          <p className="px-5 py-4 text-sm text-muted font-semibold border-t border-line">
-            {tt("Birinchi 300 tasi ko'rsatildi ({n} tadan) — filtrni toraytiring yoki Excelga chiqaring", { n: shown.length })}
-          </p>
-        )}
-        {shown.length === 0 && (
-          <p className="px-5 py-10 text-center text-muted font-semibold">
-            {t("Buyurtma kerak bo'lgan tovar yo'q — zaxira yetarli.")}
-          </p>
-        )}
-      </div>
-
-      {colPrefs.open && <ColumnSettings {...colPrefs.dialogProps} />}
     </div>
   );
 }

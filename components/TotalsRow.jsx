@@ -20,7 +20,10 @@ import { t, tt } from "@/lib/i18n";
 export default function TotalsRow({ count, cells, span = 2, hint }) {
   return (
     <tr className="text-[0.9375rem] border-b-2 border-line [&>th]:bg-panel [&>th]:py-4">
-      <th className="px-5 font-extrabold text-left" colSpan={span}>
+      {/* "JAMI" yozuvi chapdagi qotirilgan ustunlar ustida turadi —
+          shuning uchun u ham yopishadi, aks holda gorizontal skrollda
+          raqamlar ostida "JAMI" yozuvi yo'qolib ketardi. */}
+      <th className="px-5 font-extrabold text-left sticky left-0 bg-panel z-30" colSpan={span}>
         {t("JAMI")}
         {count != null && (
           <span className="ml-2 text-sm font-semibold text-muted">
