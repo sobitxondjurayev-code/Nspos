@@ -909,3 +909,88 @@ statistika nolga tushib qolardi.
 - Har o'zgarishdan keyin saytga chiqariladi — u lokal serverda emas,
   saytda ishlaydi.
 - Xato qilsam — bahona emas, sababini aytaman va tuzataman.
+
+---
+
+## 9. 2026-08-22 — VPS'dagi birinchi kun: nima buzilgan edi
+
+Sayt VPS'ga ko'chirilgandan keyin **brauzerda umuman ochilmasdi**, lekin
+buni hech bir tekshiruv ko'rmadi. Kunning asosiy saboqlari.
+
+### 9.1. `curl` 200 hech narsani isbotlamaydi
+
+`components/AuthProvider.jsx` da `sessiyaOl()` chaqirilardi, import esa
+yo'q edi. AuthProvider ildiz layoutida — butun sayt o'lgan edi
+("ReferenceError: sessiyaOl is not defined").
+
+O'tib ketgan tekshiruvlar: `next build`, `node --check`,
+`npm run tekshir`, `curl` 200. Next.js HTML **qobiqni** beradi, ishdan
+chiqish esa brauzerda — hidratsiyada.
+
+**Qoida:** sayt HAQIQIY brauzerda ochilishi tekshiriladi.
+`scripts/server/brauzer-kirgan.mjs` (kirgan holatda, 22 sahifa).
+
+### 9.2. Tekshiruvning o'zi yolg'on o'tishi mumkin
+
+Birinchi brauzer skriptida `timeout 60 chrome …` yozilgandi. macOS'da
+`timeout` YO'Q — Chrome ishga tushmagan, jurnal bo'sh, 14 sahifa "toza".
+
+**Qoida:** tekshiruv "xato topilmadi" ga emas, **"ish bajarildi"** ga
+asoslansin. Endi har sahifadan skrinshot olinadi va u kamida 12 KB
+bo'lishi shart.
+
+### 9.3. `catch {}` — eng qimmat qator
+
+`lib/db.js` da jonli yangilanish so'rovi `catch {}` bilan o'ralgandi
+("tarmoq uzilsa jim o'tamiz"). 39 jadvaldan 33 tasida `updated_at`
+ustuni yo'q edi va PostgREST har 20 soniyada 400 qaytarardi. Jonli
+yangilanish HECH QACHON ishlamagan, hech kim bilmagan.
+
+**Qoida:** xato yutilmaydi. Ketma-ket uchta xatodan keyin rahbarga
+aytiladi.
+
+### 9.4. `information_schema` jadval egasiga bog'liq
+
+REST API serverda tushumni 17 188 deb ko'rsatdi (aslida 76 723).
+`yuk.mjs` tashqi kalitni `information_schema.constraint_column_usage`
+dan o'qirdi — u faqat jadval EGASIGA ko'rinadi. API `nspos` roli bilan
+ulanadi va ko'rinish bo'sh qaytardi: 9 032 chekning birortasida tovar
+tarkibi yo'q.
+
+**Qoida:** sxema `pg_catalog` dan o'qiladi. Bo'sh ichma-ich natija
+XATO deb to'xtatiladi ("N qatorning birortasida ham yo'q").
+
+### 9.5. Almashtirish chekida ishora yo'qoladi
+
+Billz `exchange` chekida `total` ga farqning ABSOLYUT qiymatini yozadi.
+Do'kon 4.18 $ qaytargan — u 4.18 $ tushum bo'lib yozilgan, xato ikki
+barobar. 79 chek, tushum 3 127.24 $ ortiq edi.
+
+`subtotal` to'g'ri ishorada va chek qatorlari yig'indisiga aynan teng.
+Endi ishora o'shandan olinadi (`lib/salesData.js`, `ishorali`).
+Bazadagi qator o'zgartirilmaydi.
+
+### 9.6. Bo'sh raqam — ishonarli yolg'on
+
+Og'ir jadvallar ~25 soniya yuklanadi. Shu davrda bosh sahifa ishonch
+bilan "0.00 USD" ko'rsatardi. Rahbar "savdo yo'q" deb o'ylaydi.
+
+**Qoida:** ma'lumot kelmaguncha raqam O'RNIGA joy egallagich turadi
+(`useToliq()`).
+
+### 9.7. Tezlik: 26.9 → 9.3 soniya
+
+- Sahifa o'lchami 1000 → 5000 qator. Server Yevropada, foydalanuvchi
+  O'zbekistonda: har so'rov ~250 ms, 40 dan ortiq borib-kelish bor edi.
+- Nginx'da `gzip on;` yozilgan, lekin `gzip_types` va `gzip_proxied`
+  izohda — JSON umuman siqilmasdi.
+
+### 9.8. Serverdagi sozlama unutildi
+
+`/api/billz/sync` har chaqiriqda 500 qaytarardi: serverda
+`BILLZ_SECRET_TOKEN`, `CRON_SECRET` va service kaliti yo'q edi. Ya'ni
+ko'chishdan beri Billz'dan yangi ma'lumot tortilmagan.
+
+Endi har 30 daqiqada (`scripts/server/06-billz-cron.sh`). PostgREST
+`authenticator` sifatida ulanadi va JWT dagi rolga O'TADI — o'tish
+uchun o'sha rolning a'zosi bo'lishi shart edi.
