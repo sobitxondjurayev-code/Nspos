@@ -73,12 +73,12 @@ UZOQ
 # HAQIQIY brauzer. Javob kodi hech narsani isbotlamaydi — 2026-08-22
 # da hamma sahifa 200 qaytarib turgan holda sayt brauzerda umuman
 # ochilmasdi.
-echo "── Brauzerda ochilmoqda"
-bash "$(dirname "$0")/brauzer-tekshir.sh" "$MANZIL" || exit 1
-
-# Kirgan holat — kirmasdan tekshirilganda hamma sahifa /login ga
-# yo'naltiriladi va ichkaridagi xato ko'rinmaydi.
-echo "── Kirgan holatda"
+# HAQIQIY brauzer. Bitta vosita ikkala holatni ham tekshiradi:
+# avval KIRMASDAN (saytga birinchi marta kelgan odam), keyin
+# sessiya bilan. Ikkalasi ham kerak — 2026-08-22 da `/login` va
+# `/dashboard` alohida ishlardi, `/` orqali kirganda esa
+# "Application error" chiqardi.
+echo "── Brauzerda"
 node "$(dirname "$0")/brauzer-kirgan.mjs" "$MANZIL" || exit 1
 
 echo "✓ Tayyor: $MANZIL"

@@ -35,6 +35,26 @@ const nextConfig = {
   // Server versiyasini oshkor qilmaydi
   poweredByHeader: false,
 
+  // ── `/` YO'NALTIRISHI SOZLAMADA ─────────────────────────────
+  // Ilgari buni `app/page.jsx` qilardi: server komponenti ichida
+  // `redirect("/dashboard")`. Sahifa STATIK bo'lgani uchun Next uni
+  // mijoz tomonida ham qayta ishlashga urinardi va router'ning
+  // hook tartibi buzilardi:
+  //
+  //   Minified React error #310 — "Rendered more hooks than during
+  //   the previous render", Next'ning O'Z `AppRouter` komponentida.
+  //
+  //   Natijada saytga `tizim.enes.uz` deb kirgan odam "Application
+  //   error" ko'rardi. `/login` yoki `/dashboard` ni to'g'ridan-
+  //   to'g'ri ochsa esa hammasi ishlardi — shuning uchun tekshiruv
+  //   buni ko'rmadi (2026-08-22).
+  //
+  // Sozlamadagi yo'naltirish React umuman yuklanmasdan, HTTP
+  // darajasida bajariladi. Buziladigan joy qolmaydi.
+  async redirects() {
+    return [{ source: "/", destination: "/dashboard", permanent: false }];
+  },
+
   async headers() {
     return [
       {

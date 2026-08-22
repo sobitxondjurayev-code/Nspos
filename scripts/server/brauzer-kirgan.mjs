@@ -29,6 +29,17 @@ const PORT = 9333;
 
 // `NSPOS_YOLLAR` berilsa faqat o'shalar tekshiriladi (vergul bilan) —
 // bitta sahifani tez ko'rish uchun.
+// ── KIRMASDAN ─────────────────────────────────────────────────
+// Bularni cookie qo'yishdan OLDIN ochamiz. Nega alohida: saytga
+// birinchi marta kirgan odam aynan shu yo'ldan keladi va u yerdagi
+// xato boshqa hech qayerda ko'rinmaydi.
+//
+// 2026-08-22 da aynan shu bo'ldi: `/login` va `/dashboard` alohida
+// ochilganda ishlardi, `/` orqali kirganda esa "Application error"
+// chiqardi (Next router'ida React #310). Kirgan holatdagi 22 ta
+// sahifa toza edi — ya'ni tekshiruv "hammasi joyida" deb turardi.
+const ANON_YOLLAR = ["/", "/login"];
+
 const YOLLAR = process.env.NSPOS_YOLLAR ? process.env.NSPOS_YOLLAR.split(",") : [
   "/dashboard", "/finance/pnl", "/finance/kassa", "/finance/debts", "/finance/expenses",
   "/finance/balance", "/finance/payroll", "/finance/plan", "/products", "/clients",
@@ -123,19 +134,23 @@ await yubor("Network.enable", {}, sessionId);
 
 // Sessiya cookie'si. `lib/jwt.js` dagi COOKIE nomi.
 const host = new URL(MANZIL).hostname;
-// `secure` — manzil HTTPS bo'lsa SHART. Ilova cookie'ni
-// `Secure` bilan qo'yadi va brauzer uni faqat xavfsiz ulanishda
-// saqlaydi; busiz tekshiruv "22 sahifa ham /login ga tushdi" deb
-// qichqirardi va sabab ko'rinmasdi.
-await yubor("Network.setCookie", {
-  name: "nspos_token", value: token, domain: host, path: "/",
-  sameSite: "Strict", secure: MANZIL.startsWith("https:"),
-}, sessionId);
+// DIQQAT: cookie bu yerda QO'YILMAYDI. U `ANON_YOLLAR` dan keyin
+// qo'yiladi — aks holda "kirmasdan" bosqichi ma'nosini yo'qotadi.
+// `secure` — manzil HTTPS bo'lsa shart: ilova cookie'ni `Secure`
+// bilan qo'yadi va brauzer uni faqat xavfsiz ulanishda saqlaydi.
 
 const SHOVQIN = /Cross-Origin-Opener-Policy|fonts\.googleapis|Password field|Autofill|favicon|DevTools/i;
 
+// Xato namunasi ATAYLAB keng. Ilgari u faqat `Uncaught …Error:` va
+// `TypeError:` kabilarni tutardi — React esa `Error: Minified React
+// error #310` deb yozadi va u o'tib ketdi.
+const XATO = /(Uncaught [A-Za-z]*Error|ReferenceError|TypeError|SyntaxError|Minified React error|^Error):/im;
+
 let xato = 0;
-for (const yol of YOLLAR) {
+
+// `kirgan = false` — hali sessiya yo'q, /login ga tushishi NORMAL.
+async function tekshir(yollar, kirgan) {
+for (const yol of yollar) {
   hodisalar.length = 0;
   try {
     await yubor("Page.navigate", { url: MANZIL + yol }, sessionId);
@@ -151,14 +166,17 @@ for (const yol of YOLLAR) {
   // Muvaffaqiyatsiz so'rovlar — manzili bilan. "Failed to load
   // resource" degan umumiy xabardan foyda yo'q, qaysi so'rov
   // yiqilgani kerak.
+  // Kirmagan holatda 401/403 KUTILADI: sessiya yo'q, RLS rad etadi.
+  // Ular xato emas — aksincha, himoya ishlayotganining belgisi.
   const sorovlar = hodisalar
     .filter((h) => h.method === "Network.responseReceived" && h.params?.response?.status >= 400)
+    .filter((h) => kirgan || ![401, 403].includes(h.params.response.status))
     .map((h) => `${h.params.response.status} ${h.params.response.url.replace(MANZIL, "")}`);
 
   const muammolar = hodisalar
     .filter((h) => h.method === "Runtime.exceptionThrown" || (h.method === "Log.entryAdded" && h.params?.entry?.level === "error"))
     .map((h) => h.params?.exceptionDetails?.exception?.description ?? h.params?.exceptionDetails?.text ?? h.params?.entry?.text ?? "")
-    .filter((s) => s && !SHOVQIN.test(s) && !/Failed to load resource/i.test(s));
+    .filter((s) => s && !SHOVQIN.test(s) && !/Failed to load resource/i.test(s) && XATO.test(s));
   if (sorovlar.length) muammolar.unshift(...[...new Set(sorovlar)].slice(0, 3));
 
   // Chizildimi: sahifada matn bormi va "Application error" chiqmadimi
@@ -172,14 +190,30 @@ for (const yol of YOLLAR) {
     console.log(`   ✗ ${yol.padEnd(28)} ${muammolar[0].split("\n")[0].slice(0, 100)}`); xato++;
   } else if (holat.err) {
     console.log(`   ✗ ${yol.padEnd(28)} Application error`); xato++;
-  } else if (holat.yol === "/login") {
+  } else if (kirgan && holat.yol === "/login") {
     console.log(`   ✗ ${yol.padEnd(28)} /login ga yo'naltirildi — sessiya ishlamadi`); xato++;
-  } else if (holat.len < 200) {
+  } else if (holat.len < (kirgan ? 200 : 80)) {
+    // Kirish sahifasi tabiiy ravishda qisqa (~166 belgi) — u yerda
+    // 200 belgilik chegara soxta xato berardi.
     console.log(`   ✗ ${yol.padEnd(28)} sahifa bo'sh (${holat.len} belgi)`); xato++;
   } else {
-    console.log(`   ✓ ${yol.padEnd(28)} ${holat.len} belgi`);
+    console.log(`   ✓ ${yol.padEnd(28)} ${holat.len} belgi${kirgan ? "" : ` → ${holat.yol}`}`);
   }
 }
+}
+
+console.log("   ── kirmasdan ──");
+await tekshir(ANON_YOLLAR, false);
+
+// Sessiya cookie'si SHU YERDA qo'yiladi — yuqoridagilar kirmasdan
+// tekshirilishi uchun.
+await yubor("Network.setCookie", {
+  name: "nspos_token", value: token, domain: host, path: "/",
+  sameSite: "Strict", secure: MANZIL.startsWith("https:"),
+}, sessionId);
+
+console.log("   ── kirgan holatda ──");
+await tekshir(YOLLAR, true);
 
 // Oxirgi sahifadan skrinshot — ko'z bilan ko'rish uchun
 try {
@@ -189,5 +223,5 @@ try {
 } catch {}
 
 soket.close();
-if (xato) { console.log(`   ── ${xato} ta sahifa kirgan holatda ishdan chiqdi`); process.exit(1); }
-console.log(`   ── ${YOLLAR.length} ta sahifa kirgan holatda chizildi`);
+if (xato) { console.log(`   ── ${xato} ta sahifa ishdan chiqdi`); process.exit(1); }
+console.log(`   ── ${ANON_YOLLAR.length} + ${YOLLAR.length} ta sahifa toza`);
