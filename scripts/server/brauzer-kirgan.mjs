@@ -137,7 +137,10 @@ for (const yol of YOLLAR) {
   } catch (e) {
     console.log(`   ✗ ${yol.padEnd(28)} ochilmadi: ${e.message}`); xato++; continue;
   }
-  await kut(Number(process.env.NSPOS_KUT ?? 4500));
+  // Kutish vaqti: og'ir jadvallar (9 032 chek, 34 489 qator) fonda
+  // yuklanadi va bosh sahifa aynan o'shanga bog'liq. 4.5 soniya
+  // yetmaydi — 8 soniya real o'lchov bo'yicha yetarli.
+  await kut(Number(process.env.NSPOS_KUT ?? 8000));
 
   // Istisnolar: `Runtime.exceptionThrown` va konsoldagi xato darajasi
   // Muvaffaqiyatsiz so'rovlar — manzili bilan. "Failed to load

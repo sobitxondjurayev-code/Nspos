@@ -56,9 +56,14 @@ if [ ! -x "$CHROME" ]; then
   exit 0
 fi
 
-YOLLAR=(/login /dashboard /finance/pnl /finance/kassa /products /clients /sales
-        /reports /reports/product_profit /reports/stock_health /reports/rfm
-        /reports/ar_aging /management /settings)
+# Bu tekshiruv KIRMASDAN ishlaydi, ya'ni faqat ildiz layoutini va
+# kirish sahifasini ko'ra oladi — qolgan yo'llar baribir /login ga
+# tushadi va bir xil natija beradi. Ichkaridagi sahifalarni
+# `brauzer-kirgan.mjs` tekshiradi (kirgan holatda, 22 ta sahifa).
+#
+# Ilgari bu yerda 14 yo'l bor edi va ularning 13 tasi bir xil rasmni
+# takrorlardi — chiqarish bekorga bir daqiqa uzayardi.
+YOLLAR=(/login /)
 
 # Sahifa chizilgani dalili: skrinshot shu hajmdan katta bo'lsin.
 # Butunlay oq/qora ekran ~3-8 KB chiqadi, chizilgan sahifa 20 KB dan

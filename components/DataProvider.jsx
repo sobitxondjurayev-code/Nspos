@@ -42,6 +42,11 @@ export const useData = () => useContext(DataCtx);
 // CHIZILADI, lekin o'chirib-yoqilmaydi — ochiq oyna va holat saqlanadi.
 export const useLive = () => useContext(DataCtx).version;
 
+// Og'ir jadvallar yuklab bo'lindimi. Savdo/mijoz/qarz raqamini
+// ko'rsatadigan sahifa shuni tekshirsin: `false` bo'lsa 0 emas,
+// "yuklanmoqda" ko'rsatilsin.
+export const useToliq = () => useContext(DataCtx).toliq;
+
 // Ma'lumot bazadan bir marta yuklanadi va modullarning xotirasiga
 // tushadi — shundan keyin barcha sahifalar ilgarigidek sinxron ishlaydi.
 // Realtime hodisasi kelganda `version` o'zgaradi va daraxt qayta
@@ -49,6 +54,12 @@ export const useLive = () => useContext(DataCtx).version;
 export default function DataProvider({ children }) {
   const [ready, setReady] = useState(DEMO_MODE);
   const [version, setVersion] = useState(0);
+  // Og'ir jadvallar (savdo 9 032, mijoz 9 097, qarz 11 530) fonda
+  // ~25 soniya yuklanadi. Shu davrda sahifalar 0 ko'rsatadi —
+  // ya'ni ISHONARLI YOLG'ON: rahbar "savdo yo'q" deb o'ylaydi.
+  // `toliq` shu holatni bildiradi va sahifa 0 o'rniga "yuklanmoqda"
+  // deb turadi (CLAUDE.md: xato bo'sh ekran emas, ishonarli yolg'on).
+  const [toliq, setToliq] = useState(DEMO_MODE);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
   // Sessiya aniqlanmaguncha so'ramaymiz: RLS kirmagan foydalanuvchiga
@@ -73,7 +84,7 @@ export default function DataProvider({ children }) {
     // yetmasdi — bosh sahifa abadiy "0.00 USD" turardi. Obuna
     // effekt bilan birga bekor qilinadi (`ochirBg`), shuning
     // uchun qo'shimcha bayroq kerak emas.
-    const ochirBg = onBackgroundReady(() => setVersion((v) => v + 1));
+    const ochirBg = onBackgroundReady(() => { setToliq(true); setVersion((v) => v + 1); });
     bootstrap().then((res) => {
       if (!alive) return;
       setReady(true);
@@ -93,7 +104,7 @@ export default function DataProvider({ children }) {
   }, [authReady, authed, user.id]);
 
   return (
-    <DataCtx.Provider value={{ ready, demo: DEMO_MODE, version, stats }}>
+    <DataCtx.Provider value={{ ready, demo: DEMO_MODE, version, stats, toliq }}>
       {!ready && pathname !== "/login" && (
         <div className="fixed inset-0 z-[100] bg-surface flex items-center justify-center">
           <div className="text-center">

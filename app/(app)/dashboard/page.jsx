@@ -11,7 +11,7 @@ import { demoStores, fmtUSD } from "@/lib/demoData";
 import { salesSeries, storeTotalsInRange, granularityFor, MONTHS_SHORT } from "@/lib/salesData";
 import { PERIODS, periodRange, fmtDate, MONTHS } from "@/lib/dates";
 import DateRangePicker from "@/components/DateRangePicker";
-import { useLive } from "@/components/DataProvider";
+import { useLive, useToliq } from "@/components/DataProvider";
 
 function ChartTooltip({ active, payload, label, granularity, combined, brand }) {
   if (!active || !payload?.length) return null;
@@ -60,6 +60,7 @@ export default function Dashboard() {
   // sahifa bazadagi 9 032 chekni emas, iyulda to'xtagan nusxani
   // ko'rsatardi va buni hech narsa bildirmasdi.
   const live = useLive();
+  const toliq = useToliq();
 
   const data = useMemo(() => salesSeries(range.from, range.to), [range, live]);
   const totals = useMemo(() => storeTotalsInRange(range.from, range.to), [range, live]);
@@ -110,7 +111,14 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
         {/* Grafik */}
         <div className="card p-7">
-          <h2 className="text-2xl font-extrabold mb-6">{t("Sotuvlar")}</h2>
+          <div className="flex items-center gap-3 mb-6">
+            <h2 className="text-2xl font-extrabold">{t("Sotuvlar")}</h2>
+            {!toliq && (
+              <span className="text-sm font-bold text-muted animate-pulse">
+                {t("yuklanmoqda…")}
+              </span>
+            )}
+          </div>
           <div className="h-[27.5rem]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -154,7 +162,9 @@ export default function Dashboard() {
                 <span className="w-3.5 h-3.5 rounded-full mt-1.5" style={{ background: store.color }} />
                 <div>
                   <p className="font-bold">{store.name}</p>
-                  <p className="font-extrabold text-brand">{fmtUSD(totals[store.id] || 0)}</p>
+                  {toliq
+                    ? <p className="font-extrabold text-brand">{fmtUSD(totals[store.id] || 0)}</p>
+                    : <span className="block h-5 w-24 mt-1 rounded bg-track2 animate-pulse" />}
                 </div>
               </div>
             ))}
@@ -162,7 +172,9 @@ export default function Dashboard() {
 
           <div className="border-t border-dashed border-line mt-6 pt-5">
             <p className="text-lg text-muted font-semibold">{t("Umumiy summa:")}</p>
-            <p className="text-3xl font-extrabold mt-1">{fmtUSD(grandTotal)}</p>
+            {toliq
+              ? <p className="text-3xl font-extrabold mt-1">{fmtUSD(grandTotal)}</p>
+              : <span className="block h-8 w-40 mt-2 rounded bg-track2 animate-pulse" />}
           </div>
         </div>
       </div>
