@@ -14,6 +14,7 @@ import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
 import DateRangePicker from "@/components/DateRangePicker";
 import { useTheme } from "@/components/ThemeProvider";
 import StatCard from "@/components/finance/StatCard";
+import KpiTrend from "@/components/finance/KpiTrend";
 import { kpis, storeScoreboard, trend, breakEven, alerts } from "@/lib/managementData";
 import { balanceSheet } from "@/lib/balanceData";
 import { openPayouts, payoutSummary, daysLeft } from "@/lib/payoutsData";
@@ -141,6 +142,11 @@ export default function Management() {
         <StatCard icon={Receipt} label="O'rtacha chek" value={fmtUSD(k.avgCheck)}
           hint={tt("Qarzga {n}", { n: fmtUSD(k.onCredit) })} />
       </div>
+
+      {/* Kartochkalar BITTA davrni ko'rsatadi: "shu oyda 76 723".
+          Undan "ko'pmi yoki kammi?" degan savolga javob yo'q —
+          solishtirish uchun ikkinchi raqam kerak. */}
+      <KpiTrend oylar={6} live={rows} />
 
       {/* Yaqin to'lovlar — rahbar o'zi belgilagan reja. To'liq ro'yxat
           va kirim-chiqim hisobi Pul rejasi bo'limida. */}

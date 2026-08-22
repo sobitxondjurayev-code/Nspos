@@ -20,6 +20,7 @@ import CellSources from "@/components/finance/CellSources";
 import { getLedgerStart } from "@/lib/companyData";
 import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
+import KassaBalanceChart from "@/components/finance/KassaBalanceChart";
 import KassaModal from "@/components/KassaModal";
 import Warnings from "@/components/finance/Warnings";
 import CloseKassaModal from "@/components/CloseKassaModal";
@@ -106,6 +107,12 @@ export default function KassaPage() {
   // Kassa summasi bosilganda ochiladigan yozuvlar
   const [src, setSrc] = useState(null);
   const bal = useMemo(() => kassaBalances(new Date()), [tick, rowsTick, live]);
+  // Grafik oynasi. `useMemo` shart: yangi Date har chizishda yangi
+  // obyekt bo'lib, grafik cheksiz qayta hisoblanardi.
+  const oxirgi30 = useMemo(() => {
+    const d = new Date(); d.setDate(d.getDate() - 29); d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
   // Tasdiq kutayotganlar KUN bo'yicha guruhlanadi: bir kun yopilganda
   // uchtagacha yozuv tug'iladi (naqd, Payme, servis), rahbar esa kunni
   // tasdiqlaydi — hamyonni emas.
@@ -245,6 +252,11 @@ export default function KassaPage() {
           </button>
         </div>
       )}
+
+      {/* Qoldiq o'syaptimi yoki kamayyaptimi — jadvaldan buni ko'z
+          bilan topib bo'lmaydi. Oxirgi 30 kun; davr tanlagichi
+          qo'yilmadi, chunki bu sahifa "bugungi holat" haqida. */}
+      <KassaBalanceChart from={oxirgi30} to={new Date()} live={live} />
 
       {/* —— Tasdiq kutayotgan o'tkazmalar —— */}
       {isOwner && pending.length > 0 && (

@@ -8,6 +8,7 @@ import { fmtUSD, demoStores } from "@/lib/demoData";
 import { fmtDate } from "@/lib/dates";
 import StatCard from "@/components/finance/StatCard";
 import { balanceSheet, ledgerStartDate } from "@/lib/balanceData";
+import BalanceStructure from "@/components/finance/BalanceStructure";
 import useUploadRows from "@/components/useUploadRows";
 
 export default function FinanceBalance() {
@@ -44,6 +45,13 @@ export default function FinanceBalance() {
 
       {/* Aktiv / Passiv */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-7">
+
+      {/* Ikki uzun ro'yxatdan "pulimiz qayerda?" degan savolga javob
+          topish uchun raqamlarni ko'z bilan solishtirish kerak edi —
+          270 758 va 8 347 ni. Ustun uzunligi buni bir qarashda
+          ko'rsatadi. */}
+      <BalanceStructure balance={b} />
+
         <div className="card p-7">
           <h2 className="text-2xl font-extrabold mb-1">{t("AKTIV")}</h2>
           <p className="text-sm text-muted font-semibold mb-6">{t("Korxona mablag'lari")}</p>
