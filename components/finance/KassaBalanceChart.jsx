@@ -32,17 +32,25 @@ export default function KassaBalanceChart({ from, to, live }) {
   const oxirgi = data.at(-1)?.qoldiq ?? 0;
   const birinchi = data[0]?.qoldiq ?? 0;
   const farq = +(oxirgi - birinchi).toFixed(2);
+  // Birinchi kun NOL bo'lsa "o'sish" deb aytish yolg'on bo'ladi —
+  // bu o'sish emas, hisob shu kundan boshlangani. Chaqiruvchi
+  // oynani hisob boshidan oldinga surmaydi, lekin baribir
+  // tekshiramiz: bir marta yozilgan yolg'on uzoq yashaydi.
+  const noldanBoshlangan = Math.abs(birinchi) < 0.01;
   const kamomadKun = data.filter((d) => d.kamomad < 0).length;
 
   return (
     <ChartCard
       title="Kassa qoldig'i — kunma-kun"
       hint={
-        kamomadKun > 0
-          ? tt("Davr davomida {a}. {n} kunda hamyonlardan biri minusda bo'lgan.", {
-              a: farq >= 0 ? `+${pul(farq)}` : pul(farq), n: kamomadKun })
-          : tt("Davr davomida {a}. Hech bir hamyon minusga tushmagan.", {
-              a: farq >= 0 ? `+${pul(farq)}` : pul(farq) })
+        [
+          noldanBoshlangan
+            ? tt("Hisob boshidan beri yig'ilgan qoldiq: {a}.", { a: pul(oxirgi) })
+            : tt("Davr davomida {a}.", { a: farq >= 0 ? `+${pul(farq)}` : pul(farq) }),
+          kamomadKun > 0
+            ? tt("{n} kunda hamyonlardan biri minusda bo'lgan.", { n: kamomadKun })
+            : t("Hech bir hamyon minusga tushmagan."),
+        ].join(" ")
       }
       oq="USD"
       bosh={!data.length}

@@ -107,12 +107,18 @@ export default function KassaPage() {
   // Kassa summasi bosilganda ochiladigan yozuvlar
   const [src, setSrc] = useState(null);
   const bal = useMemo(() => kassaBalances(new Date()), [tick, rowsTick, live]);
-  // Grafik oynasi. `useMemo` shart: yangi Date har chizishda yangi
-  // obyekt bo'lib, grafik cheksiz qayta hisoblanardi.
-  const oxirgi30 = useMemo(() => {
+  // Grafik oynasi: oxirgi 30 kun, LEKIN hisob boshlanishidan oldinga
+  // o'tmaydi. Undan oldingi kunlarda balans NOL bo'lib chiqadi va
+  // grafik "nolьdan 47 344 gacha o'sish" degan yolg'on ko'rsatardi —
+  // aslida u shunchaki hisob boshlanmagan davr edi.
+  //
+  // `useMemo` shart: yangi Date har chizishda yangi obyekt bo'lib,
+  // grafik cheksiz qayta hisoblanardi.
+  const grafikDan = useMemo(() => {
     const d = new Date(); d.setDate(d.getDate() - 29); d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
+    const bosh = new Date(getLedgerStart() + "T00:00:00");
+    return d < bosh ? bosh : d;
+  }, [live]);
   // Tasdiq kutayotganlar KUN bo'yicha guruhlanadi: bir kun yopilganda
   // uchtagacha yozuv tug'iladi (naqd, Payme, servis), rahbar esa kunni
   // tasdiqlaydi — hamyonni emas.
@@ -256,7 +262,7 @@ export default function KassaPage() {
       {/* Qoldiq o'syaptimi yoki kamayyaptimi — jadvaldan buni ko'z
           bilan topib bo'lmaydi. Oxirgi 30 kun; davr tanlagichi
           qo'yilmadi, chunki bu sahifa "bugungi holat" haqida. */}
-      <KassaBalanceChart from={oxirgi30} to={new Date()} live={live} />
+      <KassaBalanceChart from={grafikDan} to={new Date()} live={live} />
 
       {/* —— Tasdiq kutayotgan o'tkazmalar —— */}
       {isOwner && pending.length > 0 && (
