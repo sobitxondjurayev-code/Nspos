@@ -112,6 +112,7 @@ const KINDS = {
   dubl: "Usta puli ikki marta hisoblanmagan",
   nostaff: "Har oylik to'lovi xodimga bog'langan",
   nostore: "Kassaga tushmay qolgan kirim yo'q",
+  stale: "Sotuv ma'lumoti yangi",
 };
 chiqar("── Ma'lumot xatolari ────────────────────────────",
   Object.entries(KINDS).map(([k, name]) => ({ name, problems: byKind.get(k) ?? [] })));
