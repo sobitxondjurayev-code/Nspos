@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { t } from "@/lib/i18n";
 import { AlertTriangle, X } from "lucide-react";
-import { bootstrap, subscribeAll, onDbError, DEMO_MODE } from "@/lib/db";
+import { bootstrap, subscribeAll, onDbError, onBackgroundReady, DEMO_MODE } from "@/lib/db";
 import { useAuth } from "@/components/AuthProvider";
 
 // Barcha modullar o'zini db.js ga qayd qilishi uchun shu yerda
@@ -64,9 +64,17 @@ export default function DataProvider({ children }) {
     // Yuklangan hisobotlarni brauzer xotirasidan tiklaymiz — bu SQL
     // jadvaliga bog'liq emas, shuning uchun har doim ishlaydi
     loadLocal().then(() => alive && setVersion((v) => v + 1));
-    // onBackground: og'ir jadvallar (savdo/tovar/mijoz) orqada
-    // yuklanib bo'lgach bir marta interfeysni yangilaydi.
-    bootstrap(() => alive && setVersion((v) => v + 1)).then((res) => {
+    // Og'ir jadvallar (savdo/tovar/mijoz) orqada yuklanib bo'lgach
+    // interfeys bir marta yangilanadi.
+    //
+    // `alive` TEKSHIRILMAYDI: effekt qayta ishga tushsa (sahifa
+    // almashgan, sessiya yangilangan) eski `alive` false bo'lib
+    // qolardi va 10 soniyadan keyin kelgan xabar hech kimga
+    // yetmasdi — bosh sahifa abadiy "0.00 USD" turardi. Obuna
+    // effekt bilan birga bekor qilinadi (`ochirBg`), shuning
+    // uchun qo'shimcha bayroq kerak emas.
+    const ochirBg = onBackgroundReady(() => setVersion((v) => v + 1));
+    bootstrap().then((res) => {
       if (!alive) return;
       setReady(true);
       setVersion((v) => v + 1);
@@ -81,7 +89,7 @@ export default function DataProvider({ children }) {
     });
     const stop = subscribeAll(() => setVersion((v) => v + 1));
     const off = onDbError(setError);
-    return () => { alive = false; stop(); off(); };
+    return () => { alive = false; ochirBg(); stop(); off(); };
   }, [authReady, authed, user.id]);
 
   return (

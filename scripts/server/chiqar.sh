@@ -72,4 +72,9 @@ UZOQ
 echo "── Brauzerda ochilmoqda"
 bash "$(dirname "$0")/brauzer-tekshir.sh" "http://${SERVER#*@}" || exit 1
 
+# Kirgan holat — kirmasdan tekshirilganda hamma sahifa /login ga
+# yo'naltiriladi va ichkaridagi xato ko'rinmaydi.
+echo "── Kirgan holatda"
+node "$(dirname "$0")/brauzer-kirgan.mjs" "http://${SERVER#*@}" || exit 1
+
 echo "✓ Tayyor: http://169.58.216.246"

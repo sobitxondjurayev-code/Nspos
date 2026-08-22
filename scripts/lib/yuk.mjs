@@ -20,9 +20,16 @@ import path from "path";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-for (const line of readFileSync(path.join(root, ".env.local"), "utf8").split("\n")) {
-  const m = line.match(/^\s*([A-Z_]+)\s*=\s*(.+?)\s*$/);
-  if (m) process.env[m[1]] ??= m[2];
+// Sozlama fayli: kompyuterda `.env.local`, serverda `.env.production`.
+// Bo'lmasa ham to'xtamaydi — o'zgaruvchilar tashqaridan berilgan
+// bo'lishi mumkin (masalan systemd `EnvironmentFile` orqali).
+for (const nom of [".env.local", ".env.production"]) {
+  let matn;
+  try { matn = readFileSync(path.join(root, nom), "utf8"); } catch { continue; }
+  for (const line of matn.split("\n")) {
+    const m = line.match(/^\s*([A-Z_]+)\s*=\s*(.+?)\s*$/);
+    if (m) process.env[m[1]] ??= m[2];
+  }
 }
 
 const token = process.env.SUPABASE_ACCESS_TOKEN;
@@ -140,14 +147,33 @@ const parseSelect = (select) => {
 
 // Bola jadval ota jadvalga qaysi ustun orqali bog'langan — taxmin
 // qilmaymiz, bazaning o'zidan so'raymiz.
+// Tashqi kalit ustuni `pg_catalog` dan o'qiladi, `information_schema`
+// dan EMAS.
+//
+// Nega (2026-08-22 da API'ni serverga qo'yganda aniqlandi):
+// `information_schema.constraint_column_usage` faqat jadval EGASIGA
+// ko'rinadi. Kompyuterda baza mening nomimda, shuning uchun hammasi
+// ishlardi. Serverda esa API `nspos` roli bilan ulanadi va u ega
+// emas — ko'rinish BO'SH qaytardi.
+//
+// Natijasi jimgina va og'ir edi: 9 032 chekning BIRORTASIDA tovar
+// tarkibi yo'q, 10 837 qarzda birorta to'lov yo'q. Xato chiqmadi —
+// API shunchaki boshqa raqam berdi: tushum 17 188 (aslida 76 723),
+// ochiq qarz 62 728 (aslida 50 930).
+//
+// `pg_constraint` esa hamma uchun ko'rinadi.
 async function fkColumn(child, parent) {
   const rows = await sql(`
-    select kcu.column_name
-    from information_schema.table_constraints tc
-    join information_schema.key_column_usage kcu on kcu.constraint_name = tc.constraint_name
-    join information_schema.constraint_column_usage ccu on ccu.constraint_name = tc.constraint_name
-    where tc.constraint_type = 'FOREIGN KEY'
-      and tc.table_name = '${child}' and ccu.table_name = '${parent}'
+    select a.attname as column_name
+    from pg_constraint c
+    join pg_class ch on ch.oid = c.conrelid
+    join pg_class p on p.oid = c.confrelid
+    join pg_namespace n on n.oid = ch.relnamespace
+    join unnest(c.conkey) with ordinality as k(attnum, ord) on true
+    join pg_attribute a on a.attrelid = ch.oid and a.attnum = k.attnum
+    where c.contype = 'f' and n.nspname = 'public'
+      and ch.relname = '${child}' and p.relname = '${parent}'
+    order by k.ord
     limit 1`);
   return rows[0]?.column_name ?? null;
 }
@@ -196,7 +222,18 @@ export async function loadApp() {
       const table = m.readTable === "staff_directory" ? m.table : (m.readTable ?? m.table);
       const { cols, embeds } = parseSelect(m.select);
       const rows = await sql(`select ${cols} from ${table}`);
-      if (embeds.length) await attachEmbeds(table, rows, embeds);
+      if (embeds.length) {
+        await attachEmbeds(table, rows, embeds);
+        // Ichma-ich jadval BO'SH chiqsa — bu deyarli har doim huquq
+        // yoki bog'lanish muammosi, "haqiqatan bo'sh" emas. Jimgina
+        // o'tkazib yuborilsa raqamlar noto'g'ri chiqadi va buni hech
+        // narsa bildirmaydi (2026-08-22, `fkColumn` hodisasi).
+        for (const e of embeds) {
+          if (!rows.length) break;
+          const bor = rows.some((r) => (r[e.table] ?? []).length);
+          if (!bor) throw new Error(`${e.table}: ${rows.length} qatorning birortasida ham yo'q — huquq yoki bog'lanish muammosi`);
+        }
+      }
       m.restore(rows.map((r) => (m.fromRow ? m.fromRow(r) : r)));
       report.push({ table: m.table, rows: rows.length });
     } catch (e) {

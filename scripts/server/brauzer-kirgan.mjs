@@ -27,7 +27,9 @@ const KALIT = process.env.NSPOS_KEY ?? `${process.env.HOME}/.ssh/nspos`;
 const CHROME = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const PORT = 9333;
 
-const YOLLAR = [
+// `NSPOS_YOLLAR` berilsa faqat o'shalar tekshiriladi (vergul bilan) —
+// bitta sahifani tez ko'rish uchun.
+const YOLLAR = process.env.NSPOS_YOLLAR ? process.env.NSPOS_YOLLAR.split(",") : [
   "/dashboard", "/finance/pnl", "/finance/kassa", "/finance/debts", "/finance/expenses",
   "/finance/balance", "/finance/payroll", "/finance/plan", "/products", "/clients",
   "/sales", "/services", "/kpi", "/installers", "/nps", "/management", "/settings",
@@ -135,7 +137,7 @@ for (const yol of YOLLAR) {
   } catch (e) {
     console.log(`   ✗ ${yol.padEnd(28)} ochilmadi: ${e.message}`); xato++; continue;
   }
-  await kut(4500);   // ma'lumot yuklanishi va daraxt chizilishi uchun
+  await kut(Number(process.env.NSPOS_KUT ?? 4500));
 
   // Istisnolar: `Runtime.exceptionThrown` va konsoldagi xato darajasi
   // Muvaffaqiyatsiz so'rovlar — manzili bilan. "Failed to load
