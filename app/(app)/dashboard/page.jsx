@@ -2,15 +2,15 @@
 import { t } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import { useTheme } from "@/components/ThemeProvider";
-import { ChevronDown, CalendarDays } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip,
 } from "recharts";
 import { demoStores, fmtUSD } from "@/lib/demoData";
 import { salesSeries, storeTotalsInRange, granularityFor, MONTHS_SHORT } from "@/lib/salesData";
-import { PERIODS, periodRange, fmtDate, MONTHS } from "@/lib/dates";
-import DateRangePicker from "@/components/DateRangePicker";
+import { MONTHS } from "@/lib/dates";
+import PeriodPicker, { usePeriod } from "@/components/ui/PeriodPicker";
 import { useLive, useToliq } from "@/components/DataProvider";
 
 function ChartTooltip({ active, payload, label, granularity, combined, brand }) {
@@ -48,10 +48,9 @@ function ChartTooltip({ active, payload, label, granularity, combined, brand }) 
 }
 
 export default function Dashboard() {
-  const [period, setPeriod] = useState("Oy");
-  const [range, setRange] = useState(() => periodRange("Oy"));
+  const davr = usePeriod("Oy");
+  const range = davr.range;
   const [combined, setCombined] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const { chart } = useTheme();
   // `useLive()` — modul xotirasidan o'qiydigan har useMemo bog'lamiga
   // kerak (CLAUDE.md, 2026-08-13). Busiz bu sahifa `salesData` ning
@@ -67,45 +66,18 @@ export default function Dashboard() {
   const granularity = granularityFor(range.from, range.to);
   const grandTotal = +demoStores.reduce((a, s) => a + (totals[s.id] || 0), 0).toFixed(2);
 
-  function choosePeriod(p) {
-    setPeriod(p);
-    setRange(periodRange(p));
-  }
-
-  function applyCustom(from, to) {
-    setPeriod(null); // qo'lda tanlangan oraliq
-    setRange({ from, to });
-    setPickerOpen(false);
-  }
-
   return (
     <div>
       <button className="flex items-center gap-3 text-4xl font-extrabold tracking-tight mb-8">
         {t("Barcha do'konlar")} <ChevronDown size={30} className="text-muted" />
       </button>
 
-      {/* Davr tanlash + sana */}
-      <div className="flex items-center justify-between gap-4 mb-8">
-        <div className="bg-track rounded-2xl p-1.5 flex">
-          {PERIODS.map((p) => (
-            <button key={p} onClick={() => choosePeriod(p)}
-              className={`tab-btn ${period === p ? "active" : ""}`}>{t(p)}</button>
-          ))}
-        </div>
-
-        <div className="relative">
-          <button onClick={() => setPickerOpen((v) => !v)}
-            className="card flex items-center gap-4 px-5 py-3 font-bold">
-            <CalendarDays size={20} className="text-brand" />
-            <span className="text-right leading-tight">
-              {fmtDate(range.from)}<br />{fmtDate(range.to)}
-            </span>
-          </button>
-          {pickerOpen && (
-            <DateRangePicker from={range.from} to={range.to}
-              onApply={applyCustom} onClose={() => setPickerOpen(false)} />
-          )}
-        </div>
+      {/* Davr tanlash — standart komponent (`ui/PeriodPicker`).
+          Ilgari bu yerda o'z nusxasi bor edi va telefonda "Yil" tabi
+          ekrandan chiqib ketardi: lenta o'ralmasdi ham, surilmasdi
+          ham. Standart komponentda bu allaqachon hal qilingan. */}
+      <div className="mb-8">
+        <PeriodPicker {...davr} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 items-start">
