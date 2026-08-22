@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Banknote, Smartphone, PiggyBank } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { topUpBalance, listBalanceLog } from "@/lib/customersData";
+import { useOyna } from "@/components/ui/Modal";
 
 const fmtWhen = (iso) => {
   const d = new Date(iso);
@@ -13,6 +14,8 @@ const fmtWhen = (iso) => {
 
 // Mijoz balansini to'ldirish + harakatlar tarixi
 export default function BalanceModal({ customer, onClose, onDone }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("cash");
   const [note, setNote] = useState("");
@@ -28,8 +31,8 @@ export default function BalanceModal({ customer, onClose, onDone }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-lg p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-lg p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-2xl font-extrabold flex items-center gap-2">
             <PiggyBank size={22} className="text-brand" /> {t("Balansni to'ldirish")}

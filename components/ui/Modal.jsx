@@ -24,6 +24,34 @@ import { t } from "@/lib/i18n";
 // Kenglik: kichik (max-w-md) · o'rta (max-w-2xl) · katta (max-w-5xl)
 const KENG = { kichik: "max-w-md", o1rta: "max-w-2xl", katta: "max-w-5xl", tor: "max-w-sm" };
 
+// ══════════════════════════════════════════════════════════════
+// OYNANING XATTI-HARAKATI — ALOHIDA ILGAK
+// ══════════════════════════════════════════════════════════════
+// Loyihada 24 ta oyna bor va ular `Modal` dan OLDIN yozilgan: har
+// biri o'z razmetkasi bilan. Ularni butunlay qayta yozish pulga
+// tegadigan ekranlarda xavfli (kassa yopish, to'lov, xarajat).
+//
+// Shuning uchun XATTI-HARAKAT razmetkadan ajratildi. Endi eski
+// oynaga ikki qator qo'shilsa yetarli:
+//
+//   useOyna(onClose);
+//
+// va u shu zahoti Esc bilan yopiladigan, fon skrolli qulflanadigan
+// bo'ladi. Hech biri buni qilmasdi: oyna ochilganda ortidagi sahifa
+// skroll bo'lardi va Esc ishlamasdi.
+export function useOyna(onClose, { yopilmasin = false } = {}) {
+  useEffect(() => {
+    const esc = (e) => { if (e.key === "Escape" && !yopilmasin) onClose?.(); };
+    document.addEventListener("keydown", esc);
+    const eski = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", esc);
+      document.body.style.overflow = eski;
+    };
+  }, [onClose, yopilmasin]);
+}
+
 export default function Modal({
   onClose, title, hint, children, footer, keng = "kichik", yopilmasin = false,
 }) {

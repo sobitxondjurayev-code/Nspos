@@ -8,6 +8,7 @@ import { EXPENSE_CATEGORIES } from "@/lib/expensesData";
 import { ANALYSES } from "@/lib/analyses";
 import { demoStores } from "@/lib/demoData";
 import { formatPhoneInput } from "@/lib/loginId";
+import { useOyna } from "@/components/ui/Modal";
 
 // Rol standarti bo'yicha qaysi bo'limlar ochiq — boshlang'ich holat
 const roleDefaults = (r) =>
@@ -23,6 +24,8 @@ const roleDefaults = (r) =>
 // Menejer ustaga login ochganda shu ko'rinish chiqadi — u faqat ism,
 // raqam, parol va kamera narxini belgilaydi.
 export default function StaffModal({ initial = null, busy = false, lockRole = null, onClose, onSave }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   const isEdit = !!initial;
   const full = !lockRole;
   const [name, setName] = useState(initial?.name ?? "");
@@ -73,8 +76,8 @@ export default function StaffModal({ initial = null, busy = false, lockRole = nu
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-lg p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-lg p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-extrabold">
             {full ? t(isEdit ? "Xodimni tahrirlash" : "Yangi xodim")

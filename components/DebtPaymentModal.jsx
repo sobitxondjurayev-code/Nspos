@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Banknote, Smartphone } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { debtsOf, remainingOf, payDebt, debtsFromBillz } from "@/lib/debtsData";
+import { useOyna } from "@/components/ui/Modal";
 
 const fmtWhen = (iso) => {
   const d = new Date(iso);
@@ -14,6 +15,8 @@ const fmtWhen = (iso) => {
 const daysSince = (iso) => Math.round((Date.now() - new Date(iso).getTime()) / 86400000);
 
 export default function DebtPaymentModal({ customer, onClose, onPaid }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   const open = debtsOf(customer.id)
     .filter((d) => !d.closedAt && remainingOf(d) > 0)
     .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); // eng eskisi tepada
@@ -34,8 +37,8 @@ export default function DebtPaymentModal({ customer, onClose, onPaid }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-lg p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-lg p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-2xl font-extrabold">{t("Qarzni to'lash")}</h2>
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>

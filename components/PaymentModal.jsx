@@ -3,8 +3,11 @@ import { t, tt } from "@/lib/i18n";
 import { useState } from "react";
 import { X, Banknote, Wallet, Smartphone, PiggyBank } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
+import { useOyna } from "@/components/ui/Modal";
 
 export default function PaymentModal({ total, customer, onClose, onConfirm }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   const [cash, setCash] = useState("");
   const [card, setCard] = useState("");
   // Payme — Billz'da faol ishlatiladigan to'lov turi
@@ -40,8 +43,8 @@ export default function PaymentModal({ total, customer, onClose, onConfirm }) {
   const fillDebt = () => { setDebt(String(+(total - paid).toFixed(2))); };
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-md p-8" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-md p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-extrabold">{t("To'lov")}</h2>
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>

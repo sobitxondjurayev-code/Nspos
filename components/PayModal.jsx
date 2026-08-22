@@ -8,6 +8,7 @@ import { fmtUSD } from "@/lib/demoData";
 import { KASSAS, WALLETS } from "@/lib/kassaData";
 import { somOf } from "@/lib/payoutsData";
 import { getUsdRate } from "@/lib/companyData";
+import { useOyna } from "@/components/ui/Modal";
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
@@ -23,6 +24,8 @@ const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0
 // belgilab ketiladi. Shunda "yarim to'langan" degan chalkash holat
 // bo'lmaydi: har qator yo to'langan, yo hali kutilyapti.
 export default function PayModal({ payout, onClose, onConfirm }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   const rate = getUsdRate();
   const fullSom = somOf(payout);
   // Reja so'mda kiritilgan bo'lsa, to'lov ham so'mda so'raladi
@@ -48,8 +51,8 @@ export default function PayModal({ payout, onClose, onConfirm }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-md p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[60] bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-md p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-1">
           <h2 className="text-2xl font-extrabold">{t("Qancha to'ladingiz?")}</h2>
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>

@@ -10,6 +10,7 @@ import { getUser, expenseCategoriesOf } from "@/lib/auth";
 import { getUsdRate, fromSom } from "@/lib/companyData";
 import { MONTHS } from "@/lib/dates";
 import DateField from "@/components/DateField";
+import { useOyna } from "@/components/ui/Modal";
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
@@ -21,6 +22,8 @@ const monthName = (v) => {
 };
 
 export default function ExpenseModal({ initial = null, onClose, onSave, onDelete = null }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   // Takrorlanuvchida "from" bor — shu bilan turini aniqlaymiz
   const [mode, setMode] = useState(initial?.from ? "recurring" : "one");
   // Menejer faqat o'z kassasidan xarajat qila oladi, rahbar — hammasidan.
@@ -130,8 +133,8 @@ export default function ExpenseModal({ initial = null, onClose, onSave, onDelete
 
   if (!allowedKassas.length) {
     return (
-      <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-        <div className="card w-full max-w-md p-8 text-center" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+        <div className="card w-full max-w-md p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto text-center" onClick={(e) => e.stopPropagation()}>
           <p className="text-xl font-extrabold mb-2">{t("Sizga kassa biriktirilmagan")}</p>
           <p className="text-muted font-semibold mb-6">
             {t("Xarajat qaysi kassadan chiqishi ko'rsatilishi shart. Rahbar Boshqaruv bo'limida sizga do'kon biriktirgach kiritish ochiladi.")}
@@ -163,8 +166,8 @@ export default function ExpenseModal({ initial = null, onClose, onSave, onDelete
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-lg p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-lg p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-extrabold">
             {t(initial ? "Xarajatni tahrirlash" : "Yangi xarajat")}

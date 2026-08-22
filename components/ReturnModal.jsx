@@ -4,10 +4,13 @@ import { useState } from "react";
 import { X, Banknote, Smartphone, Undo2 } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { returnedQtyOf } from "@/lib/salesData";
+import { useOyna } from "@/components/ui/Modal";
 
 // Chek bo'yicha qaytarish. Qisman qaytarish mumkin, lekin
 // allaqachon qaytarilgan miqdordan oshib ketmaydi.
 export default function ReturnModal({ sale, onClose, onConfirm }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   const already = returnedQtyOf(sale.id);
 
   // Har tovar uchun qaytarish mumkin bo'lgan maksimum
@@ -37,8 +40,8 @@ export default function ReturnModal({ sale, onClose, onConfirm }) {
   const valid = picked.length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-lg p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-lg p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-2xl font-extrabold flex items-center gap-2">
             <Undo2 size={22} className="text-brand" /> {t("Tovarni qaytarish")}

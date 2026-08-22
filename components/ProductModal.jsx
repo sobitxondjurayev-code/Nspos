@@ -4,8 +4,11 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { demoStores } from "@/lib/demoData";
 import { demoCategories, genBarcode } from "@/lib/productsData";
+import { useOyna } from "@/components/ui/Modal";
 
 export default function ProductModal({ initial, onClose, onSave }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   const [f, setF] = useState(
     initial ?? {
       name: "", sku: "", barcode: genBarcode(), categoryId: demoCategories[0]?.id ?? null,
@@ -18,8 +21,8 @@ export default function ProductModal({ initial, onClose, onSave }) {
   const valid = f.name.trim() && Number(f.salePrice) > 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-xl p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-xl p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-extrabold">{initial ? "Tovarni tahrirlash" : "Yangi tovar"}</h2>
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>

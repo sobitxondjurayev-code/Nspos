@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Banknote, Smartphone } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { invoicesOf, remainingOf, daysOverdue, payInvoice } from "@/lib/suppliersData";
+import { useOyna } from "@/components/ui/Modal";
 
 const fmtDay = (iso) => {
   const d = new Date(iso);
@@ -14,6 +15,8 @@ const fmtDay = (iso) => {
 // Yetkazib beruvchiga to'lov — DebtPaymentModal'ning kreditor tomondagi aksi.
 // preselectId berilsa o'sha faktura tanlangan holda ochiladi.
 export default function SupplierPayModal({ supplier, preselectId, onClose, onPaid }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   const open = invoicesOf(supplier.id)
     .filter((i) => remainingOf(i) > 0.001)
     .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)); // eng yaqin muddat tepada
@@ -36,8 +39,8 @@ export default function SupplierPayModal({ supplier, preselectId, onClose, onPai
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-lg p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-lg p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-2xl font-extrabold">{t("Yetkazib beruvchiga to'lov")}</h2>
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>

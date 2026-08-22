@@ -9,6 +9,7 @@ import { EXPENSE_CATEGORIES, SERVICE_CATEGORIES, needsNote } from "@/lib/expense
 import { getUser, expenseCategoriesOf } from "@/lib/auth";
 import { getUsdRate, fromSom } from "@/lib/companyData";
 import DateField from "@/components/DateField";
+import { useOyna } from "@/components/ui/Modal";
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
@@ -19,6 +20,8 @@ const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0
 // kunlik jadvaldan avtomat keladi, qo'lda qo'shilsa o'sha pul ikki marta
 // sanaladi va raqamni istagancha ko'tarish mumkin bo'lib qoladi.
 export default function KassaModal({ kassa, mode = "in", balance, canIncome = true, onClose, onSave }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   const [kind, setKind] = useState(canIncome ? mode : (mode === "transfer" ? mode : "out"));
   const wallets = walletsOf(kassa);
   const [wallet, setWallet] = useState("cash");
@@ -88,8 +91,8 @@ export default function KassaModal({ kassa, mode = "in", balance, canIncome = tr
   const pickKind = (k) => { setKind(k); setCategory(null); setAmount(""); };
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-lg p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-lg p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-2xl font-extrabold">{t(title)}</h2>
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>

@@ -8,6 +8,7 @@ import { fmtUSD } from "@/lib/demoData";
 import { KASSAS, WALLETS, kassaIds, walletsOf, COMPANY } from "@/lib/kassaData";
 import { PAYOUT_CATEGORIES, payeeNames, payeeCategory } from "@/lib/payoutsData";
 import { getUsdRate } from "@/lib/companyData";
+import { useOyna } from "@/components/ui/Modal";
 
 // Ro'yxatda yo'q oluvchi uchun maxsus qiymat
 const OTHER = "__other__";
@@ -21,6 +22,8 @@ const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0
 // dueDate — yangi to'lov uchun oldindan qo'yiladigan sana (jadvalda
 // kun ustidan ochilganda o'sha kun qo'yiladi, qayta tanlash shart emas)
 export default function PayoutModal({ initial = null, dueDate: preset = null, balances = {}, onClose, onSave }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   const rate = getUsdRate();
   const names = useMemo(() => payeeNames(), []);
   // Kimga to'lanadi: ro'yxatdan tanlanadi. Ro'yxatda yo'q bo'lsa
@@ -72,8 +75,8 @@ export default function PayoutModal({ initial = null, dueDate: preset = null, ba
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-lg p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-lg p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-extrabold">
             {t(initial ? "To'lovni tahrirlash" : "Yangi to'lov rejasi")}

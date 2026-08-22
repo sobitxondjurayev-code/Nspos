@@ -12,11 +12,14 @@ import { X, LockKeyhole, Check, Clock, Undo2 } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import DateField from "@/components/DateField";
 import { KASSAS, WALLETS, dayRemainder, closingOf, walletsOf } from "@/lib/kassaData";
+import { useOyna } from "@/components/ui/Modal";
 
 const iso = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 export default function CloseKassaModal({ kassa, date, onClose, onConfirm, onCancelClose }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   const [day, setDay] = useState(date ?? iso(new Date()));
   const [note, setNote] = useState("");
 
@@ -25,8 +28,8 @@ export default function CloseKassaModal({ kassa, date, onClose, onConfirm, onCan
   const wallets = walletsOf(kassa);
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-xl p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-xl p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h2 className="text-2xl font-extrabold">{t("Kunni yopish")}</h2>
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>

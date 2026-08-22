@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { shiftSummary } from "@/lib/shiftsData";
+import { useOyna } from "@/components/ui/Modal";
 
 /* Smena ochish */
 export function OpenShiftModal({ store, cashier, onClose, onOpen }) {
@@ -11,8 +12,8 @@ export function OpenShiftModal({ store, cashier, onClose, onOpen }) {
   const amt = Number(cash) || 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-md p-8" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-md p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-2xl font-extrabold">{t("Smenani ochish")}</h2>
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>
@@ -58,8 +59,8 @@ export function CloseShiftModal({ shift, store, onClose, onCloseShift }) {
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-lg p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-lg p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-2xl font-extrabold">{t("Smenani yopish")}</h2>
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>

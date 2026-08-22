@@ -13,6 +13,7 @@ import NumberField from "@/components/NumberField";
 import { getUsdRate, getRateDate, isRateAuto } from "@/lib/companyData";
 import { listRates, saveRate } from "@/lib/ratesData";
 import { getStaff } from "@/lib/staffData";
+import { useOyna } from "@/components/ui/Modal";
 
 const fmtWhen = (iso) => {
   const d = new Date(iso);
@@ -23,6 +24,8 @@ const fmtWhen = (iso) => {
 const som = (n) => Math.round(n).toLocaleString("ru-RU");
 
 export default function RateModal({ onClose, onSaved }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   const current = getUsdRate();
   const [value, setValue] = useState(current ?? "");
   const [tick, setTick] = useState(0);

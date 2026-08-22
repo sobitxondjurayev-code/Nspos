@@ -2,10 +2,13 @@
 import { t } from "@/lib/i18n";
 import { useState } from "react";
 import { X, Star } from "lucide-react";
+import { useOyna } from "@/components/ui/Modal";
 
 // NPS baho qo'shish/tahrirlash oynasi.
 // Mijoz, telefon, qaysi usta o'rnatgani, 1–10 baho va izoh.
 export default function NpsModal({ installers = [], initial = null, onClose, onSave }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   const isEdit = !!initial;
   const today = new Date().toISOString().slice(0, 10);
   const [customerName, setCustomerName] = useState(initial?.customerName ?? "");
@@ -34,8 +37,8 @@ export default function NpsModal({ installers = [], initial = null, onClose, onS
       : "bg-ok text-white border-ok";
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-lg p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-lg p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-extrabold">{t(isEdit ? "Bahoni tahrirlash" : "NPS baho qo'shish")}</h2>
           <button onClick={onClose} className="text-muted hover:text-ink"><X size={22} /></button>

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { X, Upload, MapPin, CircleCheck, TriangleAlert } from "lucide-react";
 import { readWorkbook, detectReport, profile, replaceDataset } from "@/lib/datasets";
 import { findColumn } from "@/lib/analyses";
+import { useOyna } from "@/components/ui/Modal";
 
 // Tahlilga kerakli ma'lumotni yangilash oynasi.
 //
@@ -12,6 +13,8 @@ import { findColumn } from "@/lib/analyses";
 // "qaysi faylni olay?" degan joyda qoladi, "qanday yuklay?" degan
 // joyda emas.
 export default function DataSourceModal({ analysis, onClose, onDone }) {
+  // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
+  useOyna(onClose);
   const fileRef = useRef(null);
   const [drag, setDrag] = useState(false);
   const [pending, setPending] = useState(null);
@@ -69,8 +72,8 @@ export default function DataSourceModal({ analysis, onClose, onDone }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="card w-full max-w-2xl p-8 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-overlay/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="card w-full max-w-2xl p-6 sm:p-8 rounded-b-none sm:rounded-2xl max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between mb-6">
           <div>
             <h2 className="text-2xl font-extrabold mb-1">{t("Ma'lumotni yangilash")}</h2>
