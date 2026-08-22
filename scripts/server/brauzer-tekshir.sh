@@ -1,4 +1,18 @@
 #!/usr/bin/env bash
+# ⚠ BU SKRIPTNING O'RNINI `brauzer-kirgan.mjs` OLDI (2026-08-22).
+#
+# Sabab: u sahifa MATNINI o'qiy olmasdi — faqat skrinshot hajmini.
+# "Application error" sahifasi esa to'laqonli sahifa, hajmi bo'yicha
+# uni sog'lomidan ajratib bo'lmaydi. Shu sabab `/` dagi React #310
+# xatosi undan o'tib ketdi va sayt buzuq holda "toza" deb chiqdi.
+#
+# `brauzer-kirgan.mjs` endi ikkala holatni ham tekshiradi: avval
+# kirmasdan (`/`, `/login`), keyin sessiya bilan 22 sahifa. U DOM
+# matnini o'qiydi va konsoldagi istisnolarni keng namuna bilan
+# qidiradi.
+#
+# Fayl zaxira sifatida qoldirilgan (Chrome o'zgarsa asqotishi
+# mumkin), lekin `chiqar.sh` uni CHAQIRMAYDI.
 # ══════════════════════════════════════════════════════════════
 # HAQIQIY BRAUZER TEKSHIRUVI
 # ══════════════════════════════════════════════════════════════
