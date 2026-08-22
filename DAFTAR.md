@@ -994,3 +994,64 @@ ko'chishdan beri Billz'dan yangi ma'lumot tortilmagan.
 Endi har 30 daqiqada (`scripts/server/06-billz-cron.sh`). PostgREST
 `authenticator` sifatida ulanadi va JWT dagi rolga O'TADI — o'tish
 uchun o'sha rolning a'zosi bo'lishi shart edi.
+
+---
+
+## 10. 2026-08-22 (kechqurun) — domen va yashiringan sotuv yo'qotishi
+
+### 10.1. HTTPS'siz kirish ISHLAMAYDI
+
+`app/api/kirish/route.js` cookie'ga `Secure` qo'yadi
+(`NODE_ENV=production`). Brauzer `http://` da bunday cookie'ni
+saqlamaydi — jimgina tashlaydi. Parol to'g'ri bo'lsa ham sahifa
+`/login` ga qaytaraveradi.
+
+Bu uzoq bilinmadi, chunki tekshiruvlarda cookie brauzerga
+to'g'ridan-to'g'ri qo'yilardi (DevTools protokoli) — kirish
+formasining o'zi hech qachon sinalmagan.
+
+**Qoida:** yangi muhitda kirish FORMASI sinaladi, tokenni qo'lda
+qo'yish bilan emas.
+
+### 10.2. Manzil: `tizim.enes.uz`
+
+`enes.uz` kompaniya sayti uchun (aHOST xostingi, 185.196.212.52).
+NSPOS quyi domenda. `@`, `www`, MX, SPF, DKIM ga tegilmaydi.
+
+Cloudflare olinmadi: ichki tizim uchun uning foydasi (DDoS, CDN)
+ishlamaydi — og'ir narsa baza so'rovlari, ular keshlanmaydi.
+
+Certbot avtomatik yangilashi `--dry-run` bilan SINALDI. Bu qadam
+tashlab ketilmaydi: sertifikat 90 kunda tugaydi.
+
+### 10.3. Billz `end_date` siz faqat BIR KUNNI qaytaradi
+
+Eng qimmat topilma. O'lchov:
+
+```
+start_date=2026-08-19              →  34 ta (faqat 19.08)
+start_date=2026-08-19 + end_date   → 135 ta (22.08 gacha)
+```
+
+Sinxronizatsiya har 30 daqiqada o'sha 34 ta chekni qayta tortardi,
+kursor 19.08 da qotgandi, 101 ta chek (9 061.63 $) bazaga umuman
+tushmagandi. Xato ko'rinmadi: so'rov muvaffaqiyatli, jurnal "OK".
+
+`start_date` ham berilmasa Billz BO'SH qaytaradi — ya'ni "hammasini
+ber" degan ma'no yo'q. Endi ikkala sana ham doim yuboriladi.
+
+### 10.4. Yolg'on jurnal haqiqiy nosozlikni yashirdi
+
+`stat.inserted += rows.length` — upsert'ga ketgan hamma qator
+"qo'shildi" deb sanalardi. Jurnal har 30 daqiqada "34 ta chek
+qo'shildi" deb yozardi, bazada esa yangi qator yo'q edi.
+
+**Qoida:** jurnal ORTIQCHA aytmasin. Ishonchsiz jurnal — jurnal
+yo'qligidan yomonroq: u nosozlikni yashiradi.
+
+### 10.5. Yangi tekshiruv: sotuv eskirgani
+
+`lib/audit.js` → "Sotuv ma'lumoti N kundan beri yangilanmagan".
+Bu turdagi nosozlikni xato xabari tuta olmaydi (so'rov
+muvaffaqiyatli, ma'lumot kam). Uni faqat "eng yangi chek qachon
+edi?" degan savol tutadi. 2 kunda ogohlantirish, 4 kunda xato.
