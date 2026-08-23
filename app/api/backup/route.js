@@ -1,11 +1,11 @@
 // ══════════════════════════════════════════════════════════════
 // KUNLIK ZAXIRA — SERVER YO'LI
 // ══════════════════════════════════════════════════════════════
-// Nega kerak: baza Supabase'da turibdi va u BEPUL tarifda — u yerda
-// zaxira ham, "vaqtga qaytarish" ham yo'q. Ya'ni adashib o'chirilgan
-// yozuvni qaytarib bo'lmaydi. Shuning uchun har kecha butun baza bitta
-// faylga yig'ilib, EGASIGA TEGISHLI joyga (Telegram va Google Drive)
-// yuboriladi. Supabase bilan nima bo'lishidan qat'i nazar nusxa qoladi.
+// Nega kerak: baza o'z serverimizda turibdi. `05-zaxira.sh` har kecha
+// `pg_dump` qiladi, lekin u nusxa SERVERNING O'ZIDA qoladi — disk
+// yonsa yoki server yo'qolsa, zaxira ham u bilan ketadi. Shuning
+// uchun butun baza bitta faylga yig'ilib, EGASIGA TEGISHLI joyga
+// (Telegram va Google Drive) — ya'ni serverdan TASHQARIGA yuboriladi.
 //
 // Nima yig'iladi: faqat NSPOS'ning o'zida yashaydigan ma'lumot emas,
 // hammasi — mijozlar, qarzlar, KPI, xarajat, kassa, to'lov rejasi.
@@ -13,10 +13,12 @@
 // hech qayerdan tiklab bo'lmaydi.
 //
 // Ishga tushishi:
-//   • har kecha — Vercel Cron (vercel.json), soat 02:00 UTC
+//   • har kecha — server croni, 03:15 Toshkent
+//     (`scripts/server/12-zaxira-tashqi.sh`)
 //   • qo'lda    — Sozlamalardagi "Zaxira" tugmasi (egasi bosadi)
 import { createClient } from "@supabase/supabase-js";
 import { BACKUP_TABLES } from "@/lib/backupTables";
+import { kimChaqirdi, cronmi, json } from "@/lib/apiAuth";
 
 export const maxDuration = 60;
 
@@ -29,7 +31,6 @@ export const maxDuration = 60;
 // yoki sertifikat buzilsa Billz sinxronizatsiyasi ham to'xtaydi.
 const url = process.env.NSPOS_REST_INTERNAL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const CRON_SECRET = process.env.CRON_SECRET;
 const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TG_CHAT = process.env.TELEGRAM_CHAT_ID;
 const DRIVE_HOOK = process.env.DRIVE_BACKUP_URL;   // Google Apps Script veb-ilova
@@ -40,24 +41,17 @@ const TABLES = BACKUP_TABLES;
 
 const iso = (d) => d.toISOString().slice(0, 10);
 
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status, headers: { "content-type": "application/json" },
-  });
-}
-
 // —— Kim chaqirdi ————————————————————————————————
-// Cron  — Vercel "authorization: Bearer <CRON_SECRET>" bilan keladi
+// Cron  — "authorization: Bearer <CRON_SECRET>" bilan keladi
 // Egasi — brauzerdan o'z tokeni bilan (faqat owner)
+//
+// Tekshiruv `lib/apiAuth.js` da (2026-08-24): ilgari bu yerda
+// Supabase Auth chaqirilardi, u esa olib tashlangan — rahbar
+// qo'lda zaxira ololmasdi. Cron ishlab turgani buni yashirgan.
 async function allowed(req) {
-  const auth = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  if (CRON_SECRET && auth === CRON_SECRET) return true;
-  if (!auth) return false;
-  const admin = createClient(url, service, { auth: { persistSession: false } });
-  const { data: { user } } = await admin.auth.getUser(auth);
-  if (!user) return false;
-  const { data: prof } = await admin.from("profiles").select("role").eq("id", user.id).single();
-  return prof?.role === "owner";
+  if (cronmi(req)) return true;
+  const { prof } = await kimChaqirdi(req, ["owner"]);
+  return !!prof;
 }
 
 // —— Bazani o'qish ————————————————————————————————

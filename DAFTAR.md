@@ -891,10 +891,16 @@ statistika nolga tushib qolardi.
       to'liq ishlaganidan keyin bir yo'la. Vercel'ga qo'shiladigan
       kalitlar: `BILLZ_SECRET_TOKEN`, `CRON_SECRET`.
 - [x] ~~Papka git repo emas~~ — `git init` qilindi, boshlang'ich kommit bor.
-- [ ] GitHub'ga ulash: `gh auth login` (foydalanuvchi qiladi), keyin
-      `git remote add origin` + `git push`.
-- [ ] Eski `nspos.vercel.app` bilan nima qilish — o'chirish yoki yangi
-      koddan qayta chiqarish. Ikkalasi bitta bazaga yozadi.
+- [x] ~~GitHub'ga ulash~~ — ulandi. 2026-08-23 da remote SSH'ga
+      o'tkazildi: ilgari `.git/config` da HTTPS manzil ichida shaxsiy
+      token OCHIQ MATNDA turgan edi (12.1-bo'lim).
+- [x] ~~Eski `nspos.vercel.app` bilan nima qilish~~ — qaror
+      (2026-08-23): avval eskidagi ma'lumot olinadi, keyin ikkala
+      Vercel loyihasi ham yopiladi, Supabase esa dump olinib pauza
+      qilinadi. Tafsiloti 12-bo'limda.
+- [ ] Zaxira: `12-zaxira-tashqi.sh` SERVERDA ishga tushirilishi kerak.
+      Ungacha tashqi (Telegram/Drive) zaxira YO'Q — uni ilgari faqat
+      Vercel Cron chaqirardi.
 - [ ] Mijozlar ro'yxatida 4 183 ta dublikat bor (Excel importidan qolgan).
       **O'chirilmaydi** — foydalanuvchi qarori. Kerak bo'lsa ro'yxatda
       birlashtirib ko'rsatiladi, bazada ikkalasi ham qoladi.
@@ -1055,3 +1061,442 @@ yo'qligidan yomonroq: u nosozlikni yashiradi.
 Bu turdagi nosozlikni xato xabari tuta olmaydi (so'rov
 muvaffaqiyatli, ma'lumot kam). Uni faqat "eng yangi chek qachon
 edi?" degan savol tutadi. 2 kunda ogohlantirish, 4 kunda xato.
+
+---
+
+## 11. 2026-08-23 — ikki marta yozilgan chek va noto'g'ri baza
+
+### 11.1. "Tovar tarkibi yo'q" — aslida dublikat edi
+
+Ogohlantirish oyiga yaqin turdi: *"39 ta chekda tovar tarkibi yo'q —
+17 052.90 $"*. Uning ostidagi maslahat ham noto'g'ri edi: "Billz'dan
+qayta torting".
+
+Tekshirilganda chiqdi: o'sha 39 chekning **`billz_id` si yo'q**. Ular
+Billz'dan emas, Excel importidan qolgan. Va har birining **aynan bitta
+Billz jufti bor** — bir xil raqam, bir xil tur, tarkibi joyida:
+
+```
+000500084216 → Excel 1030.53 · Billz 1030.54  (12 qator)
+000301099246 → Excel  395.93 · Billz  395.94  (16 qator)
+000302044266 → Excel 6650.12 · Billz 6650.12  ( 5 qator)
+```
+
+Ya'ni Billz'dan tortish hech narsa bermasdi — chek allaqachon bazada,
+ikkinchi nusxa bo'lib. 17 052.88 $ ikki marta sanalgan (fevral–iyul,
+shuning uchun moliyaga tegmagan: hisob 01.08 dan).
+
+**Sabab:** `linkSales()` eski qatorni Billz chekiga `raqam|tur|summa`
+kaliti bilan bog'laydi va summa AYNAN mos kelishini talab qilardi.
+Billz yaxlitlashi bir tiyinga farq qiladi — 7 779 chekdan 7 740 tasi
+bog'landi, 39 tasi qoldi.
+
+**Yechim (uch qism):**
+1. `sales.superseded_by` ustuni — dublikat qator O'CHIRILMAYDI, faqat
+   "meni kim almashtirdi" havolasini oladi (`scripts/sql/sales-superseded.sql`,
+   39 qator yangilandi). Xuddi `debts.source='excel'` dagidek yondashuv.
+2. `lib/salesData.js` → `set()` da almashtirilgan chek xotiraga umuman
+   kiritilmaydi. Bitta joyda to'silsa yetadi: `salesInRange`, P&L, ABC —
+   hammasi to'g'ridan-to'g'ri `sales` massividan o'qiydi.
+3. `linkSales()` da summa endi kalitda emas, TEKSHIRUV: juftlik
+   `raqam|tur` bo'yicha topiladi, keyin farq 0.02 dan oshmasligi
+   ko'riladi. Yaxlitlash o'tadi, boshqa chek o'tmaydi.
+
+**Yangi tekshiruv** `lib/audit.js` → `billz-unlinked-duplicate`. Belgisi:
+`billzId` bo'sh chek, lekin bazada aynan o'sha raqam va turdagi boshqa
+chek bor. Faqat raqam takrorlanishi YETARLI EMAS — Billz qaytarish
+chekiga asl chekning raqamini beradi va bir chekka ikki marta qaytarish
+bo'lishi mumkin (000800069246, 06 va 07-avgust — ikkalasi ham haqiqiy).
+
+**Sabog'i:** ogohlantirish matnidagi maslahat ham xato bo'lishi mumkin.
+"Tovar tarkibi yo'q" degani "Billz bermadi" degani emas edi.
+
+### 11.2. Tekshiruv ESKI bazani o'qib turgan
+
+Eng qimmat topilma. `npm run tekshir` — saytga chiqarishdan oldingi
+majburiy darvoza — kompyuterda **eski Supabase nusxasini** o'qirdi.
+`.env.local` da VPS'ga ko'chishdan oldingi manzil qolib ketgan.
+
+Ikki baza butunlay boshqa raqam beradi:
+
+| | eski Supabase | VPS (haqiqiy) |
+|---|---|---|
+| Kurs | 11 900 | 11 880 |
+| Kirim | 93 460.03 $ | 82 308.87 $ |
+| Kassada | 58 277.43 $ | 47 344.28 $ |
+| Optim kassasi | 15 815.82 $ | 7 730.69 $ |
+| Vaqt | 332.1 s | 5.5 s |
+
+Ya'ni ko'chishdan beri har "✓ hammasi joyida" muzlab qolgan nusxa
+haqidagi gap edi. Bitta ishora bor edi va u ISHLADI — "Sotuv ma'lumoti
+4 kundan beri yangilanmagan" (10.5-bo'limda qo'shilgan tekshiruv).
+Lekin uni tushunish uchun qaysi baza o'qilgani bilinishi kerak edi,
+u esa hech qayerda yozilmasdi.
+
+**Qoida:** tekshiruv QAYSI bazani o'qiganini har safar aytadi.
+`scripts/lib/yuk.mjs` → `manbaNomi()`, bosh qatorda:
+
+```
+Manba: Postgres: mahalliy soket
+Hisob boshi: 2026-08-01 · kurs 11 880 so'm
+```
+
+**Serverda tekshirish** (haqiqiy baza shu yerda):
+
+```bash
+ssh -i ~/.ssh/nspos root@169.58.216.246 \
+  "cd /opt/nspos/app && sudo -u nspos env NSPOS_PG=\$(grep '^NSPOS_PG=' /opt/nspos/api.env | cut -d= -f2-) npm run tekshir"
+```
+
+`sudo -u nspos` SHART: `NSPOS_PG` mahalliy soketga boradi va Postgres
+peer autentifikatsiyasi foydalanuvchi nomiga qaraydi. `root` bilan
+ishga tushirilsa "Baza to'liq o'qilmadi" deb to'xtaydi.
+
+---
+
+## 12. 2026-08-23 — Vercel/Supabase'dan butunlay chiqish va Telegram boti
+
+VPS ishlab turibdi, lekin eski tizim ham tirik edi. Shu bo'lim eskisini
+YOPISH tartibini va yo'l-yo'lakay topilgan uchta teshikni yozadi.
+
+### 12.1. GitHub tokeni ochiq matnda turgan
+
+`.git/config` dagi `origin` manzili shunday edi:
+
+```
+https://x-access-token:ghp_…@github.com/urinboevmirjalol-commits/nspos.git
+```
+
+Ya'ni shaxsiy token papkani o'qiy olgan HAR KIMGA ko'rinardi — zaxira
+nusxaga ham, ekran ulashuvga ham tushardi. Token repo fayllarida yoki
+kommit tarixida YO'Q edi (grep bilan tekshirildi), faqat shu yerda.
+
+Tuzatildi: token bekor qilinadi (foydalanuvchi GitHub'da), manzil esa
+SSH'ga o'tkazildi:
+
+```bash
+git remote set-url origin git@github.com:urinboevmirjalol-commits/nspos.git
+```
+
+`~/.ssh/id_ed25519` kaliti allaqachon shu repoga ruxsatli edi
+(`git ls-remote` bilan tekshirildi). Serverga bu ta'sir qilmaydi:
+`chiqar.sh` `.git` ni umuman yubormaydi.
+
+**Qoida:** GitHub manzili HTTPS+token bo'lib qolmasin. Token vaqtinchalik
+kerak bo'lsa `git credential` orqali, `.git/config` ga yozib emas.
+
+### 12.2. Tashqi zaxira jimgina to'xtash arafasida edi
+
+Ikki xil zaxira bor va ular BOSHQA-BOSHQA narsa:
+
+| Nima | Qayerda | Kim chaqiradi |
+|---|---|---|
+| `pg_dump` | serverning O'ZIDA (`/opt/nspos/zaxira`) | `05-zaxira.sh`, cron 03:00 |
+| `/api/backup` | Telegram + Google Drive (TASHQARIGA) | **faqat Vercel Cron edi** |
+
+Vercel o'chirilsa ikkinchisi to'xtardi va buni HECH NARSA bildirmasdi:
+zaxira "bor" bo'lib qolaverardi, faqat hammasi bitta diskda. Server
+yonsa yoki yo'qolsa — hammasi bilan ketardi.
+
+Yechim: `scripts/server/12-zaxira-tashqi.sh` — cron 03:15 da
+`/api/backup` ni chaqiradi (mahalliy `pg_dump` tugagandan keyin, Billz
+sinxroni oralig'ida). Skript o'rnatilgan zahoti BIR MARTA sinab
+ko'radi — xato ertasi kechasi emas, hoziroq bilinsin.
+
+### 12.3. Valyuta qo'riqchisi cheklarni ko'rmasdi
+
+`lib/audit.js` dagi `billz-price-som` Billz raqami so'mga aylanib
+qolganini ushlaydi. Lekin u faqat KATALOG narxini qaraydi
+(`products.sale_price`). Ekrandagi tushum esa katalogdan emas, CHEK
+QATORLARIDAN yig'iladi. Ya'ni Billz valyuta qoidasini o'zgartirsa,
+katalog toza turgani holda tushum va P&L ~12 000 barobar oshib ketardi
+va hech qayerda ushlanmasdi.
+
+Qo'shildi: `savdo-narx-som` — `sale_items.price` va `cost_price` ni
+tekshiradi. Chegara CHEK JAMISIGA emas, DONA NARXIGA qo'yilgan.
+
+**O'lchandi** (9 032 chek · 34 489 qator):
+
+| nima | qiymat |
+|---|---|
+| eng qimmat dona narxi | 1 100 |
+| eng qimmat dona tannarxi | 400 |
+| eng qimmat katalog narxi | 700 |
+| eng katta chek jamisi | 6 650.12 |
+| eng arzon so'm narxi | ~11 880 |
+
+Chegara 5 000 — haqiqiy narxdan 4.5 barobar yuqori, eng arzon so'm
+narxidan 2.4 barobar past. Ikki oraliq kesishmaydi, ya'ni yolg'on
+trevoga bo'lishi mumkin emas.
+
+Chek jamisiga 5 000 qo'yib bo'lmaydi: 6 650.12 lik HAQIQIY chek bor.
+Tarkibi yo'q 39 ta chek uchun alohida, keng chegara — 50 000.
+
+**Qoida:** ma'lumot xatosini ushlaydigan tekshiruv qo'yilganda, u
+raqam EKRANGA QAYSI YO'L bilan chiqishini kuzatib qo'yilsin. Katalogni
+qo'riqlash yetarli emas edi, chunki pul boshqa jadvaldan kelardi.
+
+### 12.4. Eskisini yopish tartibi (tartib MUHIM)
+
+1. **Muzlatish.** Eski Supabase'da JWT secret yangilanadi. Bitta amal
+   bilan ikkala Vercel sayti ham o'ladi (anon va service_role kalitlar
+   bekor bo'ladi) — eski Vercel hisobiga kirish shart emas. Bizning
+   o'qish yo'limiz tegilmaydi: `yuk.mjs` Management API bilan,
+   `pg_dump` esa to'g'ridan-to'g'ri ulanish satri bilan boradi.
+2. **Solishtirish.** `node scripts/solishtir.mjs --target "…"` — ikki
+   bazaning BIRLAMCHI KALITLARINI solishtiradi va uch xil farqni
+   ajratadi: `faqat_eski` (ko'chiriladi), `faqat_vps` (normal, Billz
+   sinxroni), `ozgargan` (ikkalasida bor, eskisi yangiroq — qo'lda).
+   Yonida eski `audit_log` xulosasi chiqadi: kalit solishtiruvi faqat
+   QO'SHILGAN qatorni ko'radi, tahrirlangan va o'chirilganini esa
+   ko'rmaydi — audit jurnali ko'rsatadi.
+3. **Ko'chirish.** `kochirish.mjs --only=<ro'yxat>` — `on conflict do
+   nothing`, ya'ni FAQAT QO'SHADI. Oldin serverda `pg_dump` olinadi.
+4. **Yakuniy nusxa.** `pg_dump -Fc` → uch joyga (Mac, Telegram, Drive).
+   PAUZADAN OLDIN: pauza ulanishlarni butunlay yopadi.
+5. **Yopish.** Supabase pauza, Vercel loyihalari o'chiriladi.
+
+**Nega muzlatish birinchi:** qimirlab turgan bazani solishtirib bo'lmaydi.
+Solishtirish bilan ko'chirish orasida xodim eski saytga bitta yozuv
+kiritsa, u yozuv butunlay yo'qolardi.
+
+**Nega Supabase o'chirilmaydi, pauza qilinadi:** qaytish yo'li ochiq
+qolsin. Lekin ASL ARXIV — 4-qadamdagi dump, pauzadagi loyiha emas:
+bepul tarifda uzoq turgan loyihani Supabase o'zi o'chirib yuborishi
+mumkin.
+
+### 12.5. Telegram boti — rahbar uchun o'qish oynasi
+
+Rahbar telefondan `/xulosa`, `/savdo bugun`, `/kassa`, `/qarz` deb
+so'raydi. Kod: `scripts/bot/`, o'rnatish: `11-bot.sh`.
+
+Uchta qaror va sabablari:
+
+- **Long-polling, webhook emas.** Webhook uchun tashqaridan kiradigan
+  yo'l ochish kerak. Long-polling'da bog'lanishni bot O'ZI boshlaydi —
+  nginx'ga bitta ham yangi yo'l qo'shilmaydi.
+- **Bot bazaga ULANMAYDI.** U faqat `127.0.0.1:3002` (nspos-api) ga GET
+  qiladi. Himoya uch qavat: API faqat GET qabul qiladi · API roli
+  faqat SELECT · botda baza paroli umuman yo'q.
+- **Formula yozilmaydi.** `format.mjs` faqat API bergan raqamni matnga
+  o'giradi. Bir dona qo'shish ham yozilmaydi — aks holda Telegram'dagi
+  raqam bir kun saytdagidan farq qilib qolardi.
+
+Ishga tushganda turib qolgan xabarlar TASHLANADI (`getUpdates` offseti
+oldinga suriladi): Telegram javobsiz xabarni 24 soat saqlaydi va busiz
+server bir kun o'chib tursa, yoqilgan zahoti bot kechagi savollarga
+birdaniga javob yozib tashlardi.
+
+Ruxsat — chat raqamlari ro'yxati (`TELEGRAM_RUXSAT`). Sabab: API tokeni
+rahbarning O'QISH huquqi, u bilan butun moliya ko'rinadi. Begona chatga
+javob BIR MARTA yoziladi — har xabarga javob qaytarilsa bot begona odam
+bilan cheksiz yozishib ketardi.
+
+Keyingi bosqich (ixtiyoriy): buyruq bo'lmagan matnni Claude API'ga
+berish, tool'lar sifatida o'sha 8 ta GET yo'lini ko'rsatish. Buyruqlar
+o'z holicha qoladi — LLM yiqilsa ham bot ishlayveradi.
+
+### 12.6. Toza chiqarish oxirida osilib qolardi (topildi 2026-08-23)
+
+Birinchi chiqarish `chiqar.sh` ning 5-qadamida 40 daqiqa turib qoldi.
+Tashqaridan "chiqarish yiqildi" bo'lib ko'rinardi. Aslida hamma ish
+ALLAQACHON tugagan edi: rsync o'tgan, `next build` bo'lgan, `nspos`
+qayta ishga tushgan, 9 ta sahifa 200 qaytargan, CSS 42 905 bayt,
+brauzerda 2 + 22 sahifa toza. Faqat jarayon CHIQMAGAN.
+
+Sabab `brauzer-kirgan.mjs` da:
+
+```
+process.on("exit", tozala);          // Chrome'ni o'ldiradi
+…
+if (xato) { …; process.exit(1); }    // xato yo'li — MAJBURAN chiqadi
+console.log("… toza");               // toza yo'l — shu yerda tugaydi
+```
+
+Chrome `spawn` bilan ochilgan va tirik turgani uchun Node hodisa
+halqasi yopilmaydi. Uni o'ldiradigan `tozala()` esa `exit` hodisasiga
+bog'langan: chiqish uchun Chrome o'lishi kerak, Chrome o'lishi uchun
+esa chiqish kerak.
+
+Ya'ni xato bo'lganda skript CHIQADI, toza bo'lganda OSILIB QOLADI —
+teskarisi. Shuning uchun buzuq chiqarishda bilinmagan, aynan
+muvaffaqiyatli chiqarishda chiqqan.
+
+Tuzatildi ikki joyda:
+- oxirida ochiq `process.exit(0)`
+- `yubor()` ga 60 soniyalik muddat — javobsiz CDP buyrug'i ham
+  butun chiqarishni osib qo'ymasin
+
+Sinaldi: 3 sahifa · 21.8 soniya · Chrome qoldig'i yo'q.
+
+**Qoida:** tashqi jarayon (`spawn`) ochadigan skript oxirida ALBATTA
+`process.exit()` bo'lsin. "Ish tugadi" bilan "jarayon tugadi" bir
+narsa emas — va farqi faqat hammasi joyida bo'lganda ko'rinadi.
+
+---
+
+## 13. 2026-08-24 — "19-dan beri data yo'q": bir savol, oltita nosozlik
+
+Rahbar ekran suratini yubordi: sanalar bor, raqamlar yo'q. Savol
+oddiy edi — "u qayerdan olinishi kerak edi, nimaga yo'q?". Javob
+bitta emas, OLTITA alohida sabab bo'lib chiqdi va ularning hech
+biri xato bermasdi.
+
+### 13.1. Nima ishlab turgan, nima to'xtagan
+
+Birinchi qadam — taxmin qilmasdan o'lchash. Bazadagi HAR jadval
+bo'yicha "oxirgi sana" so'raldi:
+
+| Manba | Oxirgi | Holat |
+|---|---|---|
+| Sotuv, chek, qarz, to'lov, tovar, qoldiq, mijoz | 23–24 avg | Billz API, har 30 daq — **sog'lom** |
+| Xarajat (`expenses`) | **20 avg** | qo'lda kiritiladi — to'xtagan |
+| Kassa (`kassa_ops`) | **20 avg** | qo'lda kiritiladi — to'xtagan |
+| KPI kunligi (`kpi_day`) | **20 avg** | qo'lda kiritiladi — to'xtagan |
+| Dollar kursi (`usd_rates`) | **20 avg** | qo'lda kiritiladi — to'xtagan |
+| Excel yuklamalari | **5–16 avg** | qo'lda yuklanadi — eskirgan |
+
+Kunma-kun kesim yanada aniq ko'rsatdi: 21, 22, 23-avgustda chek 42 / 29 / 31
+ta, xarajat esa 0 / 0 / 0.
+
+**Ko'chishda yo'qolmagan.** Eski Supabase eksporti (`.tmp/malumot.sql`,
+22-avgust 00:25) tekshirildi: unda ham AYNAN 338 ta xarajat va oxirgi
+sana 20-avgust. Ya'ni bu ma'lumot hech qayerda kiritilmagan —
+migratsiyani ayblash noto'g'ri bo'lardi.
+
+Nginx jurnali tasdiqladi: 22-avgustdan beri `expenses`, `kassa_ops`,
+`kpi_day` ga BIRORTA `POST`/`PATCH` kelmagan. Sahifalar esa ochilgan
+(`/dashboard`, `/kpi`, `/finance`) — ya'ni odamlar kirgan, kiritmagan.
+
+### 13.2. Nega tekshiruv jim turdi — eng muhim saboq
+
+`npm run tekshir:server` da eskirish tekshiruvi BOR edi:
+"Sotuv ma'lumoti yangi". U doim yashil turardi — chunki sotuv
+Billz'dan avtomat kelib turadi.
+
+**Eng ishonchli manba eng ko'r joyni yaratdi.** Avtomat kelmaydigan
+to'rt manba (xarajat, kassa, KPI, kurs) uchun tekshiruv umuman
+yo'q edi va to'rt kun jimgina o'tdi.
+
+Endi har manba uchun alohida tekshiruv bor (`lib/audit.js`,
+`MANBALAR` ro'yxati) — yangi manba qo'shish bitta qator.
+
+**Ikkinchi tuzoq shu yerda chiqdi:** `scripts/tekshir.mjs` ogohlantirishlarni
+`id.split("-")[0]` bo'yicha guruhlardi, ya'ni yangi `stale-expenses`,
+`stale-kassa`, `stale-kpi` ning HAMMASI "Sotuv ma'lumoti yangi"
+sarlavhasi ostiga tushdi. Ekranda "xarajat 4 kundan beri yo'q" degan
+xato aynan "Sotuv ma'lumoti yangi" bo'lib turardi. Endi kalit eng
+UZUN moslik bo'yicha olinadi.
+
+**Uchinchisi — darvoza mantig'i.** Yangi tekshiruvlar `error` bo'lgani
+uchun saytga chiqarishni BUTUNLAY bloklab qo'ydi. Bu noto'g'ri: xodim
+xarajat kiritmagani KOD xatosi emas, uni hech qanday tuzatish bilan
+yopib bo'lmaydi — darvoza esa abadiy qizil turib, tez orada e'tibordan
+qolardi (10.4-bo'limdagi bilan bir xil kasal). Shuning uchun
+`bloklamaydi: true` bayrog'i kiritildi:
+
+- **MASHINA ishlamay qolgan** (sinxron to'xtagan) → darvozani yopadi
+- **ODAM kiritmagan** (xarajat, kassa, KPI, Billz eksporti) → ekranda
+  qizil, jurnalda `‼ KUTIL.`, lekin chiqarishni to'xtatmaydi
+
+### 13.3. Supabase Auth uchta marshrutda qolib ketgan
+
+Jurnalda `43 × GET /api/billz/sync → 500` ko'rindi. Sabab:
+
+```js
+const { data: { user } } = await admin.auth.getUser(auth);   // ← yo'q
+```
+
+Supabase Auth 23-avgustda olib tashlangan, PostgREST'da `/auth/v1/user`
+degan yo'l yo'q. `data` null qaytardi va destrukturizatsiya TypeError
+berdi — ya'ni javob "401 Ruxsat yo'q" emas, **500** edi.
+
+Uchta marshrutda bir xil qator turgan edi:
+
+| Marshrut | Oqibati |
+|---|---|
+| `/api/billz/sync` | "Billz'dan yangilash" tugmasi server xatosi berardi |
+| `/api/backup` | rahbar qo'lda zaxira ololmasdi (cron ishlagani buni yashirgan) |
+| `/api/staff` | **menejer ustaga login ocholmasdi** — CLAUDE.md dagi talab ishlamay turgan |
+
+`/api/staff` eng chuqur buzilgani: u `admin.auth.admin.createUser()`,
+`updateUserById()`, `deleteUser()` ga tayanardi. Ularning o'rniga baza
+funksiyalari yozildi (`scripts/sql/auth-xodim.sql`):
+`auth.foydalanuvchi_ochish`, `auth.email_almashtir`,
+`auth.foydalanuvchi_ochirish`. Parol xeshi baza ichida yaraladi —
+`nspos_app` roli `auth.users` ga umuman tegolmaydi.
+
+`foydalanuvchi_ochirish` faqat PROFILI YO'Q qatorni oladi (yarim
+ochilgan hisobni orqaga qaytarish uchun) — profili bor hisobga
+tegmaydi, sinaldi.
+
+Tekshiruv BITTA joyga yig'ildi: `lib/apiAuth.js` → `kimChaqirdi()`.
+
+**Yo'l-yo'lakay to'rtinchi qoldiq:** Sozlamalar sahifasi tokenni
+`sess.session?.access_token` deb o'qirdi. Bu Supabase sessiyasining
+maydoni; bizniki `token`. Ya'ni sarlavha doim `Bearer undefined`
+ketardi — marshrut tuzatilgan taqdirda ham ishlamay turardi.
+
+### 13.4. Sessiya tugagani — ekrandagi "yo'q ma'lumot"ning bir sababi
+
+Token 12 soat yashaydi, `lib/db.js` esa uni modul yuklanganda BIR
+MARTA o'qiydi. Ochiq turgan oynada muddat tugasa:
+
+- ilova buni sezmasdi
+- har so'rov 401 olardi
+- xato yutilardi
+- ekranda **eski raqamlar turaverardi**
+
+Jurnalda bu kuniga o'nlab `401 GET /rest/v1/…` bo'lib ko'rinardi
+(`billz_sync_log` da 232 ta). Ya'ni "ma'lumot yo'q" shikoyatining bir
+qismi aslida "sessiya tugagan" edi.
+
+Uch joyda tuzatildi:
+1. `AuthProvider` — muddat tugaganda O'ZI login sahifasiga chiqaradi
+2. `lib/db.js` — 401/`PGRST301` alohida tanilib, "Sessiya muddati
+   tugagan — qaytadan kiring" deyiladi (bir marta, takrorlanmaydi)
+3. Kuzatuv halqasi to'xtaydi — ilgari har 20 soniyada 39 ta befoyda
+   so'rov ketardi
+
+### 13.5. KPI yozuv sikli va ortiqcha yozuvlar
+
+22-avgustda `kpi_plan` ga **5 530**, `kpi_assign` ga **5 184** ta POST
+ketgan — jadvallarda esa 17 va 16 qator bor.
+
+Sabab `kpiData.syncUp()`: u bazadan ENDIGINA kelgan hamma rejani
+qaytarib yozardi. Kunlar uchun `seenDayId` qo'riqchisi bor edi,
+rejalar va turlar uchun yo'q.
+
+Xavflisi ortiqcha so'rov emas: `bootstrap()` uchala jadvalni
+`Promise.all` bilan o'qiydi, ya'ni TARTIB KAFOLATLANMAGAN. `kpi_day`
+birinchi tugasa, `syncUp()` hali bazadan kelmagan — localStorage'dagi
+ESKI rejani bazaga yozib yuborardi. **Boshqa menejer o'zgartirgan reja
+shu bilan jimgina orqaga qaytardi.**
+
+Endi: har jadval bazadan kelganini belgilaydi, `syncUp()` uchalasi
+kelgandan keyin va faqat bazada YO'Q yozuvni yuboradi.
+
+Yonida: Billz sinxroni har yurishda 35 ta kategoriyaning hammasini
+qaytadan yozardi (kuniga ~1 500 PATCH) — endi `billz_id` haqiqatan
+o'zgargandagina.
+
+Natija: chiqarishdan keyin 24 sahifa ochildi — birorta KPI yozuvi
+ketmadi (avval har ochilishda 33 ta).
+
+### 13.6. `scripts/sql.mjs` o'lik yo'lga olib borardi
+
+CLAUDE.md migratsiyani AYNAN shu skript orqali qilishni aytadi. Skript
+esa Supabase Management API'ga borardi va loyiha ref'ini
+`NEXT_PUBLIC_SUPABASE_URL` dan olardi. Manzil endi `tizim.enes.uz` —
+ya'ni skript birinchi qatorida "Loyiha ref'i aniqlanmadi" deb
+to'xtardi. Har migratsiya qo'lda `ssh` bilan qilinardi va buni hech
+kim yozib qo'ymagandi.
+
+Endi u serverga SSH bilan boradi va `psql -v ON_ERROR_STOP=1` ni
+superuser sifatida ishga tushiradi. SQL argument emas, **stdin**
+orqali beriladi — qo'shtirnoq va `$$` buzilmasin.
+
+**Umumiy saboq:** platformadan ko'chganda "ishlayotgan" narsa emas,
+KAM ISHLATILADIGAN yo'llar sinadi va ular jimgina sinadi. Cron
+ishlagani `/api/backup` buzilganini, sotuv kelayotgani xarajat
+to'xtaganini, sayt ochilayotgani sessiya tugaganini yashirdi.

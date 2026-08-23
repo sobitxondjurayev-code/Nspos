@@ -13,7 +13,7 @@ import { supabase, DEMO_MODE } from "@/lib/db";
 // Next.js HTML qobiqni beradi — ishdan chiqish esa brauzerda,
 // hidratsiyada bo'ladi. Shu sabab endi chiqarishda haqiqiy brauzer
 // ochiladi (`scripts/server/brauzer-tekshir.sh`).
-import { sessiyaOl, ozgarishda, chiqish } from "@/lib/sessiya";
+import { sessiyaOl, ozgarishda, chiqish, muddatMs } from "@/lib/sessiya";
 
 const AuthCtx = createContext({ user: getUser(), ready: DEMO_MODE, setRole: () => {}, signOut: () => {} });
 export const useAuth = () => useContext(AuthCtx);
@@ -48,6 +48,22 @@ export default function AuthProvider({ children }) {
     }
 
     let alive = true;
+    let muddatTimer;
+
+    // Muddat tugaganda O'ZI login sahifasiga olib chiqadi.
+    //
+    // Busiz ochiq oyna 12 soatdan keyin "tirik" ko'rinardi-yu, har
+    // so'rovi 401 bilan qaytardi: ekranda eski raqam turaverardi,
+    // kiritilgan xarajat esa saqlanmasdi. Xodim buni bilmasdi.
+    // (lib/sessiya.js `muddatMs` izohiga qarang.)
+    function muddatniKuzat() {
+      clearTimeout(muddatTimer);
+      const qoldi = muddatMs() - Date.now();
+      if (!qoldi || qoldi <= 0) return;
+      // `setTimeout` 24.8 kundan uzun kutolmaydi — token 12 soat
+      // yashaydi, ya'ni bu yerda cheklovga tegmaymiz.
+      muddatTimer = setTimeout(() => { if (alive) load(null); }, qoldi + 1000);
+    }
 
     async function load(session) {
       if (!session) {
@@ -65,6 +81,7 @@ export default function AuthProvider({ children }) {
       setUserState(setUserFromProfile(profile, session.user.email));
       setAuthed(true);
       setReady(true);
+      muddatniKuzat();
     }
 
     // Sessiya cookie'dan o'qiladi (`lib/sessiya.js`). Supabase Auth
@@ -73,7 +90,7 @@ export default function AuthProvider({ children }) {
 
     // Kirish/chiqishni kuzatamiz
     const bekor = ozgarishda((s) => load(s));
-    return () => { alive = false; bekor(); };
+    return () => { alive = false; clearTimeout(muddatTimer); bekor(); };
   }, [pathname, router]);
 
   const setRole = (role) => {

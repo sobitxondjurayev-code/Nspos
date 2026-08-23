@@ -7,28 +7,30 @@
 // o'sha (Cron siri yoki egasi tokeni).
 //
 // Ishga tushishi:
-//   • har kuni 03:00 UTC (08:00 Toshkent) — Vercel Cron (vercel.json)
+//   • har 30 daqiqada — server croni (`scripts/server/06-billz-cron.sh`)
 //   • ilova ochilganda — oxirgi yangilanish eskirgan bo'lsa, fonda
 //     (`components/BillzAutoSync.jsx`)
 //   • qo'lda — Sozlamalardagi "Billz'dan yangilash" tugmasi
 //   • bir martalik to'liq — `npm run billz -- --full` (skript, bu yo'l EMAS)
 //
-// NEGA CRON KUNIGA BIR MARTA: Vercel'ning Hobby tarifida cron kuniga
-// bir martadan tez ishlay olmaydi — `*/30 * * * *` yozilsa deploy
-// XATO BERADI ("Hobby accounts are limited to daily cron jobs").
-// Kun davomida yangilik ilova ochilganda tortiladi; bu 5-10 kishilik
-// jamoa uchun yetarli va Pro tarifi talab qilmaydi. Pro'ga o'tilsa
-// vercel.json dagi jadvalni "*/30 * * * *" ga o'zgartirish kifoya.
+// CRON ORALIG'I: har 30 daqiqada. Ilgari kuniga bir marta edi —
+// Vercel'ning Hobby tarifi undan tez ruxsat bermasdi ("Hobby accounts
+// are limited to daily cron jobs"). O'z serverimizda bunday cheklov
+// yo'q: bitta to'liq sinxronizatsiya ~68 soniya, Billz esa sekundiga
+// 2 so'rov beradi — 30 daqiqa bemalol yetadi.
 //
-// DIQQAT — vaqt cheklovi: Vercel funksiyasi 300 soniya ishlaydi, Billz
-// esa sekundiga 2 so'rov beradi. Ya'ni bitta chaqiriqda eng ko'pi ~500
-// so'rov. Katalog bunga bemalol sig'adi (652 tovar = 7 so'rov), cheklar
+// DIQQAT — vaqt cheklovi: chaqiruvchi cron `--max-time 290` bilan
+// keladi (`06-billz-cron.sh`), Billz esa sekundiga 2 so'rov beradi.
+// Ya'ni bitta chaqiriqda eng ko'pi ~500 so'rov. Cheklov endi
+// Vercel'niki emas, o'zimiz qo'yganimiz — lekin BO'LAKLASH baribir
+// kerak: uzun so'rov uzilib qolsa ish boshidan boshlanardi. Katalog bunga bemalol sig'adi (652 tovar = 7 so'rov), cheklar
 // esa yo'q: har chek uchun alohida so'rov kerak. Shuning uchun cheklar
 // BO'LAKLAB olinadi va qayerda to'xtagani `billz_sync_log.cursor_at`
 // da qoladi — keyingi chaqiriq o'sha yerdan davom etadi.
 import { createClient } from "@supabase/supabase-js";
 import { runSync } from "@/lib/billzSync";
 import { probe, isConfigured } from "@/lib/billzApi";
+import { kimChaqirdi, cronmi, json } from "@/lib/apiAuth";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -42,7 +44,6 @@ export const dynamic = "force-dynamic";
 // yoki sertifikat buzilsa Billz sinxronizatsiyasi ham to'xtaydi.
 const url = process.env.NSPOS_REST_INTERNAL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
 const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const CRON_SECRET = process.env.CRON_SECRET;
 
 // Funksiya o'chib qolmasin: to'xtashga 20 soniya zaxira qoldiramiz,
 // shunda jurnal va javob yozilib ulguradi.
@@ -59,24 +60,17 @@ async function debtsModeFor(db) {
   return Date.now() - last > 20 * 3600_000 ? "full" : "light";
 }
 
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status, headers: { "content-type": "application/json" },
-  });
-}
-
 // —— Kim chaqirdi ————————————————————————————————
-// Cron  — Vercel "authorization: Bearer <CRON_SECRET>" bilan keladi
+// Cron  — "authorization: Bearer <CRON_SECRET>" bilan keladi
 // Egasi — brauzerdan o'z tokeni bilan (faqat owner)
+//
+// Tekshiruv `lib/apiAuth.js` da: ilgari bu yerda Supabase Auth
+// chaqirilardi va u olib tashlangandan keyin marshrut 401 emas,
+// 500 qaytarardi (o'sha fayldagi izohga qarang).
 async function allowed(req) {
-  const auth = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  if (CRON_SECRET && auth === CRON_SECRET) return true;
-  if (!auth) return false;
-  const admin = createClient(url, service, { auth: { persistSession: false } });
-  const { data: { user } } = await admin.auth.getUser(auth);
-  if (!user) return false;
-  const { data: prof } = await admin.from("profiles").select("role").eq("id", user.id).single();
-  return prof?.role === "owner";
+  if (cronmi(req)) return true;
+  const { prof } = await kimChaqirdi(req, ["owner"]);
+  return !!prof;
 }
 
 export async function GET(req) {

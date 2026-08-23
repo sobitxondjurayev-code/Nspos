@@ -66,12 +66,16 @@ function StaffManager({ onlyInstallers = false }) {
   const viaApi = onlyInstallers;
 
   async function call(method, body) {
-    const sess = { session: sessiyaOl() };
+    // `token`, `access_token` EMAS. Supabase sessiyasida `access_token`
+    // bo'lardi, o'z sessiyamizda esa `token` (lib/sessiya.js). Nom
+    // qolib ketgani uchun sarlavha doim `Bearer undefined` ketardi va
+    // server har safar 401 qaytarardi — menejer ustaga login ocholmay
+    // turgan sabablarning biri shu edi (2026-08-24).
     const res = await fetch("/api/staff", {
       method,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${sess.session?.access_token ?? ""}`,
+        Authorization: `Bearer ${sessiyaOl()?.token ?? ""}`,
       },
       body: JSON.stringify(body),
     });

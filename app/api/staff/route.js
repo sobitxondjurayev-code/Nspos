@@ -10,46 +10,28 @@
 // bir-ikki marta yuboradi ("email rate limit"). Admin bilan ochilgan
 // hisob tasdiqlangan holda keladi — xat umuman yuborilmaydi, xodim
 // darrov kiradi.
-import { createClient } from "@supabase/supabase-js";
 import { phoneToEmail, normalizePhone } from "@/lib/loginId";
+import { kimChaqirdi, json } from "@/lib/apiAuth";
+import { sorov } from "@/lib/pg";
 
-// Bu marshrut SERVERNING O'ZIDA ishlaydi, shuning uchun bazaga
-// ICHKI manzil orqali boradi (`NSPOS_REST_INTERNAL`).
+// Bazaga ikki yo'ldan boriladi va ikkalasi ham `lib/` da:
+//   • `admin` (service kalit → PostgREST, RLS chetlab) — profiles,
+//     stores. `lib/apiAuth.js` beradi, ichki manzil o'sha yerda.
+//   • `sorov` (to'g'ridan-to'g'ri Postgres) — `auth` sxemasi.
+//     PostgREST faqat `public` ni ko'radi, ya'ni parol funksiyalariga
+//     u orqali borib bo'lmaydi.
 //
-// Nega: `NEXT_PUBLIC_SUPABASE_URL` endi `https://tizim.enes.uz` —
-// u BRAUZER uchun. Server o'sha manzilni ishlatsa, o'ziga tashqi
-// internet va TLS orqali aylanib boradi: bekorga sekin, va DNS
-// yoki sertifikat buzilsa Billz sinxronizatsiyasi ham to'xtaydi.
-const url = process.env.NSPOS_REST_INTERNAL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
 // So'rovchini aniqlaydi. { admin, prof } yoki { error } qaytaradi.
 //
 // Egasi hamma rol bilan ishlaydi. Menejer esa faqat USTA hisobini
 // ocha/tiklay oladi — do'kon menejeri kundalik ishni ustalar bilan
 // yuritadi va yangi usta kelganda rahbarni kutib turmasligi kerak.
 // Cheklov shu yerda: `role` va nishon xodim har amalda tekshiriladi.
-async function authCaller(req) {
-  if (!service) return { error: json({ error: "Server sozlanmagan (service kalit yo'q)" }, 500) };
-  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  if (!token) return { error: json({ error: "Avtorizatsiya yo'q" }, 401) };
-
-  const asCaller = createClient(url, anon, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-    auth: { persistSession: false },
-  });
-  const { data: me } = await asCaller.auth.getUser();
-  if (!me?.user) return { error: json({ error: "Sessiya yaroqsiz" }, 401) };
-
-  const admin = createClient(url, service, { auth: { persistSession: false } });
-  const { data: prof } = await admin
-    .from("profiles").select("company_id, role, store_id").eq("id", me.user.id).maybeSingle();
-  if (!prof || (prof.role !== "owner" && prof.role !== "manager")) {
-    return { error: json({ error: "Bu amalni bajarishga huquqingiz yo'q" }, 403) };
-  }
-  return { admin, prof };
-}
+// Tekshiruv `lib/apiAuth.js` da — u tokenni O'Z imzomiz bilan ko'radi.
+// Ilgari bu yerda `asCaller.auth.getUser()` turardi (Supabase Auth),
+// u 2026-08-23 da olib tashlangan: marshrut ishlashdan to'xtagan va
+// menejer ustaga login ocholmay qolgan. (2026-08-24 da topildi.)
+const authCaller = (req) => kimChaqirdi(req, ["owner", "manager"]);
 
 // Nishon xodim CHAQIRUVCHINING kompaniyasidami va u bilan ishlashga
 // huquq bormi. Kompaniyani tekshirmaslik jiddiy teshik edi: egalikni
@@ -111,19 +93,23 @@ export async function POST(req) {
 
   // Telefon ichkarida barqaror email'ga aylanadi (SMS yo'q). Hisob
   // tasdiqlangan holda ochiladi — xodim darrov kiradi.
-  const { data: created, error: cErr } = await admin.auth.admin.createUser({
-    email: phoneToEmail(phone),
-    password,
-    email_confirm: true,
-  });
-  if (cErr) {
-    const dup = /registered|exists|duplicate/i.test(cErr.message);
-    if (dup) return json({ error: "Bu telefon allaqachon ro'yxatda" }, 400);
-    return fail(cErr, "Xodim ochilmadi. Ma'lumotlarni tekshirib qayta urinib ko'ring.");
+  //
+  // Parol BAZA ICHIDA xeshlanadi (`auth.foydalanuvchi_ochish`), ochiq
+  // matn hech qaerga yozilmaydi. Ilgari bu yerda Supabase admin API
+  // turardi — u olib tashlangandan keyin xodim ochish umuman
+  // ishlamay qolgan edi (scripts/sql/auth-xodim.sql dagi izoh).
+  let yangiId;
+  try {
+    const r = await sorov("select auth.foydalanuvchi_ochish($1, $2) as id",
+      [phoneToEmail(phone), password]);
+    yangiId = r[0]?.id ?? null;
+  } catch (e) {
+    return fail(e, "Xodim ochilmadi. Ma'lumotlarni tekshirib qayta urinib ko'ring.");
   }
+  if (!yangiId) return json({ error: "Bu telefon allaqachon ro'yxatda" }, 400);
 
   const { error: pErr } = await admin.from("profiles").insert({
-    id: created.user.id,
+    id: yangiId,
     company_id: prof.company_id,
     full_name: name.trim(),
     phone: phone.trim(),
@@ -134,11 +120,14 @@ export async function POST(req) {
     service_pct: servicePct ?? 0,
   });
   if (pErr) {
-    await admin.auth.admin.deleteUser(created.user.id);
+    // Yarim ochilgan hisobni orqaga qaytaramiz — aks holda telefon
+    // "band" bo'lib qolardi va xodim qayta ochilmasdi. Funksiya
+    // profili BOR hisobga tegmaydi.
+    try { await sorov("select auth.foydalanuvchi_ochirish($1)", [yangiId]); } catch {}
     return fail(pErr, "Profil yozilmadi. Rahbarga murojaat qiling.");
   }
 
-  return json({ ok: true, id: created.user.id });
+  return json({ ok: true, id: yangiId });
 }
 
 // —— Login ma'lumotini yangilash (parol tiklash, raqam/ism almashtirish) ——
@@ -156,11 +145,16 @@ export async function PATCH(req) {
   const touch = await canTouch(admin, prof, id);
   if (!touch.ok) return json({ error: touch.msg }, 403);
 
-  // Parol (ixtiyoriy)
+  // Parol (ixtiyoriy). Xesh baza ichida yaraladi — ochiq parol
+  // ilovadan nariga o'tmaydi.
   if (password) {
     if (password.length < 6) return json({ error: "Parol kamida 6 belgi bo'lishi kerak" }, 400);
-    const { error: pwErr } = await admin.auth.admin.updateUserById(id, { password });
-    if (pwErr) return fail(pwErr, "Parolni yangilab bo'lmadi.");
+    let ok;
+    try {
+      const r = await sorov("select auth.parol_almashtir($1, $2) as ok", [id, password]);
+      ok = r[0]?.ok === true;
+    } catch (e) { return fail(e, "Parolni yangilab bo'lmadi."); }
+    if (!ok) return fail(new Error("parol_almashtir=false"), "Parolni yangilab bo'lmadi.");
   }
 
   // Telefon (login) — ixtiyoriy. Auth email (raqam@nspos.app) va profil
@@ -168,14 +162,12 @@ export async function PATCH(req) {
   if (phone) {
     const digits = normalizePhone(phone);
     if (!digits || digits.length < 12) return json({ error: "Telefon raqami noto'g'ri" }, 400);
-    const { error: eErr } = await admin.auth.admin.updateUserById(id, {
-      email: phoneToEmail(phone), email_confirm: true,
-    });
-    if (eErr) {
-      const dup = /registered|exists|duplicate/i.test(eErr.message);
-      if (dup) return json({ error: "Bu telefon allaqachon band" }, 400);
-      return fail(eErr, "Telefon raqamini yangilab bo'lmadi.");
-    }
+    let ok;
+    try {
+      const r = await sorov("select auth.email_almashtir($1, $2) as ok", [id, phoneToEmail(phone)]);
+      ok = r[0]?.ok === true;
+    } catch (e) { return fail(e, "Telefon raqamini yangilab bo'lmadi."); }
+    if (!ok) return json({ error: "Bu telefon allaqachon band" }, 400);
     await admin.from("profiles").update({ phone: phone.trim() }).eq("id", id);
   }
 
@@ -190,11 +182,6 @@ export async function PATCH(req) {
 
   return json({ ok: true });
 }
-
-const json = (obj, status = 200) =>
-  new Response(JSON.stringify(obj), {
-    status, headers: { "Content-Type": "application/json" },
-  });
 
 // Baza xatosini brauzerga o'z holicha qaytarmaymiz: u jadval va ustun
 // nomlarini, ba'zan cheklov nomlarini oshkor qiladi. Batafsili server

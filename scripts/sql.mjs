@@ -1,59 +1,71 @@
 // ══════════════════════════════════════════════════════════════
 // SQL ISHGA TUSHIRISH — baza tuzilishini o'zgartirish uchun
 // ══════════════════════════════════════════════════════════════
-// Supabase Management API orqali ixtiyoriy SQL bajaradi: jadval/ustun
-// qo'shish, RLS siyosati, indeks va h.k. Endi dashboard'ni ochish shart
-// emas — migratsiyalar shu yerdan o'tadi.
-//
 // Ishlatish:
 //   node scripts/sql.mjs "alter table x add column y int;"
-//   node scripts/sql.mjs -f scripts/sql/add-nps-product.sql
+//   node scripts/sql.mjs -f scripts/sql/auth-xodim.sql
 //
-// Kalit .env.local dagi SUPABASE_ACCESS_TOKEN — hech qachon brauzerga
-// tushmaydi va jurnalga chiqarilmaydi.
+// NEGA QAYTA YOZILDI (2026-08-24):
+// Bu skript Supabase Management API'ga borardi
+// (`api.supabase.com/v1/projects/<ref>/database/query`) va loyiha
+// ref'ini `NEXT_PUBLIC_SUPABASE_URL` dan olardi. Supabase 2026-08-23
+// da yopilgan, manzil esa endi `https://tizim.enes.uz` — ya'ni ref
+// umuman topilmasdi va skript birinchi qatorida to'xtardi:
+//
+//   Loyiha ref'i aniqlanmadi.
+//
+// Holbuki CLAUDE.md migratsiyani AYNAN shu skript orqali qilishni
+// aytadi. Ya'ni hujjatdagi yagona yo'l boshi berk ko'chaga olib
+// borardi va har migratsiya qo'lda `ssh` bilan qilinardi.
+//
+// Endi u serverga SSH bilan boradi va `psql` ni SUPERUSER (postgres)
+// sifatida ishga tushiradi — `auth` sxemasidagi funksiyalar va RLS
+// siyosatlari uchun shu kerak.
+//
+// `ON_ERROR_STOP=1` MAJBURIY: busiz psql xato qatoridan keyin ham
+// davom etadi va oxirida "bajarildi" deb turadi — yarim ko'chgan
+// migratsiya esa eng yomon holat.
 import { readFileSync } from "fs";
+import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
 import path from "path";
+import os from "os";
 
-const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-for (const line of readFileSync(path.join(root, ".env.local"), "utf8").split("\n")) {
-  const m = line.match(/^\s*([A-Z_]+)\s*=\s*(.+?)\s*$/);
-  if (m) process.env[m[1]] ??= m[2];
-}
-
-const token = process.env.SUPABASE_ACCESS_TOKEN;
-if (!token) {
-  console.error("SUPABASE_ACCESS_TOKEN topilmadi (.env.local).");
-  process.exit(1);
-}
-// Loyiha ref'i NEXT_PUBLIC_SUPABASE_URL dan olinadi
-const ref = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").match(/https:\/\/([a-z0-9]+)\.supabase/)?.[1];
-if (!ref) { console.error("Loyiha ref'i aniqlanmadi."); process.exit(1); }
+const SERVER = process.env.NSPOS_SERVER ?? "root@169.58.216.246";
+const KALIT = process.env.NSPOS_KEY ?? path.join(os.homedir(), ".ssh/nspos");
+const BAZA = "nspos";
 
 const args = process.argv.slice(2);
 let query;
-if (args[0] === "-f" && args[1]) query = readFileSync(path.resolve(args[1]), "utf8");
-else query = args.join(" ");
+if (args[0] === "-f" && args[1]) {
+  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+  query = readFileSync(path.resolve(root, args[1]), "utf8");
+} else {
+  query = args.join(" ");
+}
 
 if (!query.trim()) {
   console.error('Foydalanish: node scripts/sql.mjs "SQL..."  yoki  node scripts/sql.mjs -f fayl.sql');
   process.exit(1);
 }
 
-const res = await fetch(`https://api.supabase.com/v1/projects/${ref}/database/query`, {
-  method: "POST",
-  headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-  body: JSON.stringify({ query }),
-});
+// SQL ARGUMENT bo'lib emas, STDIN orqali beriladi: qo'shtirnoq,
+// dollar-qavs (`$$`) va qatorlar buzilmasin. Uzoq tomonda ham
+// aynan shunday — `psql` faylni stdin'dan o'qiydi.
+const r = spawnSync("ssh", [
+  "-i", KALIT, SERVER,
+  `sudo -u postgres psql -v ON_ERROR_STOP=1 -f - ${BAZA}`,
+], { input: query, encoding: "utf8" });
 
-const text = await res.text();
-if (!res.ok) {
-  console.error(`XATO ${res.status}:`, text.slice(0, 500));
+if (r.error) {
+  console.error("SSH ishga tushmadi:", r.error.message);
   process.exit(1);
 }
-
-let out;
-try { out = JSON.parse(text); } catch { out = text; }
-if (Array.isArray(out) && out.length) console.table(out.slice(0, 50));
-else if (Array.isArray(out)) console.log("Bajarildi. Qator qaytmadi.");
-else console.log(out);
+// psql xabarlari stderr'ga chiqadi — ular ham ko'rsatilsin, lekin
+// serverning locale ogohlantirishlari shovqin qilmasin.
+const shovqin = /locale|LANGUAGE|LC_ALL|LC_CTYPE|LANG =|are supported|fallback locale|^perl:/;
+const xato = (r.stderr ?? "").split("\n").filter((s) => s && !shovqin.test(s));
+if (r.stdout?.trim()) console.log(r.stdout.trim());
+if (xato.length) console.error(xato.join("\n"));
+if (r.status !== 0) process.exit(r.status ?? 1);
+console.log("✓ Bajarildi");

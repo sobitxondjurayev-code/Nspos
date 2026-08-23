@@ -121,9 +121,23 @@ export default function DataProvider({ children }) {
           <span className="w-9 h-9 rounded-xl bg-danger-soft text-danger flex items-center justify-center shrink-0">
             <AlertTriangle size={18} />
           </span>
+          {/* Sessiya tugagani boshqa xatolardan farq qiladi: baza
+              joyida, xodim shunchaki qaytadan kirishi kerak. Sarlavha
+              ham, tugma ham shunga qarab beriladi — "Bazaga yozilmadi"
+              deb turgan xabardan nima qilish kerakligi bilinmasdi. */}
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-sm">{t("Bazaga yozilmadi")}</p>
+            <p className="font-bold text-sm">
+              {error.startsWith("Sessiya") ? t("Sessiya tugagan") : t("Bazaga yozilmadi")}
+            </p>
             <p className="text-sm text-muted font-semibold break-words">{error}</p>
+            {error.startsWith("Sessiya") && (
+              <button
+                onClick={() => { window.location.href = "/login"; }}
+                className="mt-2 px-3 py-1.5 rounded-lg bg-brand text-white text-sm font-bold"
+              >
+                {t("Qaytadan kirish")}
+              </button>
+            )}
           </div>
           <button onClick={() => setError(null)} className="text-muted hover:text-ink">
             <X size={18} />
