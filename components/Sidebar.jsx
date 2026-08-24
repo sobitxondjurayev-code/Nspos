@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   PieChart,
   Wallet, Briefcase, Settings, ChevronRight, ChevronsLeft, MessageCircle,
-  Sun, Moon, LogOut, Upload, Target, Trophy, Star, LayoutDashboard, Users,
+  Sun, Moon, LogOut, Target, Trophy, Star, LayoutDashboard, Users,
 } from "lucide-react";
 import { canOpen, ROLES } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
@@ -26,7 +26,6 @@ const menu = [
   // Bosh sahifa ilgari MENYUDA YO'Q edi — unga faqat logotip orqali
   // tushilardi va ko'p foydalanuvchi uning borligini bilmasdi.
   { href: "/dashboard", label: "Bosh sahifa", icon: LayoutDashboard },
-  { href: "/data", label: "Ma'lumot yuklash", icon: Upload },
   { href: "/reports", label: "Hisobotlar", icon: PieChart },
   // MIJOZLAR MENYUGA QAYTARILDI (2026-08-21). Ilgari u ataylab olib
   // tashlangan edi — "kundalik ish Billz'da yuriladi" degan qoida
@@ -72,7 +71,6 @@ const menu = [
       { href: "/finance/expenses", label: "Xarajatlar" },
       { href: "/finance/pnl", label: "Foyda va pul oqimi" },
       { href: "/finance/balance", label: "Balans" },
-      { href: "/finance/import", label: "Billz'dan yuklash" },
       { href: "/finance/cost", label: "Import va tannarx" },
     ],
   },

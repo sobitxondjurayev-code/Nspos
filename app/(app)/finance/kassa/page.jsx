@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { fmtDate } from "@/lib/dates";
-import ControlDays from "@/components/finance/ControlDays";
 import CellSources from "@/components/finance/CellSources";
 import { getLedgerStart } from "@/lib/companyData";
 import { useAuth } from "@/components/AuthProvider";
@@ -29,34 +28,12 @@ import {
   kassaBalances, listOps, addOp, removeOp,
   requestTransfer, pendingGroups, approveGroup, rejectGroup,
   closeDay, cancelClose, unclosedDays, negativeDays, CLOSE,
-  kassasOf, canOperate, kassaControl, COMPANY,
+  kassasOf, canOperate, COMPANY,
 } from "@/lib/kassaData";
 import { addExpense, expensesInRange, categoryLabel as expenseCategoryLabel } from "@/lib/expensesData";
 import { getStaff } from "@/lib/staffData";
-import { listDatasets, loadRows } from "@/lib/datasets";
-import { billzKassaFlow } from "@/lib/kassaIncome";
-import DataSourceModal from "@/components/DataSourceModal";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
-
-// ДДС yuklamasi uchun manba ta'rifi — mavjud yuklash oynasi shu
-// ko'rinishni kutadi (yo'riqnoma + fayl tekshiruvi).
-const DDS_SOURCE = {
-  label: "Pul oqimi (ДДС)",
-  source: {
-    reportId: "cashflow",
-    name: "ДДС — Движение денежных средств",
-    where: "Billz → Отчеты → Финансы → ДДС",
-    steps: [
-      "Billz'ga kiring, chap menyudan Отчеты ni oching",
-      "Финансы bo'limini tanlang — bu hisobot Товары ichida emas",
-      "ДДС (Движение денежных средств) ni oching",
-      "Davrni tanlang: hisob boshlangan kundan bugungacha",
-      "Скачать bosing va faylni shu yerga tashlang",
-    ],
-    needs: [["Касса"], ["Тип транзакции"]],
-  },
-};
 
 const fmtDay = (d) => {
   const [y, m, dd] = String(d).split("-");
@@ -72,38 +49,13 @@ export default function KassaPage() {
   // Boshqa xodim yozgan o'zgarish ham darrov ko'rinsin
   const live = useLive();
   const [modal, setModal] = useState(null);   // { kassa, mode }
-  const [upload, setUpload] = useState(false);
 
   const isOwner = user?.role === "owner";
   const mine = useMemo(() => kassasOf(user), [user, tick, live]);
   const visible = isOwner ? kassaIds() : mine;
 
-  // ДДС yuklamasining qatorlari ro'yxat bilan birga kelmaydi — kassa
-  // balansi aynan shundan hisoblangani uchun shu yerda tortiladi.
-  const [rowsTick, setRowsTick] = useState(0);
-  useEffect(() => {
-    const ds = listDatasets().find((d) => d.reportId === "cashflow");
-    if (!ds || ds.rows) return;
-    let alive = true;
-    loadRows(ds.id).then(() => { if (alive) setRowsTick((v) => v + 1); });
-    return () => { alive = false; };
-    // `live` bog'lamda: ilova ochilganda yuklamalar ro'yxati hali
-    // kelmagan bo'lishi mumkin — o'shanda `ds` topilmaydi va qatorlar
-    // hech qachon tortilmasdi (kassa "ДДС yuklang" deb turardi).
-  }, [live]);
-
-  const flow = useMemo(() => billzKassaFlow(null, new Date()), [rowsTick, tick, live]);
-  // Ma'lumot necha kun orqada qolgan. Yuklash unutilsa balans jimgina
-  // eskirib boradi — shuni ko'rsatib turamiz.
-  const staleDays = useMemo(() => {
-    if (!flow.ready || !flow.period?.to) return null;
-    const last = new Date(flow.period.to + "T00:00:00");
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-    return Math.max(0, Math.round((now - last) / 86400000));
-  }, [flow]);
-  const control = useMemo(() => kassaControl(), [rowsTick, tick, live]);
+  const rowsTick = live;
   // Farq ustiga bosilganda ochiladigan kunlik ro'yxat
-  const [ctrlDays, setCtrlDays] = useState(null);
   // Kassa summasi bosilganda ochiladigan yozuvlar
   const [src, setSrc] = useState(null);
   const bal = useMemo(() => kassaBalances(new Date()), [tick, rowsTick, live]);
@@ -218,46 +170,6 @@ export default function KassaPage() {
       {/* Hisobdagi nomuvofiqliklar — menejer ham ko'radi */}
       <Warnings />
 
-      {/* ДДС yuklanmagan bo'lsa kassa bo'sh ko'rinadi — sababini aytamiz */}
-      {/* ДДС majburiy emas: kassa kunlik jadvaldan ishlaydi. Lekin u
-          yuklansa, menejer yozgan raqam Billz bilan solishtiriladi va
-          kamomad ko'rinadi. Shuning uchun taklif qilib turamiz. */}
-      {isOwner && !flow.ready && (
-        <div className="card p-6 mb-6 flex items-start gap-3">
-          <Scale size={20} className="text-brand shrink-0 mt-0.5" />
-          <div>
-            <p className="font-bold mb-1">{t("Kamomadni tekshirmoqchimisiz?")}</p>
-            <p className="text-sm font-semibold text-muted mb-2">
-              {t("Billz'dan ДДС hisobotini yuklasangiz, menejer kunlik jadvalga yozgan raqam Billz'niki bilan solishtiriladi va farqi ko'rinadi. Kassa busiz ham ishlayveradi — bu faqat nazorat uchun.")}
-            </p>
-            <button onClick={() => setUpload(true)}
-              className="rounded-xl border border-line font-bold px-5 py-2.5 text-sm hover:border-brand">
-              {t("ДДС yuklash")}
-            </button>
-          </div>
-        </div>
-      )}
-      {flow.ready && flow.period && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-6">
-          <p className="text-sm text-muted font-semibold">
-            {tt("Billz ДДС: {a} — {b} · {n} ta harakat", {
-              a: fmtDay(flow.period.from), b: fmtDay(flow.period.to), n: flow.rows })}
-          </p>
-          {/* Yuklash unutilsa balans jimgina eskiradi — ko'rinib tursin */}
-          {staleDays > 0 && (
-            <span className={`text-sm font-bold px-3 py-1 rounded-lg ${
-              staleDays >= 3 ? "bg-danger-soft text-danger" : "bg-warn-soft text-warn"}`}>
-              {staleDays === 1
-                ? t("Kechagi ma'lumot — bugungisi yuklanmagan")
-                : tt("{n} kun orqada — yangilash kerak", { n: staleDays })}
-            </span>
-          )}
-          <button onClick={() => setUpload(true)}
-            className="text-sm font-bold text-brand hover:underline">
-            {t("Yangi ДДС yuklash")}
-          </button>
-        </div>
-      )}
 
       {/* Qoldiq o'syaptimi yoki kamayyaptimi — jadvaldan buni ko'z
           bilan topib bo'lmaydi. Oxirgi 30 kun; davr tanlagichi
@@ -428,75 +340,6 @@ export default function KassaPage() {
         })}
       </div>
 
-      {/* —— Kamomad nazorati —— */}
-      {isOwner && control.ready && control.rows.some((r) => r.hasKpi) && (
-        <div className="card overflow-auto max-h-[70vh] mb-7">
-          <div className="px-6 py-5 border-b border-line flex items-center gap-2">
-            <Scale size={20} className="text-brand" />
-            <p className="text-lg font-extrabold">{t("Kamomad nazorati")}</p>
-            <span className="text-sm text-muted font-semibold">
-              {tt("{a} — {b}", { a: fmtDay(control.period.from), b: fmtDay(control.period.to) })}
-            </span>
-          </div>
-          <p className="px-6 pt-4 text-sm text-muted font-semibold">
-            {t("Chapda — Billz kassaga yozgan pul, o'ngda — menejer KPI jadvalida \"topshirdim\" degan raqam. Ular teng bo'lishi kerak.")}
-          </p>
-          <table className="w-full mt-2">
-            <thead className="bg-surface text-left text-sm">
-              <tr className="[&>th]:sticky [&>th]:top-0 [&>th]:z-20 border-b border-line [&>th]:bg-surface">
-                <th className="px-6 py-4 font-bold">{t("Kassa")}</th>
-                <th className="px-4 py-4 font-bold text-right">{t("Billz bo'yicha")}</th>
-                <th className="px-4 py-4 font-bold text-right">{t("KPI jadvalida")}</th>
-                <th className="px-6 py-4 font-bold text-right">{t("Farq")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {control.rows.map((r) => {
-                // 1% gacha farq — yaxlitlash va kunlar siljishi, kamomad emas
-                const ok = r.pct == null || Math.abs(r.pct) <= 1;
-                return (
-                  <tr key={r.kassa} className="border-b border-line last:border-0">
-                    <td className="px-6 py-4 font-bold">{t(r.label)}</td>
-                    <td className="px-4 py-4 text-right font-semibold">{fmtUSD(r.billz)}</td>
-                    <td className="px-4 py-4 text-right font-semibold">
-                      {r.hasKpi ? fmtUSD(r.said) : <span className="text-muted">{t("kiritilmagan")}</span>}
-                    </td>
-                    <td className={`px-6 py-4 text-right font-extrabold ${
-                      !r.hasKpi ? "text-muted" : ok ? "text-ok" : "text-danger"}`}>
-                      {!r.hasKpi ? "—" : (
-                        // Ustiga bosilsa — farq qaysi kunlarda chiqqani
-                        <button onClick={() => setCtrlDays({ kassa: r.kassa, label: r.label })}
-                          className="rounded-lg px-2 -mx-2 py-1 hover:bg-brand-soft hover:text-brand transition-colors">
-                          {r.diff > 0 ? "+" : ""}{fmtUSD(r.diff)}
-                          {/* Netto farq aldamchi: kam va ko'p bir-birini
-                              yeb yuboradi. Shuning uchun ostida ikkalasi
-                              alohida turadi. */}
-                          {(r.short < -0.01 || r.over > 0.01) && (
-                            <span className="block text-sm font-bold">
-                              {r.short < -0.01 && (
-                                <span className="text-danger">
-                                  {fmtUSD(r.short)} <span className="text-muted">({r.shortDays} kun)</span>
-                                </span>
-                              )}
-                              {r.short < -0.01 && r.over > 0.01 && <span className="text-muted"> · </span>}
-                              {r.over > 0.01 && (
-                                <span className="text-ok">
-                                  +{fmtUSD(r.over)} <span className="text-muted">({r.overDays} kun)</span>
-                                </span>
-                              )}
-                            </span>
-                          )}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
       {/* —— Harakatlar tarixi —— */}
       <div className="card overflow-auto max-h-[70vh]">
         <div className="px-6 py-5 border-b border-line">
@@ -592,13 +435,6 @@ export default function KassaPage() {
         />
       </div>
 
-      {upload && (
-        <DataSourceModal
-          analysis={DDS_SOURCE}
-          onClose={() => setUpload(false)}
-          onDone={() => { setUpload(false); setRowsTick((v) => v + 1); refresh(); }}
-        />
-      )}
 
       {modal && (
         <KassaModal
@@ -618,10 +454,6 @@ export default function KassaPage() {
           onCancelClose={undoClose} />
       )}
 
-      {ctrlDays && (
-        <ControlDays kassaId={ctrlDays.kassa} label={ctrlDays.label}
-          onClose={() => setCtrlDays(null)} />
-      )}
 
       {src && (
         <CellSources from={getLedgerStart()} to={new Date()} colKey="all"

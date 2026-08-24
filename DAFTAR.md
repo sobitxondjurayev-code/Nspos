@@ -1727,3 +1727,16 @@ alohida tekshirildi. Sababi ma'lumotda: avgustda Billz montaj
 bo'yicha 7 533.83 $ ko'rsatadi, menejer esa KPI ga 6 623.50 $
 yozgan — **910.33 $ kam**, ustiga 20-avgustdan beri umuman
 kiritilmagan.
+
+### 14.10. Excel yuklashdan voz kechish (2026-08-24)
+
+Qaror: foydalanuvchi endi Billz eksport faylini yuklamaydi. Tovar,
+qoldiq, mijoz, chek, chek qatori va qarzlar Billz API'dan bazaga
+avtomatik keladi; tahlillar faqat shu jonli ma'lumotdan quriladi.
+
+`/data` va `/finance/import` yuklash sahifalari, menyu bandlari,
+P&L/Kassa ichidagi Excel solishtiruvi hamda "yuklama eskirgan"
+ogohlantirishi olib tashlandi. API bilan hali qurilmagan eski
+hisobotlar ko'rsatilmaydi — foydalanuvchini "fayl tashlang" degan
+yo'lga qaytarish mumkin emas. Ular faqat kerakli Billz endpointi
+aniqlanib, bazadan qayta yozilgach ochiladi.

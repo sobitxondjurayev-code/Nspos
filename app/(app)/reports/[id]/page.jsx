@@ -75,6 +75,22 @@ export default function AnalysisPage() {
     );
   }
 
+  // Excel eksportiga tayanadigan eski tahlillar ataylab yopildi.
+  // Ularni ko'rsatish foydalanuvchini yana fayl yuklashga majbur qilardi;
+  // bu tizimning Billz API orqali doim yangi ma'lumot berish maqsadiga
+  // zid. API qamrovi kengaysa ular ham bazadan qayta yoziladi.
+  if (!analysis.bazadan) {
+    return (
+      <div className="card p-12 text-center max-w-xl mx-auto mt-16">
+        <p className="text-xl font-extrabold mb-2">{t("Bu hisobot API'ga o'tkazilmoqda")}</p>
+        <p className="text-muted font-semibold mb-4">
+          {t("Excel fayl yuklash endi ishlatilmaydi. Hozir faqat Billz API'dan avtomatik yangilanadigan hisobotlar ochiq.")}
+        </p>
+        <Link href="/reports" className="text-brand font-bold">{t("Hisobotlarga qaytish")}</Link>
+      </div>
+    );
+  }
+
   const src = analysis.source;
 
   // ── Bazadan ishlaydigan tahlil ──────────────────────────────

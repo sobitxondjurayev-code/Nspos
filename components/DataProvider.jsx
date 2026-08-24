@@ -24,7 +24,6 @@ import "@/lib/suppliersData";
 import "@/lib/warehouseData";
 import "@/lib/servicesData";
 import "@/lib/shipmentsData";
-import "@/lib/datasets";
 import "@/lib/invitesData";
 import "@/lib/companyData";
 import "@/lib/kpiData";
@@ -33,7 +32,6 @@ import "@/lib/kassaData";
 import "@/lib/payoutsData";
 import "@/lib/ratesData";
 import "@/lib/billzLogData";
-import { loadLocal } from "@/lib/datasets";
 
 const DataCtx = createContext({ ready: DEMO_MODE, demo: DEMO_MODE, version: 0 });
 export const useData = () => useContext(DataCtx);
@@ -73,9 +71,6 @@ export default function DataProvider({ children }) {
     // Sessiya bo'lmasa (login sahifasi) ma'lumot so'ramaymiz
     if (!authed) { setReady(true); return; }
     let alive = true;
-    // Yuklangan hisobotlarni brauzer xotirasidan tiklaymiz — bu SQL
-    // jadvaliga bog'liq emas, shuning uchun har doim ishlaydi
-    loadLocal().then(() => alive && setVersion((v) => v + 1));
     // Og'ir jadvallar (savdo/tovar/mijoz) orqada yuklanib bo'lgach
     // interfeys bir marta yangilanadi.
     //

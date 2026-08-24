@@ -7,15 +7,15 @@ import {
 import { fmtUSD } from "@/lib/demoData";
 import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
 import DateRangePicker from "@/components/DateRangePicker";
-import { profitAndLoss, cashFlow, billzPnl, billzPnlTotals, billzCashflow, pnlSourceGap } from "@/lib/pnlData";
-import useUploadRows from "@/components/useUploadRows";
+import { profitAndLoss, cashFlow, billzPnl, billzPnlTotals, billzCashflow } from "@/lib/pnlData";
+import { useLive } from "@/components/DataProvider";
 import DataTable from "@/components/ui/DataTable";
 import PnlWaterfall from "@/components/finance/PnlWaterfall";
 import { foiz } from "@/lib/format";
 import { demoStores } from "@/lib/demoData";
 import StatCard from "@/components/finance/StatCard";
 
-const tabs = ["Foyda va zarar", "Pul oqimi", "Billz bilan solishtirish"];
+const tabs = ["Foyda va zarar", "Pul oqimi"];
 
 /* Hisobot qatori — chapda nom, o'ngda summa.
    `negative` — musbat summani chiqim sifatida ko'rsatadi (ishorasini teskari qiladi).
@@ -43,31 +43,14 @@ const Divider = () => <div className="border-t border-dashed border-line my-2" /
    "Сводный"dan, solishtirish "Прибыли и убытки"dan, pul oqimi ДДС va
    samaradorlik hisobotidan. Qatorlar tab tanlanishini kutmay, sahifa
    ochilishi bilan tortiladi — aks holda tushum 0 bo'lib turardi. */
-const NEEDED = ["summary", "pnl", "cashflow", "efficiency"];
 
 /* ——— P&L ——————————————————————————————————— */
 function PnlView({ range, rows }) {
   const p = useMemo(() => profitAndLoss(range.from, range.to), [range, rows]);
-  const gap = useMemo(() => pnlSourceGap(range.from, range.to), [range, rows]);
   const exp = p.expenses;
 
   return (
     <div>
-      {/* Billz'ning ikki hisoboti bir davr uchun har xil raqam bersa,
-          buni yashirmaymiz — rahbar qaysi biriga tayanishini o'zi
-          hal qilsin. 1% dan kichik farqda bu blok chiqmaydi. */}
-      {gap && (
-        <div className="card p-5 mb-6 flex items-start gap-3 bg-brand-soft">
-          <Landmark size={20} className="text-brand shrink-0 mt-0.5" />
-          <div className="min-w-0">
-            <p className="font-bold mb-1">{t("Bu yerdagi foyda nasiyani ham hisoblaydi")}</p>
-            <p className="text-sm font-semibold text-muted">
-              {tt("To'liq oy bo'yicha yalpi foyda {a}. Billz'ning \"Прибыли и убытки\" hisobotida {b} — chunki u tovarni faqat puli kelganda tushum deb yozadi, nasiyaga berilgani esa hisobga olinmaydi. Bu yerda tovar sotilgan kuni tushum sanaladi: nasiya ham sotuv, uning puli keyin keladi.",
-                { a: fmtUSD(gap.ourGross), b: fmtUSD(gap.pnlGross) })}
-            </p>
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
         <StatCard icon={TrendingUp} label="Jami tushum" tone="green" value={fmtUSD(p.revenue.total)}
@@ -392,7 +375,7 @@ export default function FinancePnl() {
   const [period, setPeriod] = useState("Oy");
   const [range, setRange] = useState(() => periodRange("Oy"));
   const [pickerOpen, setPickerOpen] = useState(false);
-  const rows = useUploadRows(NEEDED);
+  const rows = useLive();
 
   return (
     <div>
@@ -433,7 +416,6 @@ export default function FinancePnl() {
 
       {tab === "Foyda va zarar" && <PnlView range={range} rows={rows} />}
       {tab === "Pul oqimi" && <CashFlowView range={range} rows={rows} />}
-      {tab === "Billz bilan solishtirish" && <BillzCompare uploads={rows} />}
     </div>
   );
 }
