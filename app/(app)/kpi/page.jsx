@@ -386,6 +386,13 @@ function DailyTable({ m, rows, month, onEdit, canEdit, canEditPast = false, show
                 );
               }
               if (c.kind === "money" || c.kind === "int") {
+                // Savdo Billz API'dagi haqiqiy cheklardan avtomatik
+                // kelgan bo'lsa, uni qo'lda o'zgartirib bo'lmaydi.
+                // Bu KPI va moliya bir xil savdo raqamini ko'rsatishini
+                // kafolatlaydi; eski qo'lda yozilgan tarix esa joyida.
+                if (c.key === "sales" && r.billzSales) {
+                  return <span className="font-extrabold text-brand" title={t("Billz'dan avtomatik")}>{usd(r.sales)}</span>;
+                }
                 const locked = closed || (c.revisionCol && !revDay) || (c.payDayCol && !payDay) || !canEdit;
                 if (locked) {
                   const has = r[c.key] != null && r[c.key] !== "";

@@ -1750,3 +1750,12 @@ haqiqiy soniya hisoblagichini ko'rsatadi. Server javobi kelgach sahifa
 to'liq yangilanadi: sinxronizatsiya katta hajmda bo'lgani uchun faqat
 realtime hodisalarga tayanib "hammasi yangilandi" deb aytish mumkin
 emas.
+
+### 14.12. KPI savdosi Billz chekidan avtomatik keladi (2026-08-24)
+
+20–24-avgustda Billz sinxroni sog'lom edi (kuniga 26–42 chek), ammo
+KPI jadvalidagi `Savdo` qo'lda kiritiladigan maydon bo'lgani uchun
+20-sanadan keyin nol ko'rindi. Endi do'konga biriktirilgan menejerning
+kunlik savdosi `sales` jadvalidagi Billz cheklaridan avtomatik
+yig'iladi. Tarixiy qo'lda yozilgan sonlar O'ZGARMAYDI; faqat bo'sh
+kunlarga avtomat raqam qo'yiladi va ular tahrir qilinmaydi.
