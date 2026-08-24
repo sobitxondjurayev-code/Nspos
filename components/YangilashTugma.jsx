@@ -19,8 +19,8 @@
 //   3. Serverda: oxirgi yangilanish 3 daqiqadan yangi bo'lsa Billz
 //      umuman urilmaydi (`YAQINDA_MS`). Yakuniy qaror shu yerda —
 //      brauzerdagi qulfni foydalanuvchi tozalab yuborishi mumkin.
-import { useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { RefreshCw, LoaderCircle } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { sessiyaOl } from "@/lib/sessiya";
 import { DEMO_MODE } from "@/lib/db";
@@ -30,6 +30,18 @@ import { LOCK_KEY, LOCK_MS } from "@/components/BillzAutoSync";
 export default function YangilashTugma() {
   const { demo } = useAuth();
   const [band, setBand] = useState(false);
+  const [boshlangan, setBoshlangan] = useState(null);
+  const [otgan, setOtgan] = useState(0);
+  const [xato, setXato] = useState(null);
+
+  // So'rov javobi Billz barcha sahifalarini tortib bo'lgandagina keladi.
+  // Shu vaqt ichida soniya hisoblagichi haqiqiy o'tgan vaqtni ko'rsatadi:
+  // foydalanuvchi tugma ishlayotganini, brauzer qotib qolmaganini ko'radi.
+  useEffect(() => {
+    if (!band || !boshlangan) return undefined;
+    const timer = setInterval(() => setOtgan(Math.floor((Date.now() - boshlangan) / 1000)), 250);
+    return () => clearInterval(timer);
+  }, [band, boshlangan]);
 
   // Demo rejimda tortadigan joy yo'q — tugma ham turmasin
   if (DEMO_MODE || demo) return null;
@@ -39,6 +51,9 @@ export default function YangilashTugma() {
     const qulf = Number(localStorage.getItem(LOCK_KEY) || 0);
     if (Date.now() - qulf < LOCK_MS) return;   // boshqa oyna tortyapti
 
+    setXato(null);
+    setOtgan(0);
+    setBoshlangan(Date.now());
     setBand(true);
     localStorage.setItem(LOCK_KEY, String(Date.now()));
     try {
@@ -74,15 +89,33 @@ export default function YangilashTugma() {
       // degan taassurot qoldirmaslik kerak. Tugma aylanishdan to'xtaydi,
       // foydalanuvchi qayta bosa oladi.
       console.error("Billz yangilash:", e);
+      setXato(e.message || "Yangilash amalga oshmadi");
       setBand(false);
+      setBoshlangan(null);
       localStorage.removeItem(LOCK_KEY);
     }
   }
 
+  const vaqt = `${String(Math.floor(otgan / 60)).padStart(2, "0")}:${String(otgan % 60).padStart(2, "0")}`;
+
   return (
-    <button onClick={yangila} disabled={band} aria-label={t("Yangilash")} title={t("Yangilash")}
-      className="w-11 h-11 shrink-0 rounded-xl bg-track text-muted hover:text-brand flex items-center justify-center transition-colors disabled:opacity-60">
-      <RefreshCw size={19} className={band ? "animate-spin" : ""} />
-    </button>
+    <div className="px-4 pb-4">
+      <button onClick={yangila} disabled={band} aria-live="polite"
+        className={`w-full rounded-xl font-bold transition-all ${
+          band
+            ? "bg-brand text-white shadow-pop cursor-wait"
+            : "bg-brand text-white hover:bg-brand-dark active:scale-[.98]"
+        }`}>
+        <span className="flex items-center justify-center gap-2.5 px-4 py-3">
+          {band ? <LoaderCircle size={19} className="animate-spin" /> : <RefreshCw size={19} />}
+          <span>{t(band ? "Yangilanmoqda" : "Yangilash")}</span>
+          {band && <span className="rounded-md bg-white/20 px-2 py-0.5 text-sm tabular-nums">{vaqt}</span>}
+        </span>
+        {band && <span className="block h-1 overflow-hidden rounded-b-xl bg-white/20">
+          <span className="block h-full w-2/5 bg-white/80 animate-[pulse_1.2s_ease-in-out_infinite]" />
+        </span>}
+      </button>
+      {xato && <p className="mt-2 text-xs font-semibold text-danger">{xato}</p>}
+    </div>
   );
 }

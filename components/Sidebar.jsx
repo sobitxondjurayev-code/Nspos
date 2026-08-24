@@ -130,6 +130,10 @@ export default function Sidebar({ mobileOpen = false, onClose }) {
         </button>
       </div>
 
+      {/* Qo'lda Billz'dan tortish doim ko'z oldida turadi. Til/tema
+          sozlamalari pastda qoladi; yangilash esa asosiy ish amali. */}
+      <YangilashTugma />
+
       <nav className="px-4 space-y-1 flex-1 overflow-y-auto">
         {allowed.map(({ href, label, icon: Icon, children, self, hideChildren }) => {
           const open = inSection(href);
@@ -162,7 +166,7 @@ export default function Sidebar({ mobileOpen = false, onClose }) {
         })}
       </nav>
 
-      {/* Til, yangilash va tema */}
+      {/* Til va tema */}
       <div className="px-4 py-4 border-t border-line flex items-center gap-2">
         <div className="bg-track rounded-xl p-1 flex flex-1">
           {LANGS.map((l) => (
@@ -173,7 +177,6 @@ export default function Sidebar({ mobileOpen = false, onClose }) {
             </button>
           ))}
         </div>
-        <YangilashTugma />
         <button onClick={toggle} aria-label="Tema"
           className="w-11 h-11 shrink-0 rounded-xl bg-track text-muted hover:text-brand flex items-center justify-center transition-colors">
           {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}

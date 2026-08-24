@@ -1740,3 +1740,13 @@ ogohlantirishi olib tashlandi. API bilan hali qurilmagan eski
 hisobotlar ko'rsatilmaydi — foydalanuvchini "fayl tashlang" degan
 yo'lga qaytarish mumkin emas. Ular faqat kerakli Billz endpointi
 aniqlanib, bazadan qayta yozilgach ochiladi.
+
+### 14.11. Yangilash natijasi ko'rinishi kerak (2026-08-24)
+
+Billz'dan qo'lda tortish yon panelning yuqori qismida alohida
+**Yangilash** tugmasi bo'lib turadi — til/tema tugmalari orasida
+yo'qolmaydi. So'rov ishlayotganida tugma aylanish animatsiyasi va
+haqiqiy soniya hisoblagichini ko'rsatadi. Server javobi kelgach sahifa
+to'liq yangilanadi: sinxronizatsiya katta hajmda bo'lgani uchun faqat
+realtime hodisalarga tayanib "hammasi yangilandi" deb aytish mumkin
+emas.
