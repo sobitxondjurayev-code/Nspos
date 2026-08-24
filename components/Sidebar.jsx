@@ -12,6 +12,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { LANGS } from "@/lib/i18n";
 import { useLang } from "@/components/LangProvider";
 import { useTheme } from "@/components/ThemeProvider";
+import YangilashTugma from "@/components/YangilashTugma";
 
 // Moliya modullari ko'payib borgani uchun ichki menyu qo'shildi
 // (Billz'ning o'zida ham "Продажи" shunday tuzilgan).
@@ -163,7 +164,7 @@ export default function Sidebar({ mobileOpen = false, onClose }) {
         })}
       </nav>
 
-      {/* Til va tema */}
+      {/* Til, yangilash va tema */}
       <div className="px-4 py-4 border-t border-line flex items-center gap-2">
         <div className="bg-track rounded-xl p-1 flex flex-1">
           {LANGS.map((l) => (
@@ -174,6 +175,7 @@ export default function Sidebar({ mobileOpen = false, onClose }) {
             </button>
           ))}
         </div>
+        <YangilashTugma />
         <button onClick={toggle} aria-label="Tema"
           className="w-11 h-11 shrink-0 rounded-xl bg-track text-muted hover:text-brand flex items-center justify-center transition-colors">
           {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}

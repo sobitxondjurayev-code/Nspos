@@ -116,10 +116,23 @@ soket.onmessage = (e) => {
     m.error ? xato(new Error(m.error.message)) : ok(m.result);
   } else if (m.method) hodisalar.push(m);
 };
-const yubor = (method, params = {}, sessionId) =>
+// Har buyruq MUDDAT bilan uziladi. Busiz javobsiz qolgan bitta
+// buyruq butun chiqarishni ABADIY osib qo'yardi — 2026-08-23 da
+// aynan shunday bo'ldi: 2 + 22 sahifa tekshiruvi allaqachon toza
+// o'tgan, oxirida `Page.captureScreenshot` javob bermay qolgan va
+// `chiqar.sh` 40 daqiqa tugamay turdi. Tashqaridan qaraganda bu
+// "chiqarish yiqildi" bo'lib ko'rinardi, aslida hammasi joyida edi.
+const yubor = (method, params = {}, sessionId, kutish = 60_000) =>
   new Promise((ok, xato) => {
     const id = ++raqam;
-    kutilmoqda.set(id, { ok, xato });
+    const soat = setTimeout(() => {
+      kutilmoqda.delete(id);
+      xato(new Error(`${method}: ${kutish / 1000} s ichida javob kelmadi`));
+    }, kutish);
+    kutilmoqda.set(id, {
+      ok: (v) => { clearTimeout(soat); ok(v); },
+      xato: (e) => { clearTimeout(soat); xato(e); },
+    });
     soket.send(JSON.stringify({ id, method, params, sessionId }));
   });
 
@@ -225,3 +238,15 @@ try {
 soket.close();
 if (xato) { console.log(`   ── ${xato} ta sahifa ishdan chiqdi`); process.exit(1); }
 console.log(`   ── ${ANON_YOLLAR.length} + ${YOLLAR.length} ta sahifa toza`);
+
+// `process.exit(0)` SHART — o'z-o'zidan tugashini kutib bo'lmaydi.
+// Chrome `spawn` bilan ochilgan va u tirik turgani uchun Node hodisa
+// halqasi yopilmaydi; uni o'ldiradigan `tozala()` esa `exit` hodisasiga
+// bog'langan — ya'ni chiqish uchun Chrome o'lishi kerak, Chrome o'lishi
+// uchun esa chiqish kerak.
+//
+// Xato yo'lida bu bilinmasdi (`process.exit(1)` majburan chiqarardi),
+// TOZA yo'lda esa har chiqarish oxirida osilib qolardi: 2026-08-23 da
+// 2 + 22 sahifa toza o'tgan bo'lsa ham `chiqar.sh` 40 daqiqa tugamadi
+// va tashqaridan "chiqarish yiqildi" bo'lib ko'rinardi.
+process.exit(0);

@@ -4,14 +4,16 @@ import { useMemo, useState } from "react";
 import { Search, Barcode, Plus, Minus, Trash2, ShoppingCart, Receipt, User, X, Undo2 } from "lucide-react";
 import { demoStores, demoUser, fmtUSD } from "@/lib/demoData";
 import { listProducts, findByBarcode } from "@/lib/productsData";
-import { listSales, addSale, addReturn, returnedQtyOf } from "@/lib/salesData";
+import { listSales, addSale, addReturn, returnedQtyOf, sotuvchiNomi } from "@/lib/salesData";
 import { searchCustomers } from "@/lib/customersData";
+import { listStaff } from "@/lib/staffData";
 import { ymd } from "@/lib/dates";
 import PaymentModal from "@/components/PaymentModal";
 import ReceiptModal from "@/components/ReceiptModal";
 import ReturnModal from "@/components/ReturnModal";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
+import { useLive } from "@/components/DataProvider";
 
 const tabs = ["Kassa", "Cheklar tarixi"];
 
@@ -21,8 +23,20 @@ export default function Sales() {
   const [q, setQ] = useState("");
   const [cart, setCart] = useState([]);
   const [discountPct, setDiscountPct] = useState("");
+  // `sales` OG'IR jadval — u `bootstrap()` da fonda yuklanadi, ya'ni
+  // sahifa ochilganda modul xotirasi hali BO'SH. Ilgari ro'yxat
+  // `useState(listSales)` bilan bir marta olinardi va bazadan kelgan
+  // 9 000 chek ekranga hech qachon chiqmasdi — jadval "Hali cheklar
+  // yo'q" deb turardi. Xato ko'rinmasdi: bo'sh jadval ham ishonarli.
+  // (CLAUDE.md 2026-08-13: modul xotirasidan o'qiydigan har hisob
+  // `useLive()` ga bog'lanadi.)
+  const live = useLive();
+  // Shu sahifada sotilgan chek jonli signalni KUTMASIN — u bazadan
+  // qaytib kelguncha bir necha soniya o'tadi.
+  const [tick, setTick] = useState(0);
   const [products, setProducts] = useState(listProducts);
-  const [sales, setSales] = useState(listSales);
+  const sales = useMemo(() => listSales(), [live, tick]);
+  const staff = useMemo(() => listStaff(), [live]);
   const [payOpen, setPayOpen] = useState(false);
   const [receipt, setReceipt] = useState(null);
   const [returnFor, setReturnFor] = useState(null);
@@ -93,17 +107,19 @@ export default function Sales() {
     setCustomer(null);
     setCq("");
     setProducts(listProducts()); // qoldiqlar yangilandi
-    setSales(listSales());
+    setTick((n) => n + 1); // shu yerda sotilgan chek ro'yxatga tushsin
   }
 
   function confirmReturn({ items, method, reason }) {
     addReturn({ saleId: returnFor.id, items, method, reason });
     setReturnFor(null);
     setProducts(listProducts()); // qoldiq omborga qaytdi
-    setSales(listSales());
+    setTick((n) => n + 1);
   }
 
   const storeName = (id) => demoStores.find((s) => s.id === id)?.name ?? "—";
+
+  const sellerName = (s) => sotuvchiNomi(s, staff);
 
   // Chek qanday to'langanini bitta belgi bilan ko'rsatamiz
   function payLabel(s) {
@@ -334,8 +350,8 @@ export default function Sales() {
               cell: (s) => <span className="font-semibold text-muted">{fmtWhen(s.at)}</span> },
             { key: "dokon", label: "Do'kon", value: (s) => storeName(s.storeId),
               cell: (s) => <span className="font-semibold">{storeName(s.storeId)}</span> },
-            { key: "kassir", label: "Kassir", value: (s) => s.cashier,
-              cell: (s) => <span className="font-semibold text-muted">{s.cashier}</span> },
+            { key: "kassir", label: "Sotuvchi", value: (s) => sellerName(s),
+              cell: (s) => <span className="font-semibold text-muted">{sellerName(s)}</span> },
             { key: "tovarlar", label: "Tovarlar", right: true,
               value: (s) => s.itemCount ?? s.items.length,
               cell: (s) => <span className="font-bold">{s.itemCount ?? s.items.length}</span>,

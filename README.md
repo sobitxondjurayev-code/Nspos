@@ -1,46 +1,62 @@
-# NSPOS — Billz uslubidagi do'kon boshqaruv tizimi
+# NSPOS — NScamera boshqaruv platformasi
 
-Retail do'konlar uchun POS, ombor, mijozlar, marketing, hisobotlar va moliya — barchasi bitta tizimda. **1-bosqich (poydevor)** tayyor.
+Billz bermaydigan narsalar uchun: moliya, tahlil, KPI va oylik, ustalar
+reytingi, hisobotlar. Savdo ma'lumoti Billz'dan API orqali keladi,
+xarajat va boshqaruv NSPOS'da yuritiladi.
 
-## Hozir nima bor (1-bosqich)
+**Ishlab turgan sayt: https://tizim.enes.uz**
 
-- Billz uslubidagi interfeys: chap sidebar (Tovarlar, Sotuvlar, Mijozlar, Marketing, Hisobotlar, Moliya, Boshqaruv, Sozlamalar)
-- Dashboard: davr tanlash (Kecha/Bugun/Hafta/Oy/Yil), do'konlar kesimida sotuvlar grafigi, hover tooltip, do'konlar summasi, umumiy summa
-- Login sahifasi (Supabase auth bilan)
-- Multi-tenant baza sxemasi: kompaniyalar, do'konlar, xodimlar (owner/manager/cashier rollari), mahsulotlar, qoldiqlar, sotuvlar — Row Level Security bilan
-- **Demo rejim**: Supabase sozlanmagan bo'lsa ham tizim demo ma'lumotlar bilan ishlaydi
+## Qanday qurilgan
+
+- **Frontend** — Next.js 14 (App Router), React 18, Tailwind, Recharts
+- **Baza** — o'z serverimizdagi PostgreSQL 17, RLS bilan
+- **Bazaga murojaat** — PostgREST (`/rest/v1/`). `@supabase/supabase-js`
+  paketi qolgan, lekin u endi shunchaki PostgREST mijozi: Supabase'ning
+  o'zi ishlatilmaydi
+- **Kirish** — o'z JWT'imiz (`lib/jwt.js`), parol bazadan chiqmaydi
+  (`auth.kirish()`). Supabase Auth ishlatilmaydi
+- **Server** — Contabo VPS, nginx + systemd: `nspos` (sayt),
+  `nspos-api` (o'qish API), `nspos-bot` (Telegram)
+
+Loyiha 2026-08-22/23 da Vercel + Supabase'dan o'z serveriga ko'chdi.
+Sabablari va yo'l xaritasi — [DAFTAR.md](DAFTAR.md) 9–12-bo'limlar,
+texnik tafsiloti — [scripts/sql/vps/O-QING.md](scripts/sql/vps/O-QING.md).
 
 ## Ishga tushirish
 
 ```bash
 npm install
-npm run dev
+npm run dev        # http://localhost:3000
 ```
 
-Brauzerda http://localhost:3000 oching. Supabase sozlanmaguncha demo rejimda ishlaydi.
+Baza kaliti berilmasa DEMO ma'lumot bilan ishlaydi. Bu ataylab —
+kompyuterdagi ish produksiya bazasiga yozib qo'ymasligi kerak.
 
-## Supabase ulash (bepul)
+## Asosiy buyruqlar
 
-1. https://supabase.com da bepul akkaunt oching, yangi loyiha yarating
-2. SQL Editor'ga `supabase/schema.sql` faylini nusxalab ishga tushiring
-3. Loyiha ildizida `.env.local` yarating:
-
+```bash
+npm run tekshir:server   # pul hisoblarini haqiqiy baza ustida tekshirish
+npm run nomlar           # import qilinmagan nomlar (next build ko'rmaydi)
+npm run billz -- --probe # Billz ulanishini sinash
+bash scripts/server/chiqar.sh   # saytga chiqarish
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://SIZNING-LOYIHA.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=SIZNING-ANON-KALIT
-```
 
-4. Serverni qayta ishga tushiring — endi haqiqiy autentifikatsiya ishlaydi
+## Tashqi API va bot
 
-## Deploy (bepul)
+- `https://tizim.enes.uz/api/v1` — **faqat o'qish**, biznes tilida JSON
+  (`Authorization: Bearer <token>`). Excel, tashqi vosita va AI agent
+  uchun. Kod: `scripts/api/server.mjs`.
+- Telegram boti — rahbar telefondan `/xulosa`, `/savdo`, `/kassa`,
+  `/qarz` deb so'raydi. Bot bazaga ULANMAYDI, faqat yuqoridagi API'dan
+  GET qiladi. Kod: `scripts/bot/`.
 
-Netlify yoki Vercel'ga ulang, env o'zgaruvchilarni qo'shing — tayyor.
+Ikkalasi ham raqamni o'zi hisoblamaydi — ekrandagi raqamni chiqaradigan
+AYNAN o'sha funksiyalarni chaqiradi. Aks holda bir kun saytda bir raqam,
+API'da boshqa raqam bo'lib qolardi.
 
-## Keyingi bosqichlar
+## Avval o'qing
 
-2. Tovarlar moduli (katalog, kategoriyalar, shtrix-kod, kirim, Excel import)
-3. POS kassa (savat, to'lovlar, chek, qaytarish, smena)
-4. Dashboard'ni real ma'lumotlarga ulash
-5. Mijozlar + Marketing (cashback, chegirmalar)
-6. Hisobotlar + Moliya
-7. Sozlamalar, transfer, inventarizatsiya
+- **[DAFTAR.md](DAFTAR.md)** — loyiha boshidan beri barcha qarorlar,
+  xatolar va yechimlar
+- **[CLAUDE.md](CLAUDE.md)** — ish qoidalari
+- **[TOPSHIRISH.md](TOPSHIRISH.md)** — yangi dasturchi uchun topshiruv

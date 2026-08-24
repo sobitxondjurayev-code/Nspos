@@ -132,6 +132,16 @@ const KINDS = {
   "billz-price-som": "Katalog narxi dollarda",
   "billz-cost-zero": "Qoldig'i bor tovarning tannarxi bor",
   "savdo-narx-som": "Chekdagi narx dollarda",
+  // Sinxronizatsiya NIMANI TASHLAB KETGANI (2026-08-24 auditi).
+  // Uchalasi ham "so'rov muvaffaqiyatli, ma'lumot kam" turidagi
+  // nosozlik — ular xato bermaydi va faqat shu yerda ko'rinadi.
+  // Ro'yxatda SOG'LOM holatda ham turadi ("✓"): tekshiruv borligini
+  // ko'rsatmaydigan tekshiruv — yo'q tekshiruv bilan barobar.
+  "billz-nomalum-tolov": "Billz to'lov turlari tanilgan",
+  "billz-dokonsiz": "Har chek do'koniga bog'langan",
+  "billz-chala": "Billz'dan tortish to'liq tugagan",
+  "qarz-nomalum-usul": "Qarz to'lovi usuli tanilgan",
+  "b2b-belgilanmagan": "Optom (B2B) do'kon belgilangan",
 };
 
 // Eng UZUN mos kalit olinadi: `stale-rate` ni `rate` yutib

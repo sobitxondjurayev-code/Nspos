@@ -3,6 +3,8 @@ import { t, tt } from "@/lib/i18n";
 import { X, Check } from "lucide-react";
 import { demoStores, fmtUSD } from "@/lib/demoData";
 import { useOyna } from "@/components/ui/Modal";
+import { sotuvchiNomi } from "@/lib/salesData";
+import { listStaff } from "@/lib/staffData";
 
 export default function ReceiptModal({ sale, onClose }) {
   // Esc bilan yopiladi, fon skrolli qulflanadi (`ui/Modal.jsx`)
@@ -37,8 +39,8 @@ export default function ReceiptModal({ sale, onClose }) {
             <span className="font-bold">{when}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted font-semibold">{t("Kassir:")}</span>
-            <span className="font-bold">{sale.cashier}</span>
+            <span className="text-muted font-semibold">{t("Sotuvchi:")}</span>
+            <span className="font-bold">{sotuvchiNomi(sale, listStaff())}</span>
           </div>
         </div>
 

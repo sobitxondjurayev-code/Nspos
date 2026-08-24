@@ -1500,3 +1500,230 @@ orqali beriladi — qo'shtirnoq va `$$` buzilmasin.
 KAM ISHLATILADIGAN yo'llar sinadi va ular jimgina sinadi. Cron
 ishlagani `/api/backup` buzilganini, sotuv kelayotgani xarajat
 to'xtaganini, sayt ochilayotgani sessiya tugaganini yashirdi.
+
+---
+
+## 14. 2026-08-24 — moliyaviy audit: to'rt teshik, hammasi jim
+
+Savol oddiy edi: "Billz'dan naqd, Payme va savdo to'liq tortilyaptimi?"
+Javob — HA, tortilyapti. Lekin tekshirish jarayonida to'rtta joy
+topildiki, ular ma'lumotni XATO BERMASDAN yo'qotardi. Har biri
+`end_date` tuzog'i (10.3) bilan bir xil kasal: so'rov muvaffaqiyatli,
+javob to'g'ri ko'rinadi, ma'lumot esa kam.
+
+### 14.1. Tanilmagan to'lov turi hech qayerga yozilmasdi
+
+`billzMap.splitPayments()` to'rt turni taniydi (naqd, karta, Payme,
+nasiya). Billz'da to'lov turini KOMPANIYA O'ZI nomlaydi, ya'ni ertaga
+"Перечисление" ochilsa kod uni tanimaydi va `unknown` ro'yxatiga
+qo'yadi. O'sha ro'yxat esa `saleRow` da tashlab yuborilardi — bazada
+uni saqlaydigan ustun yo'q edi.
+
+Natijasi: chek summasi joyida turadi, hamyonlar yig'indisi esa undan
+kam bo'ladi. Farqni ko'rsatadigan hech narsa yo'q — na ustun, na
+tekshiruv. Bugun bunday to'lov yo'q, lekin uni ushlaydigan hech narsa
+ham yo'q edi.
+
+Endi: `sales.unknown_paid` ustuni + `moslik.js` → `tolov-taqsimot`.
+
+**Nega naqdga qo'shilmadi:** noto'g'ri hamyonga yozilgan pul yo'qolgan
+puldan YOMONROQ. Kassa solishtiruvida u "menejer naqdni kam yozibdi"
+bo'lib chiqadi va aybi odamga tushadi.
+
+**Chegara qayerga qo'yildi va nega.** Qoida avval butun bazada
+o'lchandi (9 153 Billz cheki):
+
+| tur | cheklar | farqli |
+|---|---|---|
+| sale | 8 011 | **0** (eng katta farq 0.01 — yaxlitlash) |
+| return | 938 | 769 |
+| exchange | 204 | 58 |
+
+Qaytarish va almashuvda Billz to'lov qatorini UMUMAN bermaydi
+(`order_payments` bo'sh) — pul qaysi hamyondan qaytarilgani noma'lum.
+Bu Billz tomonidagi cheklov, uni kod tuzata olmaydi. Shuning uchun
+tekshiruv faqat `sale` turida ishlaydi: u yerda bugun farq NOL, ya'ni
+birinchi qizarish HAQIQIY nosozlik bo'ladi.
+
+> **Qoida:** ma'lumotga tayanadigan tekshiruv qo'yishdan oldin u
+> haqiqiy bazada NECHTA qator ustida qizarishini o'lchang. 827 ta
+> abadiy qizil qator — bir haftada e'tibordan qoladigan darvoza
+> (13.2 dagi bilan bir xil kasal).
+
+### 14.2. Nasiya to'lovining tanilmagan usuli "naqd" bo'lardi
+
+`debtPaymentRows` da `paymentKind(...) ?? "cash"` turgan edi. Ya'ni
+Billz'da yangi usul chiqsa, qarz to'lovi jimgina NAQD bo'lib yozilardi.
+`kassaIncome.flowFromDb` esa faqat naqd va Payme'ni sanaydi — pul
+kassaga tushmagan bo'lsa ham tushgan bo'lib ko'rinardi.
+
+Endi `unknown` bo'ladi va `audit.js` → `qarz-nomalum-usul` uni
+ekranga chiqaradi.
+
+**Eski qatorlar QAYTA YOZILMAYDI.** `syncDebts` mavjud `billz_key` ni
+umuman qayta ko'rmaydi va aynan shu idempotentlik qarz to'lovlari
+ikkilanmasligining kafolati. Tarixdagi `cash` yozuvlari joyida qoladi.
+
+### 14.3. Do'koni tanilmagan chek va chala tortish jurnalda yo'q edi
+
+Ikkita raqam bosqich ichida hisoblanardi-yu, javob JSON'ida qolib
+ketardi:
+
+- `noStore` — Billz do'koni `stores` bilan nom bo'yicha mos kelmasa
+  o'sha do'konning HAMMA cheki tashlanadi. Billz'da do'kon qayta
+  nomlansa butun bir do'konning savdosi jimgina yo'qolardi.
+- `exhausted:false` — "yana qoldi" (300 chek yoki 280 s chegarasi).
+  Har yurish chala tugayversa orqada qolish o'sib boradi, eng yangi
+  chek esa baribir bugungi bo'lib turadi — ya'ni "Sotuv ma'lumoti
+  eskirgan" tekshiruvi buni KO'RMAYDI.
+
+Ustiga cron jurnali javobdan faqat `inserted|items|payments` ni grep
+qilardi. Endi `billz_sync_log` da uchala ustun bor (`no_store`,
+`exhausted`, `warnings` jsonb), cron grep'i kengaytirildi, Sozlamalar
+jadvalida "Tashlandi" ustuni va "· chala" belgisi turadi.
+
+### 14.4. Sotuvchi bazada yozilgan, lekin hech narsa o'qimasdi
+
+`sales.billz_user_id` / `billz_user_name` har sinxronizatsiyada
+to'ldirilardi, `salesData.fromRow` esa ularni tashlab yuborardi.
+Cheklar jadvalidagi "Kassir" ustuni `cashier_id` ni ko'rsatardi — u
+esa Billz cheklarida DOIM bo'sh (chek NSPOS kassasidan o'tmagan).
+
+Ya'ni "Abduvohid Kassa" bazada 4 103 chekda turgani holda ekranda
+ustun butun tarix bo'yicha bo'm-bo'sh edi.
+
+Endi `salesData.sotuvchiNomi()` — bitta funksiya, ikki joyda
+(cheklar jadvali va chek oynasi).
+
+**Yo'l-yo'lakay:** `/sales` sahifasi `useState(listSales)` bilan
+ro'yxatni BIR MARTA olardi. `sales` og'ir jadval bo'lib fonda
+yuklanadi, ya'ni sahifa ochilganda xotira hali bo'sh — jadval "Hali
+cheklar yo'q" deb turardi va bu hech qanday xato bermasdi.
+`useLive()` ga bog'landi (CLAUDE.md 2026-08-13 qoidasi).
+
+### 14.5. B2B/B2C — do'kon bo'yicha, va ma'lumot buni tasdiqladi
+
+Taxmin: "biri B2B sklad bilan, biri B2C bilan ishlaydi". Bazadan
+o'lchandi:
+
+| oy | Optim | Namangan |
+|---|---|---|
+| iyun | Abdulahad 796 · Abduvohid 245 | — |
+| iyul | Abduvohid 775 · Abdulahad 89 | Abdulahad 410 |
+| avgust | Abduvohid 586 · Abdulahad 1 | Abdulahad 388 |
+
+Ya'ni **Abdulahad iyul oyida Optim'dan Namangan'ga o'tgan**. Butun
+tarix bo'yicha u Optim'da ko'proq sotgan (3 790 chek), hozir esa
+to'liq Namangan'da.
+
+Shuning uchun ajratish SOTUVCHI bo'yicha emas, DO'KON bo'yicha
+to'g'ri: odam ko'chadi, do'kon ko'chmaydi. Bu allaqachon shunday
+ishlangan (`kassaData.b2bStoreIds()` — do'konga "B2B menejer" turidagi
+xodim biriktirilgan bo'lsa o'sha do'kon B2B) va sozlama ham to'g'ri
+turgan ekan: Abduvahid → Optim → `b2b`, Abdulahad → Namangan →
+`b2c_store`.
+
+Tasdig'i: avgustdagi montaj savdosining 100% i Namangan'da (7 533.83 $,
+Optim'da 0) — optomda o'rnatish xizmati sotilmaydi degan qoida
+ma'lumotda ham ko'rinib turibdi.
+
+Qo'shildi: `b2b-belgilanmagan` ogohlantirishi. Belgi KPI turidan
+olinadi, ya'ni menejer o'chirilsa yoki turi olib tashlansa do'kon
+JIMGINA B2B'likdan chiqadi va servis hamyoni optom kassada paydo
+bo'ladi.
+
+### 14.6. Montaj: servis kirimi endi jonli cheklardan
+
+Ilgari servis kirimi "Эффективность товаров" Excel yuklamasidan
+olinardi. Ikki muammo:
+
+1. Hisobotda KUNLIK taqsimot yo'q — 46 kunlik raqam so'ralgan davrga
+   kunlar nisbatida bo'linardi. "5-avgustdagi servis" aslida o'rtacha
+   edi.
+2. Fayl QO'LDA yuklanadi. 24-avgustda eng yangisi 15-avgustniki edi —
+   9 kunlik servis kirimi yo'q, lekin ekranda raqam turgani uchun
+   buni hech kim sezmasdi.
+
+Endi `serviceIncome.servisKirim()` — yagona kirish nuqtasi: davrda
+chek bo'lsa `sale_items` dan (kunma-kun aniq, o'zi yangilanadi),
+bo'lmasa Excel (API'dan oldingi tarix va demo uchun). `kassaData`
+ikkala joyda shuni chaqiradi.
+
+**"Servis foydasi" hisoboti ATAYLAB Excel'da qoldirildi.** Yarim
+ko'chirilsa bitta ekranda ikki manba bo'lardi — bu 4-bo'limdagi
+"Bir jadval — ikki manba" xatosining aynan o'zi. Uning o'rniga
+`moslik.js` → `servis-manba` qo'shildi: ikki manba bir davrda 10% dan
+ko'p farq qilsa ogohlantiradi (aniq tenglik kutilmaydi — Excel
+proratsiya qilinadi).
+
+Yonida: `productRow` endi `is_service` yozadi (nom bo'yicha,
+`companies.service_names`). Ilgari bu ustun sinxronizatsiyada umuman
+to'ldirilmasdi va montaj oddiy tovar bo'lib kirardi — qoldig'i
+minusga tushar, hisobotlar esa uni "manfiy qoldiq" evristikasi bilan
+to'rt joyda qo'lda chetlab o'tardi.
+
+### 14.7. `.env.local` yana eski bazaga qarab turgan edi
+
+11.2 bo'limi takrorlandi. `npm run billz` kompyuterda ishga
+tushirilganda xato shunday chiqdi:
+
+```
+sales yozilmadi: Could not find the 'unknown_paid' column
+of 'sales' in the schema cache
+```
+
+Ya'ni xato MIGRATSIYA yoki KOD ustiga ko'rsatardi. Tekshirilganda
+ustun bazada bor edi, serverdagi PostgREST uni ko'rardi
+(`curl` bilan sinaldi), huquqlar ham joyida. Sabab boshqa edi:
+`.env.local` dagi manzil hamon **yopilgan Supabase loyihasi**
+(`vysygcnsjqedwqaymxsd.supabase.co`).
+
+Endi `scripts/billz-sync.mjs` bosh qatorda manbani AYTADI va
+`tizim.enes.uz` bo'lmasa ogohlantiradi. Kalit chiqarilmaydi — faqat
+host.
+
+> **Qoida:** bazaga boradigan har skript qaysi bazaga borayotganini
+> aytsin. Buni `tekshir` uchun 11.2 da qilgan edik — `billz` unutilgan
+> ekan. "Bir joyda qilingan tuzatish qolgan yo'llarga ham qo'llansin."
+
+### 14.8. Yangilash tugmasi — har xodimga
+
+Ilgari Billz'dan tortishni faqat rahbar boshlay olardi (server ham
+`owner` talab qilardi). Menejer ekranidagi raqam cron kelguncha
+30 daqiqagacha eski turardi va u buni bilmasdi ham.
+
+Endi yon panelda, til va tema yonida "Yangilash" tugmasi turadi va
+u HAR XODIMDA ochiq. Xavfli parametrlar (`--full`, `probe`, `from/to`,
+`max`, `dry`) rahbarda qoldi: xodim ularni yuborsa jim e'tiborsiz
+qoldiriladi va javobdagi `rejim` amalda nima bajarilganini aytadi.
+
+Uch qavat himoya (Billz sekundiga 2 so'rov beradi):
+1. tugmaning o'zi — bosilib turganda ikkinchi bosish yo'q
+2. oynalar orasida — `localStorage` qulfi, `BillzAutoSync` bilan
+   AYNAN bir xil kalit (satr takrorlanmasin deb eksport qilindi)
+3. serverda — oxirgi yangilanish 1 daqiqadan yangi bo'lsa Billz
+   umuman urilmaydi, va modul darajasidagi `ayniPaytda` qulfi
+
+**Nega darvoza atigi 1 daqiqa.** Uzunroq bo'lsa u asl maqsadga
+QARSHI ishlaydi: kassir hozir chek kesadi, menejer Yangilashni
+bosadi, sahifa qayta yuklanadi va yangi chek YO'Q — chunki server
+"yaqinda tortilgan" deb Billz'ga bormagan. Ekranda esa hech qanday
+belgi yo'q. Bir daqiqa faqat ketma-ket bosishni to'xtatadi.
+
+Tugma bosilgach sahifa QAYTA YUKLANADI. Sabab: ma'lumot modul
+xotirasida yashaydi (`lib/db.js` → `bootstrap()` ikkinchi chaqiriqda
+darrov qaytadi), "bazadan qayta o'qi" degan yo'l umuman yo'q.
+
+### 14.9. Nima o'zgarmadi — va bu ham natija
+
+Tekshiruv o'zgarishlardan oldin ham, keyin ham AYNAN bir xil raqam
+berdi: kirim 82 308.87 · kassada 47 344.28 · naqd 35 949.01 ·
+Payme 8 347.65 · servis 3 047.62. Ya'ni audit tuzatishlari hisobga
+tegmadi — ular kelajakdagi jim yo'qotishni ushlash uchun.
+
+Chiqarishni bloklab turgan yagona xato (`Namangan · Servis
+−1 416.44`) o'zgarishlardan OLDIN ham bor edi — `git stash` bilan
+alohida tekshirildi. Sababi ma'lumotda: avgustda Billz montaj
+bo'yicha 7 533.83 $ ko'rsatadi, menejer esa KPI ga 6 623.50 $
+yozgan — **910.33 $ kam**, ustiga 20-avgustdan beri umuman
+kiritilmagan.

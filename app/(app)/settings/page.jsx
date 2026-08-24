@@ -579,7 +579,7 @@ function BillzCard() {
   useEffect(() => {
     if (!supabase) return;
     supabase.from("billz_sync_log")
-      .select("entity,finished_at,fetched,inserted,error")
+      .select("entity,finished_at,fetched,inserted,error,no_store,exhausted")
       .order("started_at", { ascending: false }).limit(40)
       .then(({ data }) => setLog(data ?? []));
   }, [res]);
@@ -642,18 +642,32 @@ function BillzCard() {
                 <th className="px-4 py-2.5 font-bold">{t("Oxirgi marta")}</th>
                 <th className="px-4 py-2.5 font-bold text-right">{t("Olindi")}</th>
                 <th className="px-4 py-2.5 font-bold text-right">{t("Yozildi")}</th>
+                {/* Tashlab ketilgani ham ko'rinsin: ilgari jadval faqat
+                    "nechta yozildi" deb turardi va do'koni tanilmagani
+                    uchun yozilmagan cheklar hech qayerda bilinmasdi. */}
+                <th className="px-4 py-2.5 font-bold text-right">{t("Tashlandi")}</th>
               </tr>
             </thead>
             <tbody>
               {last.map((r) => (
                 <tr key={r.entity} className="border-b border-line last:border-0">
                   <td className="px-4 py-2 font-bold">{LABEL[r.entity] ?? r.entity}</td>
-                  <td className="px-4 py-2 font-semibold">{fmt(r.finished_at)}</td>
+                  <td className="px-4 py-2 font-semibold">
+                    {fmt(r.finished_at)}
+                    {r.exhausted === false && (
+                      <span className="ml-2 text-warn font-bold">{t("· chala")}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-2 font-semibold text-right">{r.error ? "—" : (r.fetched ?? 0)}</td>
                   <td className="px-4 py-2 font-semibold text-right">
                     {r.error
                       ? <span className="text-danger">{t("xato")}</span>
                       : (r.inserted ?? 0)}
+                  </td>
+                  <td className="px-4 py-2 font-semibold text-right">
+                    {r.no_store > 0
+                      ? <span className="text-danger font-bold">{r.no_store}</span>
+                      : <span className="text-muted">0</span>}
                   </td>
                 </tr>
               ))}

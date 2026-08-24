@@ -27,9 +27,14 @@ import { can } from "@/lib/auth";
 
 // Qancha vaqtdan keyin eskirgan hisoblanadi
 const STALE_MS = 30 * 60 * 1000;      // 30 daqiqa
-// Bir vaqtda bitta oyna tortsin
-const LOCK_KEY = "nspos.billz.syncing";
-const LOCK_MS = 5 * 60 * 1000;
+// Bir vaqtda bitta oyna tortsin. Qulf yon paneldagi qo'lda bosiladigan
+// "Yangilash" tugmasi bilan BIR XIL bo'lishi kerak — aks holda fon ishi
+// va tugma bir vaqtda ikkita sinxronizatsiya boshlab yuborardi.
+// Shuning uchun kalit shu yerdan eksport qilinadi, `YangilashTugma.jsx`
+// esa uni import qiladi: satr ikki joyda yozilsa, biri o'zgarganda
+// ikkinchisi jimgina moslikdan chiqadi.
+export const LOCK_KEY = "nspos.billz.syncing";
+export const LOCK_MS = 5 * 60 * 1000;
 
 export default function BillzAutoSync() {
   const { user, demo, ready } = useAuth();

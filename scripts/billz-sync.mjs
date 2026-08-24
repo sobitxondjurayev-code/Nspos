@@ -89,6 +89,24 @@ if (flag("probe")) {
 // —— Ishga tushirish ————————————————————————————
 const { runSync } = await import("../lib/billzSync.js");
 
+// ── QAYSI BAZAGA YOZILYAPTI ──
+// Bosh qatorda AYTILADI. Sabab (DAFTAR 11.2 va 2026-08-24 takrori):
+// `.env.local` ko'chishdan keyin eski, endi o'chirilgan Supabase
+// manzilida qolib ketgan edi. Skript esa buni aytmasdan o'sha yoqqa
+// borardi va xato "Could not find the 'unknown_paid' column of
+// 'sales' in the schema cache" bo'lib chiqardi — ya'ni sabab
+// "BOSHQA BAZA" ekani xato matnidan umuman bilinmasdi va migratsiya
+// yoki kod ayblanardi.
+//
+// Endi manba ko'rinib turadi: `tizim.enes.uz` bo'lmasa, birinchi
+// qatordanoq bilinadi. Kalit hech qachon chiqarilmaydi — faqat host.
+const manba = (() => {
+  try { return new URL(url).host; } catch { return url; }
+})();
+log(`manba: ${manba}`);
+if (!/tizim\.enes\.uz/.test(manba)) {
+  log("DIQQAT: bu HAQIQIY baza emas (tizim.enes.uz kutilgan edi) — `.env.local` ni tekshiring");
+}
 log(`boshlandi${opts.dry ? " (DRY — yozilmaydi)" : ""}`);
 if (opts.only) log(`bosqichlar: ${opts.only.join(", ")}`);
 

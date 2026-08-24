@@ -32,6 +32,7 @@ import "@/lib/npsData";
 import "@/lib/kassaData";
 import "@/lib/payoutsData";
 import "@/lib/ratesData";
+import "@/lib/billzLogData";
 import { loadLocal } from "@/lib/datasets";
 
 const DataCtx = createContext({ ready: DEMO_MODE, demo: DEMO_MODE, version: 0 });

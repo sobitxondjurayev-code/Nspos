@@ -60,6 +60,33 @@ const cliReady = !token && (() => {
 //   NSPOS_PG="postgres://localhost/nspos_sinov" npm run tekshir
 const pgUrl = process.env.NSPOS_PG;
 
+// ══════════════════════════════════════════════════════════════
+// QAYSI BAZA O'QILGANI DOIM AYTILADI
+// ══════════════════════════════════════════════════════════════
+// 2026-08-23 da aniqlandi: VPS'ga ko'chgandan keyin ham `.env.local`
+// da eski Supabase manzili turgan edi va `npm run tekshir` kompyuterda
+// ESKI, muzlab qolgan nusxani o'qirdi. Ikki baza butunlay boshqa
+// raqam berardi:
+//
+//   eski Supabase → kirim 93 460.03 · kassada 58 277.43 · 332 s
+//   VPS (haqiqiy) → kirim 82 308.87 · kassada 47 344.28 ·  5.5 s
+//
+// Ya'ni saytga chiqarishdan oldingi MAJBURIY tekshiruv bir necha kun
+// davomida noto'g'ri baza ustida "hammasi joyida" deb turgan. Xato
+// ko'rinmadi, chunki hech qayerda "men qaysi bazani o'qidim" deb
+// yozilmagan edi.
+//
+// Endi manba HAR SAFAR bosh qatorda ko'rinadi. Parol chiqmaydi —
+// faqat qayerdaligi.
+export const manbaNomi = () => {
+  if (pgUrl) {
+    const host = pgUrl.replace(/^postgres(ql)?:\/\//, "").split("@").pop().split("?")[0];
+    return `Postgres: ${host || "mahalliy soket"}`;
+  }
+  if (ref) return `Supabase: ${ref}`;
+  return "noma'lum";
+};
+
 if (!pgUrl && (!ref || (!token && !cliReady))) {
   console.error("Bazaga yo'l topilmadi. Yo .env.local ga SUPABASE_ACCESS_TOKEN qo'ying,");
   console.error("yo `supabase login && supabase link --project-ref <ref>` qiling.");
