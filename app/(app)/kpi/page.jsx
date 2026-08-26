@@ -20,7 +20,7 @@ import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
 import DateRangePicker from "@/components/DateRangePicker";
 import { listNps, npsForInstaller, npsDayCounts, productAvg, addNps, updateNps, removeNps } from "@/lib/npsData";
 import { useAuth } from "@/components/AuthProvider";
-import { useLive } from "@/components/DataProvider";
+import { useLive, useToliq } from "@/components/DataProvider";
 import { can } from "@/lib/auth";
 import {
   computeMonth, computeDay, listDays, saveDay, savePlan, saveRules,
@@ -248,6 +248,8 @@ function RulesEditor({ m, onRule, onPlan }) {
 // Kunlik jadval — tur ustunlariga qarab chiziladi
 // ══════════════════════════════════════════════════════════════
 function DailyTable({ m, rows, month, onEdit, canEdit, canEditPast = false, showSalary = false, payAnyDay = false }) {
+  // Og'ir jadvallar fonda yuklanib bo'ldimi (`DataProvider`)
+  const toliq = useToliq();
   const today = todayKey();
   // Menejer faqat bugun va kechani tahrirlaydi — eski kunlar yopiq,
   // aks holda hisoblangan oylik keyinchalik jimgina o'zgartirilib
@@ -311,6 +313,17 @@ function DailyTable({ m, rows, month, onEdit, canEdit, canEditPast = false, show
 
   return (
     <>
+    {/* Og'ir jadvallar (9 263 chek, 16 123 qarz to'lovi) fonda ~40
+        soniya yuklanadi. Shu davrda Naqd/Payme/Servis QISMAN chiqadi:
+        cheklar kelib, qarz to'lovlari hali kelmagan bo'ladi — ya'ni
+        Optim kassasi 59 646 $ o'rniga 5 110 $ ko'rsatadi. Bo'sh
+        ekran emas, ISHONARLI YOLG'ON (CLAUDE.md 2026-08-13), shuning
+        uchun ochiq aytiladi. */}
+    {!toliq && (
+      <div className="mb-3 rounded-xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm font-bold text-muted animate-pulse">
+        {t("Billz ma'lumoti hali yuklanmoqda — Naqd, Payme va Servis to'liq emas.")}
+      </div>
+    )}
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-3 text-sm font-semibold">
       <span className="flex items-center gap-2 text-muted">
         <span className="w-3.5 h-3.5 rounded bg-brand/25 border border-brand/50" />
