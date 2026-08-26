@@ -1759,3 +1759,125 @@ KPI jadvalidagi `Savdo` qo'lda kiritiladigan maydon bo'lgani uchun
 kunlik savdosi `sales` jadvalidagi Billz cheklaridan avtomatik
 yig'iladi. Tarixiy qo'lda yozilgan sonlar O'ZGARMAYDI; faqat bo'sh
 kunlarga avtomat raqam qo'yiladi va ular tahrir qilinmaydi.
+
+### 14.13. Naqd, Payme va Servis ham Billz'dan (2026-08-26)
+
+14.12 da `Savdo` ustuni Billz cheklariga ulandi. Qolgan uchta pul
+ustuni — **Naqd**, **Payme**, **Servis** — qo'lda qoldi va aynan
+o'sha sabab yana bo'sh qoldi: **20-avgustdan 26-igacha hech kim
+yozmagan**, cheklar esa har 30 daqiqada kelib turgan. Bo'sh ustun
+jimgina tarqaladi — kassa kirimi, inkassatsiya bonusi va hamyon
+balansi ham o'sha kunlar uchun nolga tushdi.
+
+**Qo'l mehnati ma'lumot qo'shmasdi.** Haqiqiy bazada o'lchandi
+(1–19 avgust, 37 kun-do'kon):
+
+| ustun | menejer yozgani ↔ Billz |
+|---|---|
+| Servis | 19 kundan 18 tasi **tiyinigacha teng** (07-avgust: 263.50 ↔ 253.50, terish xatosi) |
+| Naqd/Payme | kunlarning ko'pi aynan teng; farq chiqqan 4 kun — qarz to'lovi qaysi do'konda olingani noma'lumligidan (14.x, `debt_payments.received_by` bo'sh), ikki do'kon orasida oyna aksi bo'lib chiqadi |
+
+Ya'ni menejer Billz raqamini QO'LDA KO'CHIRIB yozar ekan. Jarayon
+ma'lumot emas, faqat kechikish va terish xatosi qo'shardi.
+
+**Formula** (`kassaIncome.kunlikKirim`):
+
+```
+servis = montaj qatorlari (sale_items, companies.service_names)
+naqd   = Billz naqd (chek + qarz to'lovi, qaytarish ayrilgan) − montaj
+payme  = Billz payme (chek + qarz to'lovi, qaytarish ayrilgan)
+```
+
+Montaj naqddan ayriladi, chunki menejer shunday yozardi (731 → 700
+naqd + 31 servis), Billz esa montajni oddiy naqd sotuv qilib
+yuboradi. Ayirilmasa "Jami tushum" aynan servis summasicha ikki
+marta sanaladi. O'lchandi: **238 ta montajli kun-do'kondan
+birortasida ham montaj o'sha kunlik naqddan katta emas** (eng kam
+qoldiq 69.91 $), ya'ni ayirish naqdni manfiyga tushirmaydi.
+
+**Natija (chiqarishdan oldin, haqiqiy baza ustida):**
+
+```
+             oldin              keyin
+Kirim        82 308.87 $        105 801.82 $   (+23 492.95)
+Naqd         35 949.01 $         54 248.61 $
+Payme         8 347.65 $         11 683.77 $
+Servis        3 047.62 $          4 904.85 $
+```
+
+Va **chiqarishni bloklab turgan xato o'zi yo'qoldi**: "NScamera
+Namangan · Servis −1 416.44" 14.9 dan beri qizil turgan edi. Sabab
+kodda emas edi — kirim yozilmagan kunlar. Kirim joyiga tushishi bilan
+hamyon musbatga chiqdi.
+
+#### Kamomad nazorati nima bo'ldi
+
+`kassaIncome.js` va `kassaData.js` da ATAYLAB yozilgan qoida bor edi:
+"bu raqamdan bonus hisoblanadi, shuning uchun uni oshirish foydali;
+Billz bilan solishtirilsa kamomad ko'rinadi". Endi ikkala tomon bir
+manba bo'lgani uchun farq har doim 0 chiqadi — ya'ni jadval "kamomad
+yo'q" deb ishontirib turardi (10.4: yolg'on jurnal haqiqiy nosozlikni
+yashiradi).
+
+Shuning uchun `kassaControl()`/`kassaControlDays()` **xom, qo'lda
+yozilgan qatorni** o'qiydi (`listAllDays`, `listDays` EMAS): 1–19
+avgust tarixi hamon solishtiriladi, qo'lda to'ldirilmagan kun esa
+`diff: null` — ekranda "—" va "solishtirilmagan", NOL emas.
+
+> Eslatma: bu jadvalning ekrani hozir menyuda yo'q — u Excel
+> yuklamasi bilan birga olib tashlangan (14.10). Kod halol turadi,
+> qaytarilsa ishlaydi.
+
+Rahbar tanlovi (2026-08-26): qo'lda kiritish butunlay olib tashlansin,
+kamomad nazorati bo'yicha alohida ish hozircha qilinmasin.
+
+#### Nimalar tegib ketdi
+
+- Bazadagi eski qo'lda yozilgan qatorlar **O'CHIRILMADI** —
+  `kpi_day.data` da joyida turadi, ekran ularni o'qimay qo'ydi.
+- `moslik.js` → yangi `kpi-tushum` tekshiruvi: Naqd+Payme+Servis =
+  Billz kunlik kirimi. Takrorlanuvchi emas — u montaj bir marta
+  ayrilishini ushlaydi.
+- `audit.js` → `stale-kpi` endi faqat QO'LDA qoladigan maydonlarni
+  o'lchaydi (kech, dam, reviziya, kamera, olgan…). Aks holda u
+  avtomat to'lgan qator tufayli doim yashil turardi — 2026-08-24 dagi
+  "eng ishonchli manba eng ko'r joyni yaratadi" xatosining aynan o'zi.
+- `audit.js` → "kassaga tushmagan kirim" tekshiruvi XODIM ustidan
+  DO'KON ustiga ko'chdi: kirim endi do'kon bilan keladi va bo'shliq
+  ham o'sha yerda (kassa ro'yxatida turmagan do'kon jimgina tashlanadi).
+- `kpiData` → `b2c_retention` jadvaliga `Servis` ustuni qo'shildi.
+  Ilgari u yerda yo'q edi va zarari ham yo'q edi (raqam qo'lda
+  yozilardi). Endi ustunsiz montaj puli "Jami tushum" ichida
+  KO'RINMASDAN turardi.
+- `db.js` → `dataVersion()`/`bumpData()`, `sync.js` esa har qator
+  almashganda uni oshiradi. `kunlikKirim` natijani keshlaydi (9 263
+  chek + 35 312 qator + 16 123 to'lov, har xodim-oy uchun chaqiriladi).
+  Kesh uzunlik bo'yicha emas, VERSIYA bo'yicha eskiradi: Billz
+  sinxroni qo'shibgina qolmay, YANGILAYDI ham — uzunlikka tayangan
+  kesh jimgina eski raqamni ko'rsatib turardi.
+
+#### `npm run tekshir:server` o'zgarishni KO'RMAYDI
+
+Chiqarishdan oldingi majburiy tekshiruv (CLAUDE.md 2026-08-13)
+`scripts/server/tekshir-uzoq.sh` orqali boradi, u esa serverdagi
+`/opt/nspos/app` — ya'ni **allaqachon joylashgan** kodni yurgizadi.
+Lokal o'zgarish undan ko'rinmaydi: baseline ham, o'zgarishdan keyingi
+natija ham AYNAN bir xil chiqdi (82 308.87) va bu "hech narsa
+o'zgarmadi" degan yolg'on xulosaga olib borardi.
+
+Shuning uchun bu safar ishchi nusxa serverdagi `/tmp/nspos-sinov` ga
+`rsync` qilinib, `node_modules` ilova papkasidan symlink qilinib,
+o'sha yerda tekshirildi. Aynan shunda yangi raqamlar va yangi
+tekshiruv ko'rindi.
+
+> **Ochiq ish:** `tekshir:server` chiqarishdan OLDIN lokal kodni
+> tekshiradigan qilib tuzatilsin — hozir uni faqat chiqargandan
+> keyin yurgizish mumkin, ya'ni "xato chiqsa chiqarilmaydi" qoidasi
+> amalda ishlamaydi.
+
+#### Yon tomondan ko'ringan narsa (bu ishga kirmadi)
+
+`listDebts()` Billz qarzi bo'lsa `source='nspos'` qarzlarni butunlay
+chetlab o'tadi. Avgustda o'sha 102 qarzga 4 196.53 $ to'lov tushgan
+va u hech qaysi hisobda ko'rinmaydi. Bu 2026-08-26 dan oldin ham
+shunday edi — alohida ko'rilsin.

@@ -26,6 +26,7 @@ import {
   computeMonth, computeDay, listDays, saveDay, savePlan, saveRules,
   monthKey, todayKey, isRevisionDay, isPayDay, isPayAnyDayMonth, PAY_DAYS, KPI_TYPES, MANAGER_TYPES, typeOf,
   getType, setType, hasType, setInstallerRate, setInstallerNps, installerRange,
+  BILLZ_COLS,
 } from "@/lib/kpiData";
 
 const MONTHS = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
@@ -319,6 +320,13 @@ function DailyTable({ m, rows, month, onEdit, canEdit, canEditPast = false, show
         <span className="w-3.5 h-3.5 rounded bg-muted/25 border border-muted/50" />
         {t("Tizim o'zi hisoblaydi")}
       </span>
+      {/* Uchinchi belgi: raqam Billz cheklaridan kelgan. Qo'lda
+          to'ldiriladigan ustundan farqi ko'rinib tursin — aks holda
+          menejer "nega yozolmayapman" deb o'ylaydi. */}
+      <span className="flex items-center gap-2 text-muted">
+        <span className="w-3.5 h-3.5 rounded bg-brand/25 border border-brand" />
+        {t("Billz'dan avtomatik")}
+      </span>
       <button onClick={colPrefs.openSettings}
         className="ml-auto flex items-center gap-2 rounded-xl border border-line px-4 py-2 font-bold hover:border-brand hover:text-brand transition-colors">
         <SlidersHorizontal size={16} /> {t("Ustunlar")}
@@ -386,12 +394,16 @@ function DailyTable({ m, rows, month, onEdit, canEdit, canEditPast = false, show
                 );
               }
               if (c.kind === "money" || c.kind === "int") {
-                // Savdo Billz API'dagi haqiqiy cheklardan avtomatik
-                // kelgan bo'lsa, uni qo'lda o'zgartirib bo'lmaydi.
-                // Bu KPI va moliya bir xil savdo raqamini ko'rsatishini
-                // kafolatlaydi; eski qo'lda yozilgan tarix esa joyida.
-                if (c.key === "sales" && r.billzSales) {
-                  return <span className="font-extrabold text-brand" title={t("Billz'dan avtomatik")}>{usd(r.sales)}</span>;
+                // Savdo, Naqd, Payme va Servis Billz API'dagi haqiqiy
+                // cheklardan avtomatik kelgan bo'lsa, ularni qo'lda
+                // o'zgartirib bo'lmaydi. Bu KPI va moliya bir xil
+                // raqamni ko'rsatishini kafolatlaydi; eski qo'lda
+                // yozilgan tarix esa bazada joyida qoladi.
+                //
+                // Ustun ro'yxati `kpiData.BILLZ_COLS` da — yangi
+                // avtomat ustun qo'shilsa bu yerga tegilmaydi.
+                if (BILLZ_COLS[c.key] && r[BILLZ_COLS[c.key]]) {
+                  return <span className="font-extrabold text-brand" title={t("Billz'dan avtomatik")}>{usd(r[c.key])}</span>;
                 }
                 const locked = closed || (c.revisionCol && !revDay) || (c.payDayCol && !payDay) || !canEdit;
                 if (locked) {
