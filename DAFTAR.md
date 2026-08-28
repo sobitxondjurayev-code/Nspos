@@ -1881,3 +1881,116 @@ tekshiruv ko'rindi.
 chetlab o'tadi. Avgustda o'sha 102 qarzga 4 196.53 $ to'lov tushgan
 va u hech qaysi hisobda ko'rinmaydi. Bu 2026-08-26 dan oldin ham
 shunday edi — alohida ko'rilsin.
+
+---
+
+## 15. 2026-08-28 — "Billz'dan tortyaptimi?": javob ha, lekin o'lchov noto'g'ri joydan olingandi
+
+Savol oddiy edi: sinxron ishlayaptimi. Birinchi o'lchov dahshatli
+ko'rindi — sotuv 19-avgustda muzlagan, har kuni bir xil 34 ta chek,
+9 kunlik ma'lumot yo'q. Aslida **sinxron benuqson ishlayotgan edi**.
+O'lchov o'lik bazadan olingandi.
+
+### 15.1. Uch soatlik chalg'ish qayerdan boshlandi
+
+`.env.local` hamon yopilishi kerak bo'lgan Supabase'ga
+(`vysygcnsjqedwqaymxsd`) qarab turardi. Ya'ni:
+
+| | eski Supabase | VPS (haqiqiy) |
+|---|---|---|
+| sotuv | 9 032 | 9 357 |
+| oxirgi sotuv | 19.08 | 28.08 20:06 |
+| 19.08→28.08 cheklari | 34 | 359 |
+
+Billz'ning o'zida o'sha oraliqda 359 ta chek bor — ya'ni VPS roppa-rosa
+to'g'ri, eski nusxa esa 325 ta chekni boy bergan.
+
+Bu **uchinchi marta** shu tuzoqqa tushish edi (11.2 — tekshiruv,
+14.7 — billz skripti). Ikkalasida ham yechim "ogohlantirish qo'shildi"
+bo'lgan. Ogohlantirish 24-avgustdan 28-avgustgacha HAR YURISHDA
+chiqdi va hech kim to'xtamadi.
+
+> **Qoida:** ogohlantirish uchinchi marta ishlamasa — u ogohlantirish
+> emas, TO'SIQ bo'lishi kerak. `scripts/lib/baza.mjs` endi noto'g'ri
+> bazada skriptni umuman ishga tushirmaydi (`--boshqa-baza` bilan
+> ataylab chetlab o'tiladi). `billz-sync` va `tekshir` — ikkalasi ham
+> shu bitta faylni ishlatadi.
+
+### 15.2. `--probe` to'siqdan OLDIN turgan edi
+
+Tashxis buyrug'i (`--probe`) bazaga tegmaydi, shuning uchun manba
+tekshiruvi undan keyin turardi. Lekin odam aynan "nega ma'lumot
+kelmayapti?" deb o'shani chaqiradi: probe "Billz'ning 9 ta yo'li ham
+ochiq" deb chiqadi, odam Billz'ni aybsiz deb biladi va sababni
+butunlay boshqa yoqdan qidiradi — holbuki sabab birinchi qatorda
+aytilishi mumkin edi.
+
+> **Qoida:** manba tekshiruvi eng birinchi bajarilsin, hatto bazaga
+> tegmaydigan yo'llarda ham. Tashxis buyrug'i qaysi tizim haqida
+> gapirayotganini AYTMASA, u tashxis emas.
+
+### 15.3. Eski Vercel hamon tirik edi
+
+`vercel.json` 24-avgustda o'chirilgan — lekin faqat PAPKADA. Vercel
+croni deploy ichida qoladi, ya'ni eski sayt har kuni 03:13 da eski
+Supabase'ga yozishda davom etardi (bugun 28.08 da ham). Undagi kod
+tuzatishlardan oldingi kod: `end_date` xatosi ham, "yangi" sanog'i
+xatosi ham joyida.
+
+> **Qoida:** platformadan chiqish "konfiguratsiya faylini o'chirdim"
+> bilan tugamaydi. Jonli deploy o'z nusxasi bilan yashaydi —
+> §12.4 dagi yopish tartibi oxirigacha bajarilsin.
+
+### 15.4. Jurnal yolg'oni beshta bosqichning to'rttasida qolgan edi
+
+24-avgustda `syncOrders` da tuzatilgan xato — "upsert'ga ketgan hamma
+qator `inserted` deb sanaladi" — qolgan bosqichlarda qolib ketgan edi.
+Eng ko'rinadigani `syncSuppliers`: `inserted: rows.length` qattiq
+yozilgan, ya'ni jurnal har yarim soatda "2 ta ta'minotchi qo'shildi"
+derdi. Haqiqiy bazadagi 48 ta yozuvning HAMMASI shunday edi.
+
+Ikki zarari:
+* jurnalga ishonib bo'lmasdi — "qo'shildi" hech narsa demasdi;
+* har yozuv `audit_log` ga tetik qo'yadi: kuniga 96 ta bekorga yozuv.
+
+Endi farq `onlyChanged()` ning O'ZIDA hisoblanadi (`yangi` /
+`ozgargan`), ya'ni yangi bosqich qo'shilganda ham to'g'ri sanaydi.
+Tovarda `updated` "bog'landi" degani edi — u endi o'z nomi bilan
+(`relinked`) qaytadi.
+
+> **Qoida:** bir joyda qilingan tuzatish qolgan yo'llarga ham
+> qo'llansin (14.7 ning takrori) — va iloji bo'lsa UMUMIY
+> yordamchining ichiga qo'yilsin, toki keyingi chaqiruvchi uni
+> unutmasin.
+
+### 15.5. `--dry` yozardi
+
+`dryClient` yozuvni Proxy bilan JISMONAN to'sadi — `insert`, `upsert`,
+`update`, `delete`. Lekin `rpc` to'g'ridan-to'g'ri o'tkazilardi, va
+`syncOrders` oxirida `refresh_customer_stats()` chaqiriladi. U
+`customers` ning to'rt ustunini qayta yozadi. Ya'ni "hech narsa
+yozilmaydi" deb ishga tushirilgan sinov aslida yozardi.
+
+O'lchandi: tuzatishdan keyin `--only=orders --dry --max=5` dan so'ng
+`customers.max(updated_at)`, `billz_sync_log` qator soni va mijoz
+statistikasining md5 yig'indisi — uchalasi ham o'zgarmadi.
+
+> **Qoida:** "hech narsa yozilmaydi" degan rejim bitta ham teshik
+> qoldirmasin. Yozuv yo'llari ro'yxat bilan to'silsa (`WRITES`),
+> ro'yxatdan tashqarida qolgan yo'l bormi — ALOHIDA qaralsin.
+
+### 15.6. Solishtirish uchun SSH yo'li
+
+VPS Postgres'i tashqariga port ochmaydi (`listen_addresses = localhost`).
+Parol qo'yilgan yagona rol — `nspos_app`, u esa RLS ni chetlab
+o'tmaydi: uning ko'zi bilan `sales` va `customers` BO'SH ko'rinadi va
+`solishtir.mjs` "eskisida 9 032 qator bor, VPS'da yo'q" deb chiqarardi.
+Javob xato emas, JIMGINA TESKARI bo'lardi — va mavjud ma'lumot ustiga
+ko'chirish taklif qilinardi.
+
+Shuning uchun `solishtir.mjs --ssh root@…` qo'shildi: so'rov
+serverning o'zida, `postgres` roli bilan bajariladi.
+
+> **Qoida:** solishtirishda "qator topilmadi" bilan "qatorni ko'rishga
+> huquqim yo'q" farqlansin. RLS ostidagi bo'sh javob — eng ishonarli
+> yolg'on (21-avgustdagi `debt_payments` holatining takrori).

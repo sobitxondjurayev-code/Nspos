@@ -17,6 +17,7 @@ import { readFileSync } from "fs";
 import { execFileSync } from "child_process";
 import { fileURLToPath } from "url";
 import path from "path";
+import { bazaTekshir } from "./baza.mjs";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -33,7 +34,22 @@ for (const nom of [".env.local", ".env.production"]) {
 }
 
 const token = process.env.SUPABASE_ACCESS_TOKEN;
-const ref = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").match(/https:\/\/([a-z0-9]+)\.supabase/)?.[1];
+
+// ── QAYSI BAZA O'QILADI ──
+// Odatda `.env.local` dagi manzil. Lekin eski Supabase'ni ATAYLAB
+// o'qish kerak bo'lgan bitta hol bor — yopishdan oldingi solishtirish
+// (`scripts/solishtir.mjs`). O'shanda manzil BUYRUQDA beriladi:
+//
+//   NSPOS_MANBA_URL=https://vysygcnsjqedwqaymxsd.supabase.co \
+//     node scripts/solishtir.mjs --target "postgres://…/nspos"
+//
+// Nega sozlama faylida emas: `.env.local` ga qo'yilsa u YANA jimgina
+// hamma skriptga tarqaladi va biz endigina chiqqan tuzoqqa qaytamiz
+// (DAFTAR 11.2). Buyruqda turgani esa bir martalik va ko'rinib turadi.
+const manbaUrl = process.env.NSPOS_MANBA_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const ataylab = !!process.env.NSPOS_MANBA_URL || process.argv.includes("--boshqa-baza");
+const ref = manbaUrl.match(/https:\/\/([a-z0-9]+)\.supabase/)?.[1];
+
 
 // Ikkinchi yo'l: Supabase CLI. Management API kaliti shaxsiy va uni
 // har kompyuterga qo'yish shart emas — `supabase login` qilingan
@@ -59,6 +75,18 @@ const cliReady = !token && (() => {
 //
 //   NSPOS_PG="postgres://localhost/nspos_sinov" npm run tekshir
 const pgUrl = process.env.NSPOS_PG;
+
+// ── ESKI SUPABASE'GA TASODIFAN BORISH ──
+// Aynan shu xato tekshiruvni besh kun muzlab qolgan nusxa ustida
+// yurgizgan edi. Ataylab aytilmagan bo'lsa — to'xtaymiz.
+//
+// `pgUrl` DAN KEYIN turishi shart: mahalliy nusxa bilan ishlaganda
+// (`NSPOS_PG=... npm run tekshir`) `.env.local` dagi manzil umuman
+// o'qilmaydi, ya'ni u eski bo'lsa ham zarari yo'q. To'siq yuqorida
+// tursa o'sha holatni ham bekorga to'sib qo'yardi.
+if (!pgUrl && ref && !ataylab) {
+  bazaTekshir(manbaUrl, { nima: "tekshiruv" });   // ichida process.exit(1)
+}
 
 // ══════════════════════════════════════════════════════════════
 // QAYSI BAZA O'QILGANI DOIM AYTILADI
@@ -88,8 +116,21 @@ export const manbaNomi = () => {
 };
 
 if (!pgUrl && (!ref || (!token && !cliReady))) {
-  console.error("Bazaga yo'l topilmadi. Yo .env.local ga SUPABASE_ACCESS_TOKEN qo'ying,");
-  console.error("yo `supabase login && supabase link --project-ref <ref>` qiling.");
+  // Ilgari bu matn Supabase'ga ko'rsatardi. Supabase 2026-08-23 da
+  // tark etilgan — ya'ni maslahatning o'zi eskirgan edi va odamni
+  // yo'q tizimga yuborardi. Endi ikkita ishlaydigan yo'l aytiladi.
+  console.error("");
+  console.error("Bazaga yo'l topilmadi.");
+  console.error("");
+  console.error("  Baza endi VPS'da (tizim.enes.uz) va u tashqariga Postgres");
+  console.error("  porti ochmaydi. Shuning uchun tekshiruv SERVERDA yuritiladi:");
+  console.error("");
+  console.error("      npm run tekshir:server");
+  console.error("");
+  console.error("  Kompyuterda yuritish kerak bo'lsa, mahalliy nusxa ko'rsatiladi:");
+  console.error("");
+  console.error("      NSPOS_PG=\"postgres://localhost/nspos_sinov\" npm run tekshir");
+  console.error("");
   process.exit(1);
 }
 

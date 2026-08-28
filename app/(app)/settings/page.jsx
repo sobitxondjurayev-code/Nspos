@@ -641,7 +641,11 @@ function BillzCard() {
                 <th className="px-4 py-2.5 font-bold">{t("Bo'lim")}</th>
                 <th className="px-4 py-2.5 font-bold">{t("Oxirgi marta")}</th>
                 <th className="px-4 py-2.5 font-bold text-right">{t("Olindi")}</th>
-                <th className="px-4 py-2.5 font-bold text-right">{t("Yozildi")}</th>
+                {/* "Yozildi" emas, "Yangi": ustun `inserted` ni ko'rsatadi va u
+                    endi faqat HAQIQATAN yangi qatorni sanaydi. Ilgari
+                    o'zgargani ham shu yerga qo'shilardi va jadval
+                    hech narsa qo'shilmagan kunda ham son ko'rsatardi. */}
+                <th className="px-4 py-2.5 font-bold text-right">{t("Yangi")}</th>
                 {/* Tashlab ketilgani ham ko'rinsin: ilgari jadval faqat
                     "nechta yozildi" deb turardi va do'koni tanilmagani
                     uchun yozilmagan cheklar hech qayerda bilinmasdi. */}

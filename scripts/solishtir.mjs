@@ -2,9 +2,15 @@
 // IKKI BAZANI SOLISHTIRISH — eski Supabase ⟷ VPS
 // ══════════════════════════════════════════════════════════════
 // Ishlatish:
+//   NSPOS_MANBA_URL=https://<eski-ref>.supabase.co \
+//     node scripts/solishtir.mjs --ssh root@169.58.216.246 --target nspos
+//
 //   node scripts/solishtir.mjs --target "postgres://…/nspos"
 //   node scripts/solishtir.mjs --target "…" --kesim 2026-08-20
 //   node scripts/solishtir.mjs --target "…" --only=sales,sale_items
+//
+// `--ssh` — so'rov SERVERDA bajariladi. VPS Postgres'i tashqariga
+// port ochmagani uchun ODATDAGI yo'l shu (pastdagi izohga qarang).
 //
 // HECH NARSA YOZMAYDI. Ikkala bazadan ham faqat O'QIYDI.
 //
@@ -57,6 +63,11 @@ if (!TARGET) {
 // kerak edi.
 const KESIM = arg("kesim", "2026-08-20");
 
+// `--ssh root@…` berilsa so'rov SERVERDA bajariladi (sabab pastda,
+// `psqlJson` izohida). U holda `--target` — shunchaki baza NOMI.
+const SSH = arg("ssh");
+const SSH_KALIT = process.env.NSPOS_KEY ?? `${process.env.HOME}/.ssh/nspos`;
+
 // ══════════════════════════════════════════════════════════════
 // QO'RIQCHI: manba va nishon BIR XIL bo'lib qolmasin
 // ══════════════════════════════════════════════════════════════
@@ -66,7 +77,9 @@ const KESIM = arg("kesim", "2026-08-20");
 // bo'lardi — VPS'ni VPS bilan solishtirsak "farq yo'q" chiqadi va
 // eski bazadagi yozuvlar bilinmay o'chib ketardi.
 const MANBA = manbaNomi();
-const nishonHost = TARGET.replace(/^postgres(ql)?:\/\//, "").split("@").pop().split("?")[0];
+const nishonHost = SSH
+  ? `${SSH} → ${TARGET}`
+  : TARGET.replace(/^postgres(ql)?:\/\//, "").split("@").pop().split("?")[0];
 
 console.log(`\n  Manba (eski):  ${MANBA}`);
 console.log(`  Nishon (VPS):  ${nishonHost}`);
@@ -91,11 +104,31 @@ mkdirSync(ISH, { recursive: true });
 // har SELECT `json_agg` ichiga o'raladi, ya'ni javob manbadagidek
 // obyektlar massivi bo'lib keladi va solishtirish kodi ikki tomon
 // uchun ham bitta bo'ladi.
+// ── NISHONGA QANDAY BORILADI ──
+// VPS Postgres'i TASHQARIGA PORT OCHMAYDI (`listen_addresses = localhost`,
+// pg_hba faqat 127.0.0.1). Ya'ni kompyuterdan to'g'ridan-to'g'ri
+// ulanib bo'lmaydi va `--target` shu holicha ishlamaydi.
+//
+// Tunnel ochish ham yaramaydi. Parol qo'yilgan yagona rol —
+// `nspos_app`, u esa RLS ni CHETLAB O'TMAYDI (rolbypassrls = false).
+// Uning ko'zi bilan `sales`, `customers`, `products` BO'SH ko'rinadi
+// va solishtirish "eskisida 9 032 qator bor, VPS'da yo'q" deb
+// chiqarardi — ya'ni javob xato emas, JIMGINA teskari bo'lardi va
+// mavjud ma'lumot ustiga ko'chirish taklif qilinardi.
+//
+// Shuning uchun so'rov SERVERNING O'ZIDA, `postgres` roli bilan
+// bajariladi (u superuser, RLS ko'rmaydi). SQL stdin orqali beriladi:
+// buyruq satrida uzun so'rovni qavslash xato manbai bo'lardi.
 const psqlJson = (query) => {
   const ichki = query.trim().replace(/;\s*$/, "");
-  const out = execFileSync("psql", [TARGET, "-tAX", "-v", "ON_ERROR_STOP=1", "-c",
-    `select coalesce(json_agg(t), '[]'::json) from (${ichki}) t;`],
-    { encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"] });
+  const toliq = `select coalesce(json_agg(t), '[]'::json) from (${ichki}) t;`;
+  const opt = { encoding: "utf8", maxBuffer: 256 * 1024 * 1024,
+                stdio: ["pipe", "pipe", "pipe"] };
+  const out = SSH
+    ? execFileSync("ssh", ["-i", SSH_KALIT, "-o", "ConnectTimeout=20", SSH,
+        `su postgres -c 'psql -d ${TARGET} -tAX -v ON_ERROR_STOP=1 -f -'`],
+        { ...opt, input: toliq })
+    : execFileSync("psql", [TARGET, "-tAX", "-v", "ON_ERROR_STOP=1", "-c", toliq], opt);
   return JSON.parse(out);
 };
 

@@ -24,12 +24,14 @@
 //   --full    kursorni e'tiborga olmay to'liq tortish
 //   --max=N   nechta chek olinsin (sinov uchun)
 //   --debts=light  qarzning faqat yopilmaganini tortish (tez)
+//   --boshqa-baza  haqiqiy bazadan boshqasiga ATAYLAB borish
 //
 // Kalit `.env.local` dan o'qiladi va HECH QACHON jurnalga chiqarilmaydi.
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
 import { createClient } from "@supabase/supabase-js";
+import { bazaTekshir } from "./lib/baza.mjs";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 for (const line of readFileSync(path.join(root, ".env.local"), "utf8").split("\n")) {
@@ -72,6 +74,32 @@ const db = createClient(url, key, { auth: { persistSession: false } });
 const t0 = Date.now();
 const log = (msg) => console.log(`[${((Date.now() - t0) / 1000).toFixed(0).padStart(4)}s] ${msg}`);
 
+// ── QAYSI BAZAGA BORYAPMIZ ──
+// ENG BIRINCHI aytiladi, va noto'g'ri bo'lsa skript TO'XTAYDI.
+//
+// Nega `--probe` dan ham oldin: probe faqat Billz'ni uradi, bazaga
+// tegmaydi — lekin odam aynan "nega ma'lumot kelmayapti?" deb
+// o'shani chaqiradi. Agar `.env.local` noto'g'ri bazaga qarab tursa,
+// probe "hammasi ochiq" deb chiqadi va odam Billz'ni aybsiz deb
+// bilib, sababni butunlay boshqa yoqdan qidiradi. Aynan shu
+// 2026-08-28 da bo'ldi.
+//
+// Sabab (DAFTAR 11.2, 14.7 va 2026-08-28 takrori): `.env.local`
+// ko'chishdan keyin eski Supabase manzilida qolib ketgan edi. Avval
+// bu yerda faqat ogohlantirish chiqardi — u 24-avgustdan 28-avgustgacha
+// har yurishda chiqdi va hech kim to'xtamadi. Oradagi besh kunda
+// eski bazada 9 032 sotuv, haqiqiysida 9 357 edi.
+//
+// Ogohlantirish yetmagani AMALDA ko'rindi, shuning uchun endi to'siq.
+// Qoida va matn `scripts/lib/baza.mjs` da — `tekshir` ham o'shani
+// ishlatadi, ya'ni tuzatish bitta joyda turadi (DAFTAR 14.7).
+const manba = bazaTekshir(url, {
+  ruxsat: flag("boshqa-baza"),
+  ayt: (m) => console.error(m),
+  nima: "billz-sync",
+});
+log(`manba: ${manba}`);
+
 // —— Tashxis ————————————————————————————————
 if (flag("probe")) {
   const { probe } = await import("../lib/billzApi.js");
@@ -89,24 +117,6 @@ if (flag("probe")) {
 // —— Ishga tushirish ————————————————————————————
 const { runSync } = await import("../lib/billzSync.js");
 
-// ── QAYSI BAZAGA YOZILYAPTI ──
-// Bosh qatorda AYTILADI. Sabab (DAFTAR 11.2 va 2026-08-24 takrori):
-// `.env.local` ko'chishdan keyin eski, endi o'chirilgan Supabase
-// manzilida qolib ketgan edi. Skript esa buni aytmasdan o'sha yoqqa
-// borardi va xato "Could not find the 'unknown_paid' column of
-// 'sales' in the schema cache" bo'lib chiqardi — ya'ni sabab
-// "BOSHQA BAZA" ekani xato matnidan umuman bilinmasdi va migratsiya
-// yoki kod ayblanardi.
-//
-// Endi manba ko'rinib turadi: `tizim.enes.uz` bo'lmasa, birinchi
-// qatordanoq bilinadi. Kalit hech qachon chiqarilmaydi — faqat host.
-const manba = (() => {
-  try { return new URL(url).host; } catch { return url; }
-})();
-log(`manba: ${manba}`);
-if (!/tizim\.enes\.uz/.test(manba)) {
-  log("DIQQAT: bu HAQIQIY baza emas (tizim.enes.uz kutilgan edi) — `.env.local` ni tekshiring");
-}
 log(`boshlandi${opts.dry ? " (DRY — yozilmaydi)" : ""}`);
 if (opts.only) log(`bosqichlar: ${opts.only.join(", ")}`);
 
@@ -125,8 +135,12 @@ for (const [stage, r] of Object.entries(out.stages)) {
   if (r.error) { console.log(`  ${stage.padEnd(12)} XATO: ${r.error}`); continue; }
   const parts = [];
   if (r.fetched != null) parts.push(`olindi ${r.fetched}`);
-  if (r.inserted) parts.push(`yozildi ${r.inserted}`);
-  if (r.updated) parts.push(`bog'landi ${r.updated}`);
+  // "yozildi" emas, "yangi": `inserted` endi HAQIQATAN yangi qatorni
+  // sanaydi (o'zgargani `updated` da). Ilgari ikkalasi aralashardi va
+  // `updated` tovarlarda "bog'langan" degani edi — u endi `relinked`.
+  if (r.inserted) parts.push(`yangi ${r.inserted}`);
+  if (r.updated) parts.push(`yangilandi ${r.updated}`);
+  if (r.relinked) parts.push(`bog'landi ${r.relinked}`);
   if (r.stock) parts.push(`qoldiq ${r.stock}`);
   if (r.items) parts.push(`chek qatori ${r.items}`);
   if (r.skipped) parts.push(`o'tkazildi ${r.skipped}`);
