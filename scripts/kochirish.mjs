@@ -2,6 +2,9 @@
 // MA'LUMOTNI KO'CHIRISH — Supabase → o'z Postgres'imiz
 // ══════════════════════════════════════════════════════════════
 // Ishlatish:
+//   node scripts/kochirish.mjs --ssh root@169.58.216.246 --target nspos \
+//     --only=expenses,kassa_ops,usd_rates,payouts,kpi_day,kpi_plan
+//
 //   node scripts/kochirish.mjs --target "postgres://…/nspos"
 //   node scripts/kochirish.mjs --target "…" --only=sales,sale_items
 //   node scripts/kochirish.mjs --target "…" --tekshir     (faqat solishtirish)
@@ -28,7 +31,7 @@
 // Busiz: (1) jadval tartibi muhim bo'lardi, (2) 84 000 qator uchun
 // 84 000 ta audit yozuvi paydo bo'lardi.
 import { execFileSync } from "child_process";
-import { writeFileSync, mkdirSync, rmSync } from "fs";
+import { writeFileSync, mkdirSync, rmSync, readFileSync } from "fs";
 import { sql } from "./lib/yuk.mjs";
 import { BACKUP_TABLES } from "../lib/backupTables.js";
 
@@ -63,13 +66,43 @@ const royxat = faqat
 const ISH = ".tmp/kochirish";
 mkdirSync(ISH, { recursive: true });
 
-const psql = (buyruq, kirish = null) => execFileSync("psql", [TARGET, "-v", "ON_ERROR_STOP=1",
-  "--set=client_min_messages=warning", "-q", "-c", buyruq],
-  { encoding: "utf8", input: kirish ?? undefined, maxBuffer: 256 * 1024 * 1024 });
+// ── NISHONGA QANDAY YOZILADI ──
+// `solishtir.mjs` dagi bilan bir xil sabab: VPS Postgres'i tashqariga
+// port ochmaydi (`listen_addresses = localhost`), parolli yagona rol
+// `nspos_app` esa RLS ni chetlab o'tmaydi va `session_replication_role
+// = replica` ni qo'ya olmaydi (u superuser huquqi). Ya'ni kompyuterdan
+// to'g'ridan-to'g'ri ko'chirib bo'lmaydi.
+//
+// `--ssh root@…` berilsa buyruq SERVERNING O'ZIDA, `postgres` roli
+// bilan bajariladi; `--target` u holda shunchaki baza NOMI.
+const SSH = arg("ssh");
+const SSH_KALIT = process.env.NSPOS_KEY ?? `${process.env.HOME}/.ssh/nspos`;
 
-const psqlFayl = (yol) => execFileSync("psql", [TARGET, "-v", "ON_ERROR_STOP=1",
-  "--set=client_min_messages=warning", "-q", "-f", yol],
-  { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+// SQL doim STDIN orqali beriladi — buyruq satrida uzun so'rovni
+// qavslash (ayniqsa jsonb ichidagi qo'shtirnoq) xato manbai bo'lardi.
+const uzoqPsql = (matn) => execFileSync("ssh",
+  ["-i", SSH_KALIT, "-o", "ConnectTimeout=20", SSH,
+   `su postgres -c 'psql -d ${TARGET} -v ON_ERROR_STOP=1 --set=client_min_messages=warning -q -f -'`],
+  { encoding: "utf8", input: matn, maxBuffer: 256 * 1024 * 1024 });
+
+const psql = (buyruq, kirish = null) => {
+  if (SSH) {
+    // `-c` va stdin birga ishlatilmaydi: `\copy … from stdin` uchun
+    // buyruqdan keyin ma'lumot kelishi kerak, shuning uchun ikkalasi
+    // birlashtirilib bitta oqim qilib yuboriladi.
+    return uzoqPsql(kirish == null ? buyruq : `${buyruq}\n${kirish}`);
+  }
+  return execFileSync("psql", [TARGET, "-v", "ON_ERROR_STOP=1",
+    "--set=client_min_messages=warning", "-q", "-c", buyruq],
+    { encoding: "utf8", input: kirish ?? undefined, maxBuffer: 256 * 1024 * 1024 });
+};
+
+const psqlFayl = (yol) => {
+  if (SSH) return uzoqPsql(readFileSync(yol, "utf8"));
+  return execFileSync("psql", [TARGET, "-v", "ON_ERROR_STOP=1",
+    "--set=client_min_messages=warning", "-q", "-f", yol],
+    { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+};
 
 const son = (n) => Number(n).toLocaleString("ru-RU");
 
@@ -126,20 +159,33 @@ async function oqi(jadval, ustun) {
 // bizga faqat teskari chiziqni ikkilantirish qoladi.
 function yukla(jadval, qatorlar) {
   if (!qatorlar.length) return 0;
-  const fayl = `${ISH}/${jadval.replace(".", "_")}.txt`;
-  writeFileSync(fayl, qatorlar.map((r) => JSON.stringify(r).replace(/\\/g, "\\\\")).join("\n") + "\n");
+  const matn = qatorlar.map((r) => JSON.stringify(r).replace(/\\/g, "\\\\")).join("\n") + "\n";
 
-  const sqlFayl = `${ISH}/_yukla.sql`;
-  writeFileSync(sqlFayl, `
+  const bosh = `
 begin;
   set local session_replication_role = replica;   -- FK va tetiklar o'chadi
   create temp table _yuk (data jsonb) on commit drop;
-  \\copy _yuk (data) from '${process.cwd()}/${fayl}'
+`;
+  const oxir = `
   insert into ${jadval}
     select (jsonb_populate_record(null::${jadval}, data)).* from _yuk
     on conflict do nothing;
 commit;
-`);
+`;
+
+  const sqlFayl = `${ISH}/_yukla.sql`;
+  if (SSH) {
+    // `\\copy … from '<yo'l>'` psql ISHLAYOTGAN mashinada fayl qidiradi.
+    // SSH rejimida psql SERVERDA ishlaydi va u yerda bu fayl yo'q.
+    // Shuning uchun ma'lumot SQL bilan BITTA oqimda ketadi:
+    // `copy … from stdin`, so'ng qatorlar, so'ng `\\.` chegarasi —
+    // `pg_dump` ning oddiy chiqishi ham aynan shu shaklda.
+    writeFileSync(sqlFayl, `${bosh}  copy _yuk (data) from stdin;\n${matn}\\.\n${oxir}`);
+  } else {
+    const fayl = `${ISH}/${jadval.replace(".", "_")}.txt`;
+    writeFileSync(fayl, matn);
+    writeFileSync(sqlFayl, `${bosh}  \\copy _yuk (data) from '${process.cwd()}/${fayl}'\n${oxir}`);
+  }
   psqlFayl(sqlFayl);
   return qatorlar.length;
 }
