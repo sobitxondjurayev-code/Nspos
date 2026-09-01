@@ -19,7 +19,7 @@ import { useLive } from "@/components/DataProvider";
 import { kassasOf, ownerTransferRows } from "@/lib/kassaData";
 import { storeTotalsInRange } from "@/lib/salesData";
 import {
-  categoryLabel, methodLabel, STREET_INSTALLER,
+  categoryLabel, methodLabel, STREET_INSTALLER, EXPENSE_CATEGORIES,
   expensesInRange, expensesByCategory, expensesByStore, expenseStructure,
   expenseSeries, monthlyFixedRunRate,
   listRecurring, addRecurring, removeRecurring, updateRecurring,
@@ -27,6 +27,7 @@ import {
 } from "@/lib/expensesData";
 import { getStaff } from "@/lib/staffData";
 import ColumnSettings from "@/components/ColumnSettings";
+import MultiSelect from "@/components/ui/MultiSelect";
 import { useColumns } from "@/components/useColumns";
 import { getUsdRate } from "@/lib/companyData";
 import RateModal from "@/components/RateModal";
@@ -41,6 +42,12 @@ const fmtSom = (som) => Math.round(som).toLocaleString("ru-RU") + " so'm";
 // ijara, internet, soliq. Bo'lim nomi ham o'sha so'z bilan.
 const TABS = ["Xarajatlar ro'yxati", "Doimiy xarajatlar"];
 const fmtDay = (s) => s.split("-").reverse().join(".");
+
+// Filtrdagi kategoriya tartibi — xarajat oynasidagi bilan bir xil
+// (`EXPENSE_CATEGORIES` e'lon tartibi); eski (tanlanmaydigan) kalitlar
+// keyin, "Rahbarga o'tkazma" eng oxirida.
+const CAT_ORDER = Object.keys(EXPENSE_CATEGORIES);
+const catRank = (k) => (k === "owner_transfer" ? 1e6 : (CAT_ORDER.indexOf(k) + 1 || 1e5));
 const storeName = (id) => demoStores.find((s) => s.id === id)?.name ?? null;
 
 export default function FinanceExpenses() {
@@ -135,14 +142,25 @@ export default function FinanceExpenses() {
   // Tanlovlar davr ichida haqiqatda uchragan qiymatlardan yig'iladi:
   // bo'sh variantlar ko'rsatilmaydi ("Soliq" tanlab, hech narsa
   // chiqmasligi chalkashtiradi).
-  const [fCat, setFCat] = useState("all");
+  // Kategoriya BIR NECHTA tanlanadi: `null` = barchasi, aks holda
+  // kalitlar massivi (`MultiSelect`).
+  const [fCat, setFCat] = useState(null);
   const [fStore, setFStore] = useState("all");
   const [fMethod, setFMethod] = useState("all");
   const [fStaff, setFStaff] = useState("all");
   const [fBy, setFBy] = useState("all");
 
   const uniq = (list) => [...new Set(list.filter(Boolean))];
-  const catOptions = useMemo(() => uniq(listRows.map((e) => e.category)), [listRows]);
+  const catOptions = useMemo(() => uniq(listRows.map((e) => e.category))
+    .sort((a, b) => catRank(a) - catRank(b))
+    .map((k) => ({ value: k, label: categoryLabel(k) })), [listRows]);
+  // Davr almashib tanlangan kategoriya ro'yxatdan yo'qolsa, u filtrdan
+  // ham chiqadi — aks holda jadval jimgina bo'sh qolardi.
+  useEffect(() => {
+    if (!fCat) return;
+    const keep = fCat.filter((k) => catOptions.some((o) => o.value === k));
+    if (keep.length !== fCat.length) setFCat(keep.length ? keep : null);
+  }, [catOptions, fCat]);
   const methodOptions = useMemo(() => uniq(listRows.map((e) => e.method)), [listRows]);
   const staffOptions = useMemo(() => uniq(listRows.map((e) => e.staffId)), [listRows]);
   // Ko'cha ustasi xodim emas — filtrda alohida variant. O'tkazmadagi
@@ -151,13 +169,13 @@ export default function FinanceExpenses() {
     () => listRows.some((e) => e.paidTo && e.source !== "transfer"), [listRows]);
   const byOptions = useMemo(() => uniq(listRows.map((e) => e.createdBy)), [listRows]);
 
-  const hasFilter = [fCat, fStore, fMethod, fStaff, fBy].some((v) => v !== "all");
+  const hasFilter = fCat !== null || [fStore, fMethod, fStaff, fBy].some((v) => v !== "all");
   const clearFilters = () => {
-    setFCat("all"); setFStore("all"); setFMethod("all"); setFStaff("all"); setFBy("all");
+    setFCat(null); setFStore("all"); setFMethod("all"); setFStaff("all"); setFBy("all");
   };
 
   const shown = useMemo(() => listRows.filter((e) => {
-    if (fCat !== "all" && e.category !== fCat) return false;
+    if (fCat && !fCat.includes(e.category)) return false;
     // "Umumkorxona" — do'konga biriktirilmagan xarajat
     if (fStore === "all-company" ? (e.storeId && e.storeId !== "all") : false) return false;
     if (fStore !== "all" && fStore !== "all-company" && e.storeId !== fStore) return false;
@@ -474,19 +492,12 @@ export default function FinanceExpenses() {
           {tab === TABS[0] ? (
             <>
             {/* —— Filtr —— Ro'yxat uzun bo'lgani uchun kesim kerak:
-                qaysi tur, qaysi do'kon, qaysi usta, kim kiritgan.
-                Tanlangani bilan "Jami" ham qayta hisoblanadi. */}
+                qaysi tur(lar), qaysi do'kon, qaysi usta, kim kiritgan.
+                Kategoriya bir nechta belgilanadi. Tanlangani bilan
+                "Jami" ham qayta hisoblanadi. */}
             <div className="card p-5 mb-4">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-                <label className="block">
-                  <span className="block text-sm font-bold mb-2">{t("Kategoriya")}</span>
-                  <select className="inp" value={fCat} onChange={(e) => setFCat(e.target.value)}>
-                    <option value="all">{t("Barchasi")}</option>
-                    {catOptions.map((k) => (
-                      <option key={k} value={k}>{t(categoryLabel(k))}</option>
-                    ))}
-                  </select>
-                </label>
+                <MultiSelect label="Kategoriya" options={catOptions} value={fCat} onChange={setFCat} />
 
                 <label className="block">
                   <span className="block text-sm font-bold mb-2">{t("Do'kon")}</span>
