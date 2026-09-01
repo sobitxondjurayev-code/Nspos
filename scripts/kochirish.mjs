@@ -166,10 +166,31 @@ begin;
   set local session_replication_role = replica;   -- FK va tetiklar o'chadi
   create temp table _yuk (data jsonb) on commit drop;
 `;
+  // `updated_at` (2026-09-02): VPS'da bu ustun `not null` va tetik bilan
+  // to'ldiriladi (`02-updated-at.sql`), eski Supabase'da esa umuman yo'q.
+  // `jsonb_populate_record` yo'q kalitni NULL qiladi, tetiklar esa
+  // `replica` rejimida o'chiq — ya'ni har qator "null value in column
+  // updated_at" bilan yiqilardi va 6 jadvaldan birortasi ko'chmasdi
+  // (`kpi_day`/`kpi_plan` da ustun eskida ham bor edi, shuning uchun
+  // ular o'tdi va xato faqat qisman ko'rindi). Nishonda ustun bo'lsa
+  // qiymat `updated_at` → `created_at` → `now()` tartibida to'ldiriladi.
+  const [sxema, nom] = jadval.includes(".") ? jadval.split(".") : ["public", jadval];
   const oxir = `
-  insert into ${jadval}
-    select (jsonb_populate_record(null::${jadval}, data)).* from _yuk
-    on conflict do nothing;
+  do $$
+  begin
+    if exists (select 1 from information_schema.columns
+               where table_schema = '${sxema}' and table_name = '${nom}' and column_name = 'updated_at') then
+      execute $q$ insert into ${jadval}
+        select (jsonb_populate_record(null::${jadval},
+                  data || jsonb_build_object('updated_at',
+                    coalesce(data->>'updated_at', data->>'created_at', now()::text)))).*
+        from _yuk on conflict do nothing $q$;
+    else
+      execute $q$ insert into ${jadval}
+        select (jsonb_populate_record(null::${jadval}, data)).* from _yuk
+        on conflict do nothing $q$;
+    end if;
+  end $$;
 commit;
 `;
 
