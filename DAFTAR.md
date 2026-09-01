@@ -904,6 +904,15 @@ statistika nolga tushib qolardi.
 - [ ] Mijozlar ro'yxatida 4 183 ta dublikat bor (Excel importidan qolgan).
       **O'chirilmaydi** — foydalanuvchi qarori. Kerak bo'lsa ro'yxatda
       birlashtirib ko'rsatiladi, bazada ikkalasi ham qoladi.
+- [ ] `nspos-bot` xizmati SERVERDA YO'Q (`scripts/server/11-bot.sh`
+      ishga tushirilmagan) — CLAUDE.md "bor" deb yozgan edi (16-bo'lim).
+- [ ] `scripts/list-logins.mjs` Supabase Admin API'ga qaraydi — VPS'da
+      ishlamaydi; `sql.mjs` orqali qayta yoziladi.
+- [ ] `auth.kirish()` ga `is_active` sharti; `/api/kirish` ga urinish
+      cheklovi (nginx `limit_req`).
+- [ ] Eski Supabase/Vercel'ni YOPISH (12.4 ning 4–5 qadami) — 02.09 da
+      faqat muzlatiladi (`eski-muzlat.mjs`); yopish alohida kunda,
+      uch joyga arxiv dump'dan keyin.
 
 ---
 
@@ -1994,3 +2003,110 @@ serverning o'zida, `postgres` roli bilan bajariladi.
 > **Qoida:** solishtirishda "qator topilmadi" bilan "qatorni ko'rishga
 > huquqim yo'q" farqlansin. RLS ostidagi bo'sh javob — eng ishonarli
 > yolg'on (21-avgustdagi `debt_payments` holatining takrori).
+
+---
+
+## 16. 2026-09-02 — ko'chish oxirigacha bajarilmagani: ikki hafta ikki bazaga yozilgan
+
+VPS'ga 22–23.08 da ko'childi, CLAUDE.md da "eski Vercel manzillari va
+Supabase yopilgan" deb yozildi. Lekin o'lchov (02.09, 01:30):
+`nspos.vercel.app/login` → 200, eski Supabase REST → 401 (tirik, kalit
+so'raydi), eski bazada 44 faol sessiya, oxirgi qo'lda yozuv **01.09 21:05**,
+27.08–01.09 orasida 13 kishi kirgan. VPS'da esa `expenses`, `kassa_ops`,
+`payouts`, `kpi_day`, `usd_rates` **20.08 da muzlagan**, Billz'dan
+keladigan `sales` esa yangi (01.09 20:43).
+
+| Jadval | Eski | VPS | Faqat eskida |
+|---|---:|---:|---:|
+| `expenses` | 549 | 338 | 211 |
+| `kassa_ops` | 190 | 109 | 81 (74 664 $) |
+| `payouts` | 17 | 12 | 5 (7 232 $) |
+| `kpi_day` | 703 | 566 | 137 |
+| `kpi_plan` | 26 | 17 | 9 |
+| `usd_rates` | 27 | 17 | 10 (kurs 11 850 ↔ 11 880) |
+
+### 16.1. Nega ikki hafta sezilmadi
+
+Uchta sabab, uchalasi ham 13-bo'limdagi "jim nosozlik" naqshi:
+
+1. **Eng ishonchli manba eng ko'r joyni yaratdi (yana).** VPS'dagi
+   savdo Billz'dan har 30 daqiqada kelib turgani uchun VPS "tirik"
+   ko'rinardi. `lib/audit.js` `MANBALAR` tekshiruvlari (24.08 da aynan
+   shu holat uchun qo'yilgan) VPS saytida qizil turgan — lekin VPS
+   saytini hech kim ochmagan. Tekshiruv odam ko'radigan joyda bo'lishi
+   kerak: rahbar Telegram'da kunlik xulosa olsa, `stale-*` qizil
+   bo'lganda o'sha xabarda chiqishi kerak (bot serverda O'RNATILMAGAN
+   ekan — pastda).
+2. **Hujjatdagi "yopildi" o'lchanmagan edi.** §15.3 da `vercel.json`
+   faqat papkadan o'chirilgani aniqlangan, lekin CLAUDE.md da "yopilgan"
+   yozuvi qolaverdi. `nspos-bot.service` ham xuddi shunday: CLAUDE.md
+   "xizmatlar: nspos, nspos-api, nspos-bot" deydi, serverda
+   `systemctl list-units | grep nspos` faqat ikkitasini ko'rsatadi.
+3. **Saytni ko'chirish — odamni ko'chirish emas.** Brauzerdagi saqlangan
+   parol xodimni har kuni eski manzilga qaytardi. Yangi manzil
+   aytilgan bo'lsa ham, eski manzil ISHLAYOTGAN ekan, odam o'sha yerda
+   qoladi — u uchun hech narsa buzilmagan.
+
+> **Qoida:** hujjatda "yopildi", "bor", "ishlaydi" deyilgan har tashqi
+> narsa (eski sayt, xizmat, cron) `curl`/`systemctl`/`ls /etc/cron.d`
+> bilan o'lchab tasdiqlansin, yozuvga ishonilmasin. Ko'chish "yangi
+> sayt ishlayapti" bilan emas, "eski manzilga KIRIB BO'LMAYDI" bilan
+> tugaydi.
+
+### 16.2. Loginlar ikki bazada farq qiladi
+
+VPS `auth.users` — 23.08 nusxasi. Undan keyin menejer ESKI saytda
+ustalarning haqiqiy raqamini kiritgan (`/api/staff` PATCH →
+`email_almashtir`), ya'ni xodim biladigan login eski bazada, VPS'da esa
+o'rinbosar `9989010000NN`. Ikki Akramjon (usta va retention menejer)
+raqamlari eski bazada o'zaro ALMASHGAN — bitta `update` bilan
+ko'chirilsa `auth.users.email` unique indeksiga uriladi.
+
+Kunning boshidagi reja (01:09) eski va VPS jadvallarini chalkashtirib,
+"profiles.phone login emas" degan xulosa chiqargan edi — aslida ikkala
+bazada ham `profiles.phone` `email` ga mos, faqat bazalar bir-biriga
+mos emas. Ikki bazani solishtirganda har ustun QAYSI bazadan olingani
+yozib qo'yilishi kerak.
+
+> **Qoida:** login haqiqati — `auth.users.email`. Ikki baza bo'lsa
+> ikkalasidan ham o'qilib, id bo'yicha solishtiriladi. Email
+> almashtirishda avval vaqtinchalik qiymat, keyin haqiqiysi (bitta
+> tranzaksiyada) — almashgan juftlik unique'ga urilmasin.
+
+### 16.3. Vositalar (bu kecha yozildi, `--dry` da sinaldi)
+
+- `scripts/eski-muzlat.mjs` — eski hisoblarni ban qiladi
+  (`banned_until = 2126`), sessiyalarni bekor qiladi
+  (`refresh_tokens.revoked = true`). Faqat `supabase db query --linked`
+  — service kalit ham, Supabase paneli ham kerak emas. `--qaytar`
+  bilan ochiladi. Hech narsa o'chirilmaydi.
+- `scripts/login-kochir.mjs` — login eskidan, parol hammaga yangi
+  (rahbar qarori). Bitta tranzaksiya, oxirida `auth.kirish()` bilan
+  har hisob tekshiriladi — bittasi kirmasa ROLLBACK. Parollar
+  `.tmp/loginlar-<sana>.json` da bir marta yaratiladi.
+- `scripts/sql/auth-parol.sql` — serverda bor-u repoda yo'q bo'lgan
+  `auth.parol_almashtir` (24.08 da qo'lda yaratilgan edi; server
+  noldan ko'tarilsa parol berish jimgina ishlamasdi).
+- **Tuzoq:** Supabase CLI har so'rovda vaqtinchalik rol yaratadi. Ikki
+  CLI skript parallel yurganda (`solishtir.mjs` + `login-kochir.mjs`)
+  `failed to connect as temp role` chiqdi. Endi 3 urinish bor, lekin
+  qoida — CLI skriptlar KETMA-KET yurgiziladi.
+
+### 16.4. Xarajatlar filtri — bir nechta kategoriya
+
+`components/ui/MultiSelect.jsx`: `null` = "Barchasi", aks holda kalitlar
+massivi (`ExpenseModal` dagi `!list || list.includes(k)` qoidasi). Jami
+qatori o'zgarmadi — "Rahbarga o'tkazma" ajratmasi `source` ga
+bog'langan. Davr almashib tanlangan kategoriya yo'qolsa filtr o'zi
+tozalanadi (eski `<select>` da jadval jimgina bo'sh qolardi).
+
+**Tuzoq:** `// eslint-disable-line react-hooks/exhaustive-deps`
+yozilgan edi — `npm run nomlar` konfiguratsiyasida bu qoida YO'Q va
+lint "Definition for rule not found" bilan yiqildi. Bog'lamga `fCat`
+qo'shib hal qilindi (effekt idempotent, halqa bo'lmaydi).
+
+### 16.5. Ertalabki ijro (rahbar "boshla" deganda)
+
+Tartib: `eski-muzlat --bajar` → VPS zaxira → `solishtir` → `kochirish
+--only=…` → `login-kochir --bajar` → `tekshir:server` + brauzer →
+XODIMGA.md tarqatish. Natijasi shu bo'limga qo'shiladi.
