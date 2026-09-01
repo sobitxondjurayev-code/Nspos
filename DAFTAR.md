@@ -2105,8 +2105,41 @@ yozilgan edi — `npm run nomlar` konfiguratsiyasida bu qoida YO'Q va
 lint "Definition for rule not found" bilan yiqildi. Bog'lamga `fCat`
 qo'shib hal qilindi (effekt idempotent, halqa bo'lmaydi).
 
-### 16.5. Ertalabki ijro (rahbar "boshla" deganda)
+### 16.5. Ijro — 02.09, 02:40–03:15 (rahbar "hozir qilamiz" dedi)
 
-Tartib: `eski-muzlat --bajar` → VPS zaxira → `solishtir` → `kochirish
---only=…` → `login-kochir --bajar` → `tekshir:server` + brauzer →
-XODIMGA.md tarqatish. Natijasi shu bo'limga qo'shiladi.
+| Qadam | Natija |
+|---|---|
+| Muzlatish | 16 hisob `banned_until = 2126`, 44 sessiya bekor; muzlatishgacha oxirgi yozuv 01.09 21:05, keyin kirish/yozuv YO'Q |
+| Zaxira | VPS `nspos-2026-09-02.dump` (10.5 MB); eski `auth.users`/`profiles`/`kpi_assign` → `.tmp/eski-zaxira/` |
+| Solishtiruv (muzlatilgan) | 468 qator faqat eskida, 86 422 $ — 02:20 dagi bilan bir xil |
+| Ko'chirish | `kpi_day` 703, `kpi_plan` 26, `expenses` 549→550, `kassa_ops` 190, `payouts` 17, `usd_rates` 27, `datasets` 9, `dataset_chunks` 25. Qayta solishtiruv: **faqat eskida 0** |
+| Kurs | `companies.usd_rate` 11 880 → **11 850** (`usd_rates` dagi oxirgisi) |
+| `kpi_assign` | "o'zgargan" 1 qator — qiymat bir xil (`b2c_store`), faqat `updated_at` farq qilgan; tegilmadi |
+| Login/parol | 17 hisob bitta tranzaksiyada: 11 login eskidagi haqiqiy raqamga, hammaga yangi parol; `auth.kirish()` 17/17 |
+| Haqiqiy forma | usta hisobi yangi parol bilan `/login` → `/dashboard`, cookie qo'yildi |
+| `tekshir:server` | manba `Postgres: /nspos`; `stale-*` to'rttasi ham YASHIL; bitta ✗ — hamyon minusda (Optim naqd −3 509 $, Namangan naqd −5 257 $, servis −3 803 $) — bu eski saytda ham shunday edi, ma'lumot ko'chishi emas, kassa yuritish masalasi |
+| Billz | 03:00 yurishi `OK`, `error` bo'sh; oxirgi `debts full` 01.09 08:30 |
+| Brauzer | `brauzer-kirgan.mjs`: 2 + 22 sahifa toza (ko'chirilgan ma'lumot bilan) |
+
+**Birinchi ko'chirish yiqilgan edi** — `updated_at` (16.3 ga qo'shimcha):
+VPS'da `updated_at not null` + tetik, eski bazada ustun yo'q.
+`jsonb_populate_record` uni NULL qildi, `replica` rejimida tetik
+o'chiq — 6 jadval "null value in column updated_at" bilan qoldi,
+`kpi_day`/`kpi_plan` esa o'tdi (ularda ustun eskida ham bor). Ya'ni
+xato QISMAN ko'rindi: 2 ta ✓ va 6 ta ✗ — "yarim ko'chgan" holat.
+`kochirish.mjs` endi nishonda ustun bo'lsa `updated_at` →
+`created_at` → `now()` qo'yadi. Oxiridagi sanoq solishtiruvi shu
+holatni tutdi — u bo'lmasa "6 ta jadval XATO" satri jurnalda qolib,
+skript baribir "ketma-ketliklar tekislandi" deb davom etardi.
+
+> **Qoida:** ko'chirishda "qator soni teng" tekshiruvi SKRIPTNING
+> O'ZIDA bo'lsin va u yiqilganda `exit 1` bersin (bor edi — shuning
+> uchun tutildi). Yangi `not null` ustun qo'shilganda eski manbadan
+> ko'chirish yo'li ham qayta sinalsin.
+
+**Eski saytda o'chirilgan, VPS'da qolgan yozuv.** Menejer 31.08 da eski
+saytda 20.08 dagi 25.30 $ lik "ABDUVAHID" oylik xarajatini o'chirgan;
+VPS'da (22.08 nusxasi) u turibdi — `expenses` 550 ≠ 549 shundan. Qoida
+bo'yicha o'chirilmadi, rahbarga aytildi — qaror uniki. Qolgan 19 ta
+o'chirish 22.08 dan keyin yaratilgan qatorlar (VPS'da hech qachon
+bo'lmagan) yoki 05–15.08 dagi sinov yozuvlari.
