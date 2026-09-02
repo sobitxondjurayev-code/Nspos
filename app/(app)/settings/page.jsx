@@ -619,6 +619,7 @@ function BillzCard() {
   const LABEL = {
     categories: t("Kategoriyalar"), suppliers: t("Ta'minotchilar"),
     products: t("Tovar va qoldiq"), customers: t("Mijozlar"), orders: t("Sotuvlar"),
+    debts: t("Qarzlar"), moslik: t("Billz bilan moslik"),
   };
 
   return (

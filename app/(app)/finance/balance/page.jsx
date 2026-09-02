@@ -1,5 +1,6 @@
 "use client";
 import { t, tt } from "@/lib/i18n";
+import BillzMuhr from "@/components/BillzMuhr";
 import { useMemo, useState } from "react";
 import {
   Scale, Landmark, Boxes, Percent, TriangleAlert, ArrowRight,
@@ -23,6 +24,7 @@ export default function FinanceBalance() {
   return (
     <div>
       <h1 className="text-4xl font-extrabold tracking-tight mb-2">{t("Balans")}</h1>
+      <BillzMuhr className="mb-4" />
       <p className="text-muted font-semibold mb-7">
         {tt("{d} holatiga · {start} dan boshlab yig'ilgan", {
           d: fmtDate(asOf), start: fmtDate(ledgerStartDate()),

@@ -45,7 +45,10 @@ echo "── 3/5 Qurilmoqda (npm ci + next build)"
 ssh -i "$KALIT" "$SERVER" "cd $YOL && npm ci --silent && npm run build" 2>&1 | tail -25
 
 echo "── 4/5 Qayta ishga tushirilmoqda"
-ssh -i "$KALIT" "$SERVER" "systemctl restart nspos && sleep 3 && systemctl is-active nspos"
+# `nspos-api` ham: u lib/ ni o'z jarayonida yuklaydi, qayta ishga
+# tushmasa eski formulalar bilan javob beraveradi (03.09 da
+# `jami_qarzdorlik` maydoni shu sabab ko'rinmadi).
+ssh -i "$KALIT" "$SERVER" "systemctl restart nspos nspos-api && sleep 3 && systemctl is-active nspos nspos-api"
 
 echo "── 5/5 Sahifalar tekshirilmoqda"
 # `systemctl is-active` qayta-qayta o'chib yonayotgan xizmatni ham

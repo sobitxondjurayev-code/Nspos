@@ -1,5 +1,6 @@
 "use client";
 import { t, tt } from "@/lib/i18n";
+import BillzMuhr from "@/components/BillzMuhr";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -66,6 +67,7 @@ export default function Management() {
   return (
     <div>
       <h1 className="text-4xl font-extrabold tracking-tight mb-2">{t("Rahbariyat dashboardi")}</h1>
+      <BillzMuhr className="mb-4" />
       <p className="text-muted font-semibold mb-7">
         {t("Barcha modullardan yig'ilgan asosiy raqamlar va e'tibor talab qiladigan nuqtalar")}
       </p>

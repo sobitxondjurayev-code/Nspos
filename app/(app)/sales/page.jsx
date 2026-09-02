@@ -1,5 +1,6 @@
 "use client";
 import { t, tt } from "@/lib/i18n";
+import BillzMuhr from "@/components/BillzMuhr";
 import { useMemo, useState } from "react";
 import { Search, Barcode, Plus, Minus, Trash2, ShoppingCart, Receipt, User, X, Undo2 } from "lucide-react";
 import { demoStores, demoUser, fmtUSD } from "@/lib/demoData";
@@ -156,6 +157,7 @@ export default function Sales() {
   return (
     <div>
       <h1 className="text-4xl font-extrabold tracking-tight mb-7">{t("Sotuvlar")}</h1>
+      <BillzMuhr entity="orders" className="mb-4" />
 
       {/* Cheklar Billz'dan bir marta eksport qilib olingan va o'zi
           yangilanmaydi (Billz API bermaydi). Shuning uchun bu bo'lim

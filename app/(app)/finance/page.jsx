@@ -9,6 +9,7 @@
 // kirmasdan ham qayerda nima borligini ko'radi va faqat kerakligini
 // ochadi. Kassa operatsiyalari jurnali /finance/operations ga ko'chdi.
 import { t, tt } from "@/lib/i18n";
+import BillzMuhr from "@/components/BillzMuhr";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -186,6 +187,7 @@ export default function FinanceHome() {
   return (
     <div>
       <h1 className="text-4xl font-extrabold tracking-tight mb-2">{t("Moliya")}</h1>
+      <BillzMuhr className="mb-4" />
       <p className="text-muted font-semibold mb-7 max-w-3xl">
         {t("Kompaniyaning bugungi moliyaviy holati. Har bo'lim o'z asosiy raqami bilan turadi — kerakligini bosib ochasiz.")}
       </p>

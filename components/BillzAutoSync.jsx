@@ -26,7 +26,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { can } from "@/lib/auth";
 
 // Qancha vaqtdan keyin eskirgan hisoblanadi
-const STALE_MS = 30 * 60 * 1000;      // 30 daqiqa
+const STALE_MS = 5 * 60 * 1000;       // 5 daqiqa — cron oralig'i bilan bir xil
 // Bir vaqtda bitta oyna tortsin. Qulf yon paneldagi qo'lda bosiladigan
 // "Yangilash" tugmasi bilan BIR XIL bo'lishi kerak — aks holda fon ishi
 // va tugma bir vaqtda ikkita sinxronizatsiya boshlab yuborardi.

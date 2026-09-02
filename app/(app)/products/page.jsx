@@ -1,5 +1,6 @@
 "use client";
 import { t, tt } from "@/lib/i18n";
+import BillzMuhr from "@/components/BillzMuhr";
 import { useMemo, useState } from "react";
 import { Plus, Search, Pencil, Trash2, Barcode, Package, Boxes, Wallet, TrendingUp } from "lucide-react";
 import { demoStores, fmtUSD } from "@/lib/demoData";
@@ -106,6 +107,7 @@ export default function Products() {
     <div>
       <div className="flex items-center justify-between mb-7">
         <h1 className="text-4xl font-extrabold tracking-tight">{t("Tovarlar")}</h1>
+        <BillzMuhr entity="products" className="mb-4" />
         <button onClick={() => setModal({ mode: "new" })}
           className="flex items-center gap-2 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold px-5 py-3">
           <Plus size={20} /> {t("Yangi tovar")}

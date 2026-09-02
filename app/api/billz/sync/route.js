@@ -7,7 +7,7 @@
 // o'sha (Cron siri yoki egasi tokeni).
 //
 // Ishga tushishi:
-//   • har 30 daqiqada — server croni (`scripts/server/06-billz-cron.sh`)
+//   • har 5 daqiqada — server croni (`scripts/server/06-billz-cron.sh`)
 //   • ilova ochilganda — oxirgi yangilanish eskirgan bo'lsa, fonda
 //     (`components/BillzAutoSync.jsx`)
 //   • qo'lda, har xodim — yon paneldagi "Yangilash" tugmasi
@@ -16,11 +16,11 @@
 //     (u yerda tashxis va to'liq tortish ham bor)
 //   • bir martalik to'liq — `npm run billz -- --full` (skript, bu yo'l EMAS)
 //
-// CRON ORALIG'I: har 30 daqiqada. Ilgari kuniga bir marta edi —
-// Vercel'ning Hobby tarifi undan tez ruxsat bermasdi ("Hobby accounts
-// are limited to daily cron jobs"). O'z serverimizda bunday cheklov
-// yo'q: bitta to'liq sinxronizatsiya ~68 soniya, Billz esa sekundiga
-// 2 so'rov beradi — 30 daqiqa bemalol yetadi.
+// CRON ORALIG'I: har 5 daqiqada (2026-09-03 dan; ilgari 30 daqiqa,
+// undan oldin Vercel Hobby tufayli kuniga bir). Bir inkremental
+// aylanish 8–9 s va ~25 so'rov (o'lchandi 02.09), Billz sekundiga
+// 2 so'rov beradi — 5 daqiqa bemalol yetadi. "Real vaqt" ta'rifi:
+// 5 daqiqalik ko'zgu + har ekranda muhr + farq detektori (DAFTAR 17).
 //
 // DIQQAT — vaqt cheklovi: chaqiruvchi cron `--max-time 290` bilan
 // keladi (`06-billz-cron.sh`), Billz esa sekundiga 2 so'rov beradi.
@@ -52,16 +52,21 @@ const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // shunda jurnal va javob yozilib ulguradi.
 const BUDGET_MS = (maxDuration - 20) * 1000;
 
-// Oxirgi to'liq qarz tortishdan 20 soat o'tganmi
-async function debtsModeFor(db) {
+// Oxirgi TO'LIQ tortishdan `soat` o'tganmi (bosqich bo'yicha)
+async function toliqEskirganmi(db, entity, soat) {
   const { data } = await db.from("billz_sync_log")
     .select("finished_at")
-    .eq("entity", "debts").eq("mode", "full")
+    .eq("entity", entity).eq("mode", "full")
     .not("finished_at", "is", null)
     .order("started_at", { ascending: false }).limit(1);
   const last = data?.[0]?.finished_at ? new Date(data[0].finished_at).getTime() : 0;
-  return Date.now() - last > 20 * 3600_000 ? "full" : "light";
+  return Date.now() - last > soat * 3600_000;
 }
+
+// Qarz: to'liq ro'yxat har 2 soatda (ilgari 20 soat — yopilgan va
+// qisman to'langan qarz shuncha kechikardi, DAFTAR 17). Oraliqda
+// yengil rejim, u ham endi yopilishni ko'radi (`syncDebts` 4-oqim).
+const debtsModeFor = async (db) => (await toliqEskirganmi(db, "debts", 2) ? "full" : "light");
 
 // —— Kim chaqirdi ————————————————————————————————
 // Uch xil chaqiruvchi bor va ularning huquqi BIR XIL EMAS:
@@ -163,6 +168,18 @@ export async function GET(req) {
     // (faqat yopilmagan 273 qarz + yangilari). Kunlik cron shu qoida
     // bilan o'zi to'liq rejimga tushadi — alohida sozlash kerak emas.
     const debtsMode = par("debts") ?? (await debtsModeFor(db));
+
+    // Katalog + qoldiq TO'LIQ — kuniga bir marta, faqat cron. Inkremental
+    // yo'l `last_updated_date` ga tayanadi; Billz'da o'zgarishsiz qolgan
+    // (lekin ko'zguda buzilgan) qator uni hech qachon qaytarmaydi.
+    // 20.08 dan 03.09 gacha birorta to'liq tortish bo'lmagan edi.
+    if (kim.tur === "cron" && !par("only") && await toliqEskirganmi(db, "products", 24)) {
+      lines.push("katalog to'liq (kunlik)…");
+      await runSync(db, {
+        only: ["categories", "suppliers", "products"], full: true,
+        deadline: startedAt + BUDGET_MS / 3, log: (m) => lines.push(m),
+      });
+    }
 
     const out = await runSync(db, {
       debtsMode,

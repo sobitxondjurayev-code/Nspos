@@ -1,4 +1,5 @@
 "use client";
+import BillzMuhr from "@/components/BillzMuhr";
 import { t, tt } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -107,6 +108,7 @@ export default function AnalysisPage() {
         <div className="mb-7">
           <h1 className="text-4xl font-extrabold tracking-tight mb-2">{t(analysis.label)}</h1>
           <p className="text-muted font-semibold">{t(analysis.hint)}</p>
+          <BillzMuhr className="mt-3" />
         </div>
         {analysis.kind === "productProfit" ? <ProductProfitReport />
           : analysis.kind === "stockHealth" ? <StockHealthReport />

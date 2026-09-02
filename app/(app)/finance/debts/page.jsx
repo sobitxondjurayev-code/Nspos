@@ -1,5 +1,6 @@
 "use client";
 import { t, tt } from "@/lib/i18n";
+import BillzMuhr from "@/components/BillzMuhr";
 import { useMemo, useState } from "react";
 import { Search, Wallet } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
@@ -51,6 +52,7 @@ export default function FinanceDebts() {
   return (
     <div>
       <h1 className="text-4xl font-extrabold tracking-tight mb-7">{t("Qarz to'lovlari")}</h1>
+      <BillzMuhr entity="debts" className="mb-4" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
         <StatCard icon={Wallet} label="Jami qarzdorlik" tone="red" value={fmtUSD(jami.jami)}
