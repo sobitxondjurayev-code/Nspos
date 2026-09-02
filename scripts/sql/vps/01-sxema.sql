@@ -456,7 +456,7 @@ create table if not exists "datasets" (
 create table if not exists "debt_payments" (
   "id" uuid default uuid_generate_v4() not null,
   "debt_id" uuid not null,
-  "amount" numeric(12,2) not null,
+  "amount" numeric(14,4) not null,
   "paid_at" timestamp with time zone default now() not null,
   "method" text default 'cash'::text not null,
   "kind" text default 'payment'::text not null,
@@ -470,13 +470,13 @@ create table if not exists "debts" (
   "customer_id" uuid not null,
   "sale_id" uuid,
   "store_id" uuid,
-  "amount" numeric(12,2) not null,
+  "amount" numeric(14,4) not null,
   "issued_at" timestamp with time zone default now() not null,
   "due_date" date,
   "closed_at" timestamp with time zone,
   "billz_id" uuid,
   "status" text,
-  "paid_amount" numeric(12,2) default 0 not null,
+  "paid_amount" numeric(14,4) default 0 not null,
   "comment" text,
   "source" text default 'nspos'::text not null
 );
