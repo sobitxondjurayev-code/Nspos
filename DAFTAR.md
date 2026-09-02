@@ -2120,6 +2120,7 @@ qo'shib hal qilindi (effekt idempotent, halqa bo'lmaydi).
 | `tekshir:server` | manba `Postgres: /nspos`; `stale-*` to'rttasi ham YASHIL; bitta ✗ — hamyon minusda (Optim naqd −3 509 $, Namangan naqd −5 257 $, servis −3 803 $) — bu eski saytda ham shunday edi, ma'lumot ko'chishi emas, kassa yuritish masalasi |
 | Billz | 03:00 yurishi `OK`, `error` bo'sh; oxirgi `debts full` 01.09 08:30 |
 | Brauzer | `brauzer-kirgan.mjs`: 2 + 22 sahifa toza (ko'chirilgan ma'lumot bilan) |
+| Tarqatish | rahbar qarori (03:30): parolni biz beramiz, xodim keyin o'zi o'zgartiradi — `Sozlamalar → Parolni yangilash` hamma rolga ochiq (`PasswordCard`, `settings/page.jsx:779`, `/api/parol` faqat o'z hisobini o'zgartiradi). `scripts/login-xabar.mjs` → `.tmp/xabarlar-<sana>.md`: 17 ta alohida Telegram xabari, login/parol 17/17 mos; ikkinchi usta hisobi bilan ham haqiqiy formadan kirildi |
 
 **Birinchi ko'chirish yiqilgan edi** — `updated_at` (16.3 ga qo'shimcha):
 VPS'da `updated_at not null` + tetik, eski bazada ustun yo'q.

@@ -25,24 +25,36 @@ va u yerga yozilgan narsa hech qayerga bormaydi.
 - **"Login yoki parol noto'g'ri"** — raqamni `998` bilan, bo'shliqsiz
   yozing; parolni rahbar bergan qog'ozdan aynan ko'chiring (kichik harf,
   chiziqcha, raqamlar).
+- **Parolni o'zgartirmoqchiman** — o'zingiz qilasiz: Sozlamalar →
+  "Parolni yangilash" (kamida 6 belgi). Rahbar kerak emas.
 - **Parolni unutdim** — rahbarga ayting: Sozlamalar → Ustalar → yangi parol.
 - **Eski saytga kirib qoldim** — u yopiq, kirmaydi. Manzilni tekshiring:
   `tizim.enes.uz`.
 
 ---
 
-## Telegram'ga yuboriladigan xabar (rahbar nomidan)
+## Telegram'ga yuboriladigan xabar
 
-> Assalomu alaykum. Bugundan boshlab dastur **faqat https://tizim.enes.uz**
-> manzilida ishlaydi. Eski manzil (nspos.vercel.app) yopildi — unga kirib
-> bo'lmaydi.
+Har xodimga ALOHIDA xabar (login va parol bilan) tayyor faylda turadi:
+
+```
+node scripts/login-xabar.mjs --sana=2026-09-02   →   .tmp/xabarlar-2026-09-02.md
+```
+
+Fayldagi har blokni (`--- Ism ---` dan keyingi matn) belgilab, o'sha odamga
+Telegram'da tashlang. Fayl repoga tushmaydi. Xabar matni:
+
+> Assalomu alaykum, <Ism>!
+> Bugundan dastur yangi manzilda: https://tizim.enes.uz
+> Eski manzil (nspos.vercel.app) yopildi — unga kirib bo'lmaydi.
 >
-> Login — o'z telefon raqamingiz (faqat raqamlar, masalan 998901234567).
-> Parol — YANGI, hozir har biringizga alohida yuboraman. Eski parol ishlamaydi.
+> Login: <telefon raqami, faqat raqamlar>
+> Parol: <yangi parol>
 >
-> Iltimos: (1) yangi manzilni zakladkaga qo'ying, eskisini o'chiring;
-> (2) Chrome'da eski sayt uchun saqlangan parolni o'chiring
-> (Sozlamalar → Parollar → nspos.vercel.app); (3) kirib, bugungi
-> kassa/xarajatni kiriting.
+> Kirgach parolni o'zingiz o'zgartirib oling:
+> Sozlamalar → "Parolni yangilash" (kamida 6 belgi).
 >
-> Kira olmasangiz — menga yozing.
+> Iltimos: 1) yangi manzilni zakladkaga qo'ying, eskisini o'chiring;
+> 2) Chrome eski parolni eslab qolgan bo'lsa o'chiring
+> (Sozlamalar → Parollar → nspos.vercel.app); 3) kirib, bugungi kassa
+> yoki xarajatni kiriting. Kira olmasangiz — menga yozing.
