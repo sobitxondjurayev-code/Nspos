@@ -2144,3 +2144,151 @@ VPS'da (22.08 nusxasi) u turibdi — `expenses` 550 ≠ 549 shundan. Qoida
 bo'yicha o'chirilmadi, rahbarga aytildi — qaror uniki. Qolgan 19 ta
 o'chirish 22.08 dan keyin yaratilgan qatorlar (VPS'da hech qachon
 bo'lmagan) yoki 05–15.08 dagi sinov yozuvlari.
+
+
+---
+
+## 17. 2026-09-02/03 — "Billz bilan solishtir": ko'zgu, qarz va Qoldiq salomatligi
+
+Savol uch bosqichda keldi: "ma'lumot aniqmi, Billz bilan solishtir" →
+"aynan Qoldiq salomatligi nega farq qiladi" → "auditor sifatida:
+nima qo'shiladi, nima ayriladi, Billz'da ham shundaymi; qarz ikki xil".
+Oxirida rahbar tamoyil aytdi: **tizim Billz'da bor narsani Billz'dan
+olib, real vaqtda, qo'shib-ayirmasdan ko'rsatsin; faqat qo'lda
+kiritiladiganlar tizimning o'zida.**
+
+### 17.1. O'lchov (02.09, 22:50–23:40, VPS + Billz API, faqat o'qish)
+
+| Nima | Billz | NSPOS | Xulosa |
+|---|---:|---:|---|
+| Qoldiq (656 tovar, id bo'yicha) | — | — | **656/656 mos, farq 0** |
+| Oxirgi 30 kun cheklari (id bo'yicha) | 1 312 | 1 312 | mos |
+| Mijoz soni | 5 009 | 5 009 | mos |
+| Jami qarz (ochiq) | **47 634.42** (387) | ekranda **30 639** (249) | farq 16 995 $ |
+
+Qoldiq to'g'ri edi — "Qoldiq salomatligi" farqi FORMULADA (17.3).
+Qarz farqi esa tiyinigacha tushuntirildi:
+
+```
+30 639.06  ekran (source='billz')
++20 180.48 150 qarz `source='nspos'` — 20.08 dan keyin kelganlar
+− 1 621.03 12 qarz Billz'da bugun yopilgan, NSPOS ochiq
+− 1 564.16  4 qarz qisman to'langan, NSPOS ko'rmagan
+= 47 634.35 ≈ Billz 47 634.42 (7 tiyin — yaxlitlash, 17.4)
+```
+
+### 17.2. Qarz — uch ko'r nuqta
+
+1. **Yorliq.** `billzMap.debtRow` `source` ni yozmasdi, baza default
+   `'nspos'` qo'yardi; `listDebts()` faqat `'billz'` ni sanardi.
+   Backfill (`billz-debts.sql:57`) bir marta 22.08 da yurgan. 14-bo'lim
+   oxirida "alohida ko'rilsin" deb qolgan edi — ko'rilmagan.
+   > **Qoida:** sinxron yozgan har qator yorlig'ini O'ZI yozsin;
+   > backfill — bir martalik, kelajakni qamramaydi. Audit `qarz-manba`.
+2. **Filtr to'liq ro'yxat emas.** Billz `status=unpaid` 289 qarz beradi
+   (unpaid 12 + overdue-to'lovsiz 277); haqiqiy ochiq 387 — qisman
+   to'langan 96 overdue va 1 partial_paid tashqarida. Yopilgan qarz esa
+   hech qaysi oqimda kelmaydi. Yengil sinxron shuni olardi, to'liq esa
+   20 soatda bir. Sinov: `partial_paid`, `fully_paid` filtr sifatida
+   400 ("status is not valid"); `/v1/debt/{id}` 403; `customer_id`
+   filtri ISHLAYDI.
+   > **Qoida:** ochiq to'plam bir necha oqimdan yig'iladi (unpaid +
+   > overdue + kursordan keyingilar), bazada ochiq-u oqimda kelmagani
+   > mijoz bo'yicha so'raladi (4-oqim). Sinov (`--dry`): 387 /
+   > 47 634.42 — Billz ekrani bilan bir xil, 12 yopilgan 6 mijoz
+   > oqimidan topildi, 24 s.
+3. **Uch ta'rif.** `balanceData.receivables()` `closedAt` ni
+   tekshirmasdan `> 0.001`; `statsFrom` `> 0`; `arAging` `> 0.009` —
+   ular bir-biriga tekshirilmasdi. Qarzdorlar/Mijozlar sahifasi mijoz
+   bo'yicha aylanib, mijozsiz qarzni tashlardi. Hisobotlar → Qarzdorlar
+   olib tashlangan Excel'dan o'qib BO'SH turardi — rahbar "jami
+   qarzdorlik ko'rsatilmayapti" degani shu.
+   > **Qoida:** `debtsData.ochiqQoldiq()` — yagona ta'rif;
+   > `jamiQarz()` — Billz "Jami qarz" bilan bir xil bo'linish
+   > (overdue / unpaid / partial_paid) va sinxron vaqti. Balans,
+   > Qarzdorlar, Hisobotlar, `/api/v1/qarz`, bot — shundan.
+   > `moslik`: `balans-ar`, `qarz-jami`, `qarz-chek`.
+
+Bitta qarz formulasi (summa − to'lovlar, "Системная оплата" ham
+ayriladi) Billz bilan mos edi: 30 639.06 ↔ 30 639.08.
+
+### 17.3. Qoldiq salomatligi — formula Billz'da yo'q narsani aytardi
+
+43 "tugagan, lekin sotilyapti" qatori: 18 tasi oxirgi 30 kunda
+sotilgan, 15 tasi 31–60 kun oldin, 10 tasi 60–90 kun oldin. 25 tasi
+90 kunlik ZAXIRA oyna orqali "sotilyapti" bo'lib chiqqan (iyun–iyulda
+tugagan, qayta kelmagan) va 178 $/kun "yo'qotish"ning 103 $ ini bergan.
+20 tasida tannarx 0 (Billz qoldig'i 0 tovarga tannarx bermaydi, bular
+birinchi sinxrondayoq tugagan edi) — "yo'qotish" = narxning to'lig'i
+(98.77 $/kun). Audit `billz-cost-zero` faqat qoldig'i borni ko'rardi.
+
+> **Qoida:** zaxira oyna yoki noma'lum tannarx bilan chiqqan raqam
+> ALOHIDA belgilanadi (`oyna`, `sokin`, `tannarx: null`, "Oxirgi
+> sotuv" ustuni) va pul yig'indisiga kirmaydi; 0 yozilmaydi.
+> `reorderSummary()` — ekran, API, bot bitta yig'indi. Natija:
+> 17 tugagan (+26 sokin), yo'qotish 69.64 $/kun.
+> **Muddat rahbarniki:** `companies.reorder_lead_days` (14) /
+> `reorder_cover_days` (30), sahifada ikki maydon (`can("staff.manage")`).
+
+### 17.4. Tiyin — Billz 4 xona bilan yuritadi
+
+Farq detektori birinchi yurishda "ochiq qarz summasi: Billz 47 634.42,
+bu yerda 47 634.35" dedi. Billz qarz summasini kasr tiyin bilan
+yuritadi (188.035; ekranda 47 634.4218), ustun `numeric(12,2)` edi.
+`debts.amount`/`paid_amount`, `debt_payments.amount` → `numeric(14,4)`
+(views qayta yaratildi), `sameValue` chegarasi 0.005 → 0.00005,
+`remainingOf` 4 xona. Keyin `arAging.open` mijoz qatorlaridan (har
+biri yaxlitlangan) yig'ilgani uchun 3 tiyin kam chiqdi — xom
+yig'indidan olindi. Natija: baza 47 634.4218 = Billz.
+
+> **Qoida:** har qatorni alohida yaxlitlab qo'shish — yig'indini
+> buzadi; yaxlitlash OXIRIDA, bir marta.
+
+### 17.5. "Real vaqt" nima va nega jonli so'rov emas
+
+Billz sekundiga 2 so'rov, 11 079 qarz = 111 sahifa (60–160 s),
+shubhali IP'ni bloklaydi. Sahifa ochilganda Billz'ga borish — 1–2
+daqiqa kutish. O'lchandi: bir inkremental aylanish 8–9 s, ~25 so'rov.
+Shuning uchun:
+
+- cron `*/30` → `*/5`; `BillzAutoSync` 30 → 5 daqiqa; qarz to'liq
+  20 soat → 2 soat; katalog to'liq kuniga bir (20.08 dan beri
+  bo'lmagan edi).
+- **Farq detektori** `billzSync.moslikTekshir()` — har yurish oxirida:
+  Billz `count` (tovar, mijoz), ochiq qarz soni va summasi (oqimlardan),
+  7 kunlik cheklar id bo'yicha. `billz_sync_log` `entity='moslik'`,
+  cron jurnalida `FARQ(n)`, audit `billz-farq` (error, darvozani
+  yopadi). Chek sanog'i emas — id: Billz `count` UTC kun chegarasi
+  bilan 1 312 ↔ 1 271 soxta farq bergan edi.
+- **Muhr** `components/BillzMuhr.jsx` — 8 sahifada "Billz: 23:30 ·
+  mos ✓"; 15 daqiqa sariq, 60 daqiqa yoki farq qizil; jurnal bo'sh
+  (huquq yo'q) bo'lsa hech narsa — soxta yashil yo'q.
+- `npm run billz:solishtir` — id bo'yicha to'liq solishtiruv (tovar,
+  qarz, chek), faqat o'qiydi, chiqarishdan oldin.
+
+### 17.6. Olib tashlanganlar va qolganlar
+
+Olib tashlandi: `lib/debtsUpload.js`, `lib/customersUpload.js`,
+`client_debts` yuklama yo'llari (5 sahifa), `managementData.
+billzInRange` Excel zaxirasi (tannarx endi qator → katalog).
+Bazada hech narsa o'chirilmadi: 659 excel qarz qatori `source='excel'`
+bilan turibdi va chetlanadi.
+
+Qoldi (alohida qaror): `pnlData.salesPnl` / `serviceIncome` Excel
+zaxirasi (14.6 qarori bilan ataylab); KPI "Nasiya" ustuni nomi
+(Savdo − Kirim, qarz emas); "Savdo (sotilgan)" / "Kirim (tushgan
+pul)" yorliqlari — rahbar tasdiqlasa. Auditda: karta / mijoz
+balansidan / noma'lum to'lov kassaga kirmaydi — hozir 0.00, audit
+`kirim-hamyonsiz` birinchi tiyinda aytadi.
+
+### 17.7. Ijro — 03.09, 00:30–01:40
+
+| Qadam | Natija |
+|---|---|
+| `debt-source-tuzat.sql` | 235 qator `'billz'`, o'chirilmadi |
+| Chiqarish 1 (qarz) | API `jami_qarzdorlik` 50 819.54 (399) — `nspos-api` qayta ishga tushirilmagach eski javob; `chiqar.sh` tuzatildi |
+| Chiqarish 2 (ko'zgu) | cron 5 daqiqa; to'liq qarz 78 s; detektor: tovar 656=656, mijoz 5 009=5 009, chek 355/355, qarz 387=387, summa 7 tiyin farq |
+| `debt-4-xona.sql` + chiqarish 3 | baza **47 634.4218** = Billz; API 47 634.42; `farqSoni:0` |
+| Chiqarish 4 (qoldiq) | tugagan 17 (+26), yo'qotish 69.64 $/kun, muddat bazadan |
+| `tekshir` (server, ishchi nusxa) | yangi 6 tekshiruv ✓; bitta ✗ — hamyon minusda (16.5 dagi holat, kassa masalasi) |
+| Billz 500 | 01:07 da `/v1/debt` va `/v2/products` bir marta "server error" — keyingi yurishda o'tdi; jurnalga tushdi |

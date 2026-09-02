@@ -71,6 +71,12 @@ quyidagi fidbek qoidalarini o'qing va so'ralmasdan qo'llang.
 - [2026-09-02] Bir nechta qiymat tanlanadigan filtr uchun `components/ui/MultiSelect.jsx` ishlatilsin: `null` = hammasi, aks holda kalitlar massivi. Popover `left-0` ga yopishadi (375px da `right-0` chiqib ketardi), `useOyna` ishlatilmaydi (fon skrollini qulflaydi). Tanlangan qiymat ro'yxatdan yo'qolsa filtr o'zi tozalansin — bo'sh jadval jimgina qolmasin.
 - [2026-09-02] `npm run nomlar` konfiguratsiyasida yo'q qoida uchun `eslint-disable` yozilmasin (`react-hooks/exhaustive-deps` — "Definition for rule not found" bilan lint yiqiladi). Bog'lamni to'liq yozib hal qilinadi.
 - [2026-09-02] Supabase CLI (`supabase db query --linked`) skriptlari PARALLEL yurgizilmasin — CLI har so'rovda vaqtinchalik rol yaratadi va ikkinchisi "failed to connect as temp role" bilan yiqiladi. `eski-muzlat.mjs`, `login-kochir.mjs`, `solishtir.mjs`, `kochirish.mjs` — ketma-ket.
+- [2026-09-03] **Billz — yagona manba.** Billz'da bor raqam (tovar, qoldiq, chek, mijoz, qarz, qarz to'lovi) NSPOS'da QAYTA HISOBLANMAYDI va ikkinchi ta'rifga ega bo'lmaydi: ko'zgu har 5 daqiqada, har Billz sahifasida `BillzMuhr` ("Billz: HH:MM · mos ✓"), har yurish oxirida farq detektori (`billzSync.moslikTekshir` → `audit` `billz-farq`). Excel/demo zaxira yo'llari Billz ma'lumoti uchun YO'Q. Qo'lda kiritiladiganlar (xarajat, kassa, KPI qo'lda maydonlari, oylik, kurs, buyurtma muddati) — NSPOS manbasi. Chiqarishdan oldin `npm run billz:solishtir` (id bo'yicha). DAFTAR 17.
+- [2026-09-03] Sinxron yozgan har qator o'z yorlig'ini (`source`) O'ZI yozsin — bir martalik backfill'ga ishonilmasin. `debts.source` 20.08 dan keyingi 150 qarzda 'nspos' bo'lib qolgan, `listDebts()` esa faqat 'billz' ni sanagan — 20 180 $ ekrandan yo'qolgan, Billz 47 634 $, ekran 30 639 $. Audit: `qarz-manba` (error).
+- [2026-09-03] Tashqi API filtri TO'LIQ RO'YXAT EMAS: Billz `status=unpaid` qisman to'langan `overdue` qarzni bermaydi (289 ↔ 387), `partial_paid`/`fully_paid` filtr sifatida yo'q, `/v1/debt/{id}` 403. Ochiq to'plam bir necha oqimdan yig'iladi, bazada ochiq-u oqimda kelmagani mijoz bo'yicha (`customer_id`) so'raladi. Har yurish Billz `count` bilan solishtiriladi.
+- [2026-09-03] Zaxira oyna (90 kun) yoki noma'lum tannarx bilan chiqqan raqam ALOHIDA belgilanadi (`oyna`, `sokin`, `tannarx: null`) va pul yig'indisiga KIRMAYDI. 0 yozilmaydi — 0 "yo'qotish yo'q" degan yolg'on. Qoldiq salomatligida 43 "tugagan"dan 25 tasi 30 kundan beri sotilmagan, 20 tasi tannarxsiz edi — 178 $/kun "yo'qotish" 70 $ bo'ldi.
+- [2026-09-03] Billz summani kasr tiyin bilan beradi (188.035; "Jami qarz" 47 634.4218) — qarz ustunlari `numeric(14,4)`, `remainingOf` 4 xona, yig'indi OXIRIDA bir marta yaxlitlanadi. Har qatorni alohida yaxlitlash 387 qarzda 7 tiyin, 125 mijozda 3 tiyin farq berdi.
+- [2026-09-03] `chiqar.sh` `nspos-api` ni ham qayta ishga tushiradi — u `lib/` ni o'z jarayonida yuklaydi, aks holda eski formulalar bilan javob beraveradi (`jami_qarzdorlik` maydoni shu sabab ko'rinmagan).
 
 ## Loyiha haqida
 
@@ -99,8 +105,10 @@ uchun: tahlil, KPI va oylik, ustalar reytingi, moliya.
   `companies.usd_rate` da, tarixi `usd_rates` jadvalida
 - Ma'lumot Billz'dan **API orqali** keladi (2026-08-19 dan):
   `npm run billz -- --probe` / `-- --only=products` / `-- --full`,
-  serverda `/api/billz/sync`. Yadro `lib/billzSync.js` — server ham,
-  skript ham AYNAN o'shani chaqiradi.
+  serverda `/api/billz/sync` — cron **har 5 daqiqada** (qarz to'liq
+  2 soatda, katalog to'liq kuniga bir; route o'zi hal qiladi). Yadro
+  `lib/billzSync.js` — server ham, skript ham AYNAN o'shani chaqiradi.
+  Id bo'yicha solishtiruv: `npm run billz:solishtir` (faqat o'qiydi).
 
 ## Billz qoidalari
 <!-- Sabab va tafsilot: DAFTAR.md → "Billz API'ga o'tish (2026-08-19)" -->
@@ -115,6 +123,10 @@ uchun: tahlil, KPI va oylik, ustalar reytingi, moliya.
 - [2026-08-19] Sinxronizatsiya faqat QO'SHADI va YANGILAYDI. Yozuv
   **o'chirilmaydi va birlashtirilmaydi** — dublikat ko'ringanda ham.
   Billz'dagi hamma narsa NSPOS'da ham tursin.
+- [2026-09-03] "Ochiq qarz" = Billz **"Jami qarz"**: to'liq to'lanmagan
+  qarzlar qoldig'i (`debtsData.jamiQarz`, bo'linishi `overdue` /
+  `unpaid` / `partial_paid`). Balans, Qarzdorlar, Hisobotlar, API, bot —
+  hammasi shu funksiyadan; qoldiq = Billz `paid_amount` dan.
 - [2026-08-19] `/v3/order-search` huquq bo'lmasa 403 emas, **bo'sh ro'yxat**
   qaytaradi. Ya'ni "ruxsat yo'q" xatosi "sotuv yo'q" bo'lib ko'rinadi —
   bo'shlik alohida tekshiriladi (`probe()`), jimgina 0 deb qabul qilinmaydi.

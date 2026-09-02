@@ -9,6 +9,7 @@
     "tekshir": "node --import ./scripts/lib/register.mjs --no-warnings scripts/tekshir.mjs",
     "tekshir:server": "bash scripts/server/tekshir-uzoq.sh",
     "billz": "node --import ./scripts/lib/register.mjs --no-warnings scripts/billz-sync.mjs",
+    "billz:solishtir": "node --import ./scripts/lib/register.mjs --no-warnings scripts/billz-solishtir.mjs",
     "nomlar": "eslint --config scripts/eslint-nomlar.mjs lib components app"
   },
   "dependencies": {
