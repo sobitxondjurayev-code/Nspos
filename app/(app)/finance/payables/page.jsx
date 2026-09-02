@@ -13,7 +13,7 @@ import SupplierPayModal from "@/components/SupplierPayModal";
 import StatCard from "@/components/finance/StatCard";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
-import useUploadRows from "@/components/useUploadRows";
+import { useLive } from "@/components/DataProvider";
 
 const fmtDay = (iso) => {
   const d = new Date(iso);
@@ -86,8 +86,8 @@ export default function FinancePayables() {
   const [tick, setTick] = useState(0);
   const bump = () => setTick((v) => v + 1);
 
-  // Debitor qarz Billz yuklamasidan o'qiladi
-  const uploads = useUploadRows(["client_debts"]);
+  // Debitor qarz bazadan (Billz ko'zgusi) — qatorlar kelganda qayta hisob
+  const uploads = useLive();
   const summary = useMemo(() => payablesSummary(), [tick]);
   const schedule = useMemo(() => openInvoices(), [tick]);
   const rows = useMemo(() => supplierRows(), [tick]);

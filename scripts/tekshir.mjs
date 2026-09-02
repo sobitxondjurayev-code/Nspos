@@ -141,6 +141,7 @@ const KINDS = {
   "billz-dokonsiz": "Har chek do'koniga bog'langan",
   "billz-chala": "Billz'dan tortish to'liq tugagan",
   "qarz-nomalum-usul": "Qarz to'lovi usuli tanilgan",
+  "qarz-manba": "Har Billz qarzi 'billz' yorlig'i bilan",
   "b2b-belgilanmagan": "Optom (B2B) do'kon belgilangan",
 };
 

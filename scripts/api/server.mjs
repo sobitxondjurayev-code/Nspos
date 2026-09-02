@@ -137,7 +137,16 @@ const YOLLAR = {
 
   "/api/v1/qarz": (a) => {
     const d = a.tahlil.arAging();
+    // Jami qarzdorlik — Billz "Jami qarz" bilan bir xil ta'rif
+    // (`debtsData.jamiQarz`); ekrandagi kartochka ham shu funksiya.
+    const j = a.qarz.jamiQarz();
     return {
+      jami_qarzdorlik: j.jami,
+      qarz_soni: j.soni,
+      muddati_otgan: j.muddatiOtgan,
+      muddati_kelmagan: j.muddatiKelmagan,
+      qisman_tolangan: j.qismanTolangan,
+      billz_sinxroni: j.billzVaqti,
       ochiq_qarz: d.open,
       qarzdor_soni: d.rows.length,
       yosh_guruhlari: d.buckets.map((x) => ({ guruh: x.label, qarz_soni: x.count, summa: x.open })),
@@ -236,7 +245,7 @@ const YOLLAR = {
       bugun: { tushum: kun.revenue.total, sof_foyda: kun.netProfit },
       shu_oy: { tushum: p.revenue.total, yalpi_foyda: p.grossProfit,
                 sof_foyda: p.netProfit, marja_foiz: p.netMargin },
-      ochiq_qarz: qarz.open,
+      ochiq_qarz: a.qarz.jamiQarz().jami,
       qarz_90_kundan_eski: qarz.buckets.find((b) => b.id === "d90p")?.open ?? 0,
       tugagan_tovar: buyurtma.filter((r) => r.tugagan).length,
       kuniga_yoqotilayotgan_foyda: +buyurtma.reduce((s, r) => s + r.kunlikYoqotish, 0).toFixed(2),

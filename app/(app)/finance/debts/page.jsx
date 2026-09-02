@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import { Search, Wallet } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { listCustomers } from "@/lib/customersData";
-import { customerDebtStats } from "@/lib/debtsData";
+import { debtorRows, jamiQarz } from "@/lib/debtsData";
+import { billzVaqtMatni } from "@/lib/billzLogData";
 import { addOperation } from "@/lib/financeData";
 import DebtPaymentModal from "@/components/DebtPaymentModal";
 import StatCard from "@/components/finance/StatCard";
-import useUploadRows from "@/components/useUploadRows";
+import { useLive } from "@/components/DataProvider";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
 
@@ -16,21 +17,26 @@ export default function FinanceDebts() {
   const [q, setQ] = useState("");
   const [payFor, setPayFor] = useState(null);
   const [tick, setTick] = useState(0);
-  // Qarzlar Billz yuklamasidan o'qiladi — qatorlari shu yerda tortiladi
-  const rows = useUploadRows(["client_debts"]);
+  const live = useLive();
 
+  // QARZ BO'YICHA, mijoz bo'yicha emas. Ilgari `listCustomers()` aylanib
+  // har mijozning qarzi olinardi — mijozi bog'lanmagan qarz jimgina
+  // tushib qolardi va jami Balans bilan mos kelmasdi. `debtorRows()`
+  // bunday qarzlarni "Ro'yxatdan o'tmagan mijozlar" qatoriga yig'adi.
+  const hamma = useMemo(() => debtorRows().filter((r) => r.openAmount > 0), [tick, live]);
   const debtors = useMemo(() => {
     const s = q.trim().toLowerCase();
     const digits = s.replace(/\D/g, "");
-    return listCustomers()
-      .map((c) => ({ customer: c, stats: customerDebtStats(c.id) }))
-      .filter((r) => r.stats.openAmount > 0)
+    return hamma
+      .map((r) => ({ customer: r.customer, stats: r }))
       .filter(({ customer: c }) =>
-        !s || c.name.toLowerCase().includes(s) || (digits && c.phone.replace(/\D/g, "").includes(digits)))
+        !s || c.name.toLowerCase().includes(s) || (digits && String(c.phone ?? "").replace(/\D/g, "").includes(digits)))
       .sort((a, b) => b.stats.oldestOpenDays - a.stats.oldestOpenDays);
-  }, [q, tick, rows]);
+  }, [q, hamma]);
 
-  const totalOpen = +debtors.reduce((a, r) => a + r.stats.openAmount, 0).toFixed(2);
+  // Jami qarzdorlik — Billz "Jami qarz" bilan bir xil ta'rif
+  // (`jamiQarz`): Balans, Hisobotlar va API ham shu funksiyani o'qiydi.
+  const jami = useMemo(() => jamiQarz(), [tick, live]);
   const overdue = debtors.filter((r) => r.stats.oldestOpenDays > 30).length;
 
   function handlePaid({ amount, method, customerId }) {
@@ -47,8 +53,9 @@ export default function FinanceDebts() {
       <h1 className="text-4xl font-extrabold tracking-tight mb-7">{t("Qarz to'lovlari")}</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
-        <StatCard icon={Wallet} label="Umumiy ochiq qarz" tone="red" value={fmtUSD(totalOpen)}
-          hint={tt("{n} ta qarzdor", { n: debtors.length })} />
+        <StatCard icon={Wallet} label="Jami qarzdorlik" tone="red" value={fmtUSD(jami.jami)}
+          hint={tt("{n} ta qarz · {m} ta qarzdor · Billz: {v}",
+            { n: jami.soni, m: hamma.length, v: billzVaqtMatni(jami.billzVaqti) ?? "—" })} />
         <StatCard icon={Wallet} label="30 kundan oshgan" tone="amber" value={tt("{n} ta", { n: overdue })}
           hint={t("Muddati o'tgan qarzdorlar")} />
       </div>
@@ -105,11 +112,11 @@ export default function FinanceDebts() {
           },
           {
             key: "harakat", label: "Harakat", harakat: true, right: true, width: "8rem",
-            cell: (r) => (
+            cell: (r) => (r.customer.id === "unknown" ? null : (
               <Button olcham="kichik" korinish="asosiy" onClick={() => setPayFor(r.customer)}>
                 To'lash
               </Button>
-            ),
+            )),
           },
         ]}
       />

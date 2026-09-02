@@ -39,7 +39,7 @@ export default function Management() {
 
   // Raqamlar Billz yuklamalaridan yig'iladi (tushum, tannarx, kassa
   // harakati, mijoz qarzlari) — qatorlar kelmaguncha hisob bo'sh bo'ladi
-  const rows = useUploadRows(["summary", "cashflow", "efficiency", "client_debts"]);
+  const rows = useUploadRows(["summary", "cashflow", "efficiency"]);
 
   const k = useMemo(() => kpis(range.from, range.to), [range, rows]);
   const board = useMemo(() => storeScoreboard(range.from, range.to), [range, rows]);

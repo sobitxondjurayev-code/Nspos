@@ -112,6 +112,7 @@ export default function AnalysisPage() {
           : analysis.kind === "stockHealth" ? <StockHealthReport />
           : analysis.kind === "rfm" ? <RfmReport />
           : analysis.kind === "arAging" ? <ArAgingReport />
+          : analysis.kind === "debtors" ? <DebtorsReport />
           : null}
       </div>
     );
@@ -183,8 +184,6 @@ export default function AnalysisPage() {
         </div>
       ) : analysis.kind === "abc" ? (
         <AbcReport analysis={analysis} dataset={dataset} key={tick} />
-      ) : analysis.kind === "debtors" ? (
-        <DebtorsReport analysis={analysis} dataset={dataset} key={tick} />
       ) : analysis.kind === "stock" ? (
         <StockReport analysis={analysis} dataset={dataset} key={tick} />
       ) : analysis.kind === "stockValue" ? (
