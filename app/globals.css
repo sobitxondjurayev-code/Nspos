@@ -122,3 +122,15 @@ body, .card, aside, table, input, select {
 .tab-btn { @apply px-6 py-3 text-[0.9375rem] font-semibold text-muted rounded-xl transition-colors hover:text-ink; }
 .tab-btn.active { @apply bg-panel text-ink shadow-card; }
 .inp { @apply w-full rounded-xl border border-line bg-panel px-4 py-3 outline-none focus:border-brand focus:ring-4 focus:ring-brand-soft font-semibold; }
+/* Chrome/Safari avtoto'ldirgan maydonni O'Z rangiga (oq yoki sarg'ish)
+   bo'yaydi va qorong'i rejimda parol maydoni oq panel bo'lib qoladi
+   (2026-09-02, login sahifasi). Fonni tashqaridan o'zgartirib bo'lmaydi —
+   ichki soya bilan qoplanadi, matn rangi esa alohida beriladi. */
+.inp:-webkit-autofill,
+.inp:-webkit-autofill:hover,
+.inp:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px rgb(var(--c-panel)) inset;
+  -webkit-text-fill-color: rgb(var(--c-ink));
+  caret-color: rgb(var(--c-ink));
+  transition: background-color 9999s ease-out 0s;
+}

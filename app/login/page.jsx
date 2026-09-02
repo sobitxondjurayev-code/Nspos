@@ -1,6 +1,7 @@
 "use client";
 import { t } from "@/lib/i18n";
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase, DEMO_MODE } from "@/lib/db";
 import { kirish } from "@/lib/sessiya";
@@ -10,6 +11,7 @@ export default function Login() {
   const router = useRouter();
   const [login, setLogin] = useState("");      // telefon yoki email
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);   // ko'z: parolni ko'rsatish/yashirish
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,9 +52,20 @@ export default function Login() {
           onKeyDown={(e) => e.key === "Enter" && onSubmit()} />
 
         <label className="block text-sm font-bold mb-2">{t("Parol")}</label>
-        <input value={password} onChange={(e) => setPassword(e.target.value)} type="password"
-          placeholder="••••••••" className="inp mb-2"
-          onKeyDown={(e) => e.key === "Enter" && onSubmit()} />
+        {/* Ko'z tugmasi maydon ICHIDA: parolni ko'rib terish uchun.
+            Telefonda xato terish ko'p — "noto'g'ri parol" ning asosiy sababi. */}
+        <div className="relative mb-2">
+          <input value={password} onChange={(e) => setPassword(e.target.value)}
+            type={showPw ? "text" : "password"} autoComplete="current-password"
+            placeholder="••••••••" className="inp pr-12"
+            onKeyDown={(e) => e.key === "Enter" && onSubmit()} />
+          <button type="button" onClick={() => setShowPw((v) => !v)}
+            aria-label={t(showPw ? "Parolni yashirish" : "Parolni ko'rsatish")}
+            title={t(showPw ? "Parolni yashirish" : "Parolni ko'rsatish")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-muted hover:text-ink hover:bg-surface transition-colors">
+            {showPw ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        </div>
 
         {error && <p className="text-danger text-sm font-semibold mt-2">{error}</p>}
         {info && (
