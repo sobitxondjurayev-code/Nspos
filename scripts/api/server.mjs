@@ -182,12 +182,18 @@ const YOLLAR = {
   "/api/v1/qoldiq": (a) => {
     const buyurtma = a.tahlil.reorderList();
     const olik = a.tahlil.deadStock();
+    // Yig'indi — ekrandagi kartochka bilan bitta funksiya (`reorderSummary`)
+    const y = a.tahlil.reorderSummary(buyurtma);
     return {
-      buyurtma_qilish_kerak: buyurtma.length,
-      tugagan_lekin_sotilyapti: buyurtma.filter((r) => r.tugagan).length,
-      kuniga_yoqotilayotgan_foyda: +buyurtma.reduce((s, r) => s + r.kunlikYoqotish, 0).toFixed(2),
+      buyurtma_qilish_kerak: y.buyurtma,
+      tugagan_lekin_sotilyapti: y.tugagan,
+      tugagan_30_kun_sotilmagan: y.sokin,
+      kuniga_yoqotilayotgan_foyda: y.yoqotishKun,
+      tannarxi_nomalum: y.tannarxsiz,
+      muddat_kun: { yetkazish: y.muddat.lead, zaxira: y.muddat.cover },
       buyurtma: buyurtma.slice(0, 50).map((r) => ({
         tovar: r.product.name, qoldiq: r.stock, kuniga_sotiladi: r.avgDaily,
+        tezlik_oynasi_kun: r.oyna, oxirgi_sotuv: r.lastSoldAt,
         necha_kunga_yetadi: r.daysLeft, buyurtma_miqdori: r.buyurtma,
         kunlik_yoqotish: r.kunlikYoqotish,
       })),
@@ -247,8 +253,8 @@ const YOLLAR = {
                 sof_foyda: p.netProfit, marja_foiz: p.netMargin },
       ochiq_qarz: a.qarz.jamiQarz().jami,
       qarz_90_kundan_eski: qarz.buckets.find((b) => b.id === "d90p")?.open ?? 0,
-      tugagan_tovar: buyurtma.filter((r) => r.tugagan).length,
-      kuniga_yoqotilayotgan_foyda: +buyurtma.reduce((s, r) => s + r.kunlikYoqotish, 0).toFixed(2),
+      tugagan_tovar: a.tahlil.reorderSummary(buyurtma).tugagan,
+      kuniga_yoqotilayotgan_foyda: a.tahlil.reorderSummary(buyurtma).yoqotishKun,
       xatolar: xato.map((x) => x.title),
     };
   },

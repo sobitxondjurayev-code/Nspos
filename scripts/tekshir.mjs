@@ -130,7 +130,7 @@ const KINDS = {
   "billz-items-missing": "Har chekda tovar tarkibi bor",
   "billz-unlinked-duplicate": "Chek ikki marta yozilmagan",
   "billz-price-som": "Katalog narxi dollarda",
-  "billz-cost-zero": "Qoldig'i bor tovarning tannarxi bor",
+  "billz-cost-zero": "Qoldig'i bor yoki sotilgan tovarning tannarxi bor",
   "savdo-narx-som": "Chekdagi narx dollarda",
   // Sinxronizatsiya NIMANI TASHLAB KETGANI (2026-08-24 auditi).
   // Uchalasi ham "so'rov muvaffaqiyatli, ma'lumot kam" turidagi

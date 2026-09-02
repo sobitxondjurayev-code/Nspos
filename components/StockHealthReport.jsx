@@ -6,7 +6,11 @@ import { t, tt } from "@/lib/i18n";
 import { pul, son } from "@/lib/format";
 import { useTheme } from "@/components/ThemeProvider";
 import { useLive } from "@/components/DataProvider";
-import { reorderList, deadStock, storeOptions } from "@/lib/analytics";
+import { useAuth } from "@/components/AuthProvider";
+import { can } from "@/lib/auth";
+import { reorderList, reorderSummary, deadStock, storeOptions } from "@/lib/analytics";
+import { getReorderDays, setReorderDays } from "@/lib/companyData";
+import NumberField from "@/components/NumberField";
 import DataTable from "@/components/ui/DataTable";
 import ChartCard from "@/components/ui/ChartCard";
 import { SERIES } from "@/lib/chartColors";
@@ -45,12 +49,20 @@ export default function StockHealthReport() {
   const [storeId, setStoreId] = useState("all");
   const { chart } = useTheme();
   const live = useLive();
+  const { user } = useAuth();
+  // Muddatni faqat rahbar o'zgartiradi; boshqalar qiymatni ko'radi
+  const rahbar = can("staff.manage", user);
+  const [tick, setTick] = useState(0);
 
-  const buyurtma = useMemo(() => reorderList({ storeId }), [storeId, live]);
+  const buyurtma = useMemo(() => reorderList({ storeId }), [storeId, live, tick]);
   const olik = useMemo(() => deadStock({ storeId }), [storeId, live]);
+  // Kartochkalar — API va bot bilan BITTA yig'indi (`reorderSummary`)
+  const yig = useMemo(() => reorderSummary(buyurtma), [buyurtma]);
+  const muddat = yig.muddat;
 
-  const tugagan = buyurtma.filter((r) => r.tugagan);
-  const kunlik = +tugagan.reduce((a, r) => a + r.kunlikYoqotish, 0).toFixed(2);
+  // Muddat `companies` da saqlanadi (`setReorderDays`) — ekran, API va
+  // bot bir xil kun bilan hisoblaydi. Kiritilgan zahoti qayta hisob.
+  const muddatQoy = (patch) => { setReorderDays(patch); setTick((v) => v + 1); };
 
   const grafik = useMemo(
     () => olik.buckets.filter((b) => b.count > 0)
@@ -81,23 +93,47 @@ export default function StockHealthReport() {
       {bolim === "reorder" ? (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            <Kartochka label="Tugab qolgan, lekin sotilyapti" value={son(tugagan.length)}
-              icon={PackageX} rang="text-danger" hint={t("Tovar yo'q — sotuv yo'qotilmoqda")} />
-            <Kartochka label="Kuniga yo'qotilayotgan foyda" value={pul(kunlik)} rang="text-danger"
-              hint={tt("Oyiga taxminan {n}", { n: pul(kunlik * 30) })} />
-            <Kartochka label="Buyurtma ro'yxati" value={son(buyurtma.length)}
-              hint={t("Tugaganlar + 14 kunda tugaydiganlar")} />
+            {/* Faqat oxirgi 30 kunda sotilganlar. 90 kunlik zaxira oyna
+                orqali "sotilyapti" bo'lib chiqqanlar (30 kundan beri
+                sotilmagan) ALOHIDA aytiladi va pulga kirmaydi — 02.09 da
+                43 dan 25 tasi shunday edi (DAFTAR 17). */}
+            <Kartochka label="Tugab qolgan, lekin sotilyapti" value={son(yig.tugagan)}
+              icon={PackageX} rang="text-danger"
+              hint={yig.sokin
+                ? tt("+{n} tasi tugagan, lekin 30 kundan beri sotilmagan", { n: son(yig.sokin) })
+                : t("Tovar yo'q — sotuv yo'qotilmoqda")} />
+            <Kartochka label="Kuniga yo'qotilayotgan foyda" value={pul(yig.yoqotishKun)} rang="text-danger"
+              hint={tt("Oyiga taxminan {n}", { n: pul(yig.yoqotishKun * 30) })
+                + (yig.tannarxsiz ? " · " + tt("{n} ta tovar tannarxsiz — hisobga kirmadi", { n: son(yig.tannarxsiz) }) : "")} />
+            <Kartochka label="Buyurtma ro'yxati" value={son(yig.buyurtma)}
+              hint={tt("Tugaganlar + {n} kunda tugaydiganlar", { n: muddat.lead })} />
           </div>
 
           {/* Formulani YASHIRMAYMIZ — raqamga ishonish uchun uni
-              qanday chiqarilgani ko'rinib turishi kerak. */}
+              qanday chiqarilgani ko'rinib turishi kerak. Muddatni
+              rahbar O'ZI belgilaydi (2026-09-02 qarori): Billz'da
+              yetkazish muddati yozilmaydi, avtomat 14+30 taxmin edi. */}
           <div className="card p-5 mb-6 bg-surface">
             <p className="font-bold mb-1">{t("Buyurtma miqdori qanday hisoblanadi")}</p>
-            <p className="text-sm font-semibold text-muted">
-              {t("kunlik o'rtacha sotuv × (14 kun yetkazish + 30 kun zaxira) − hozirgi qoldiq")}
+            <p className="text-sm font-semibold text-muted mb-3">
+              {tt("kunlik o'rtacha sotuv × ({a} kun yetkazish + {b} kun zaxira) − hozirgi qoldiq", { a: muddat.lead, b: muddat.cover })}
               {". "}
-              {t("Yetkazish muddati Billz'da yozilmaydi, shuning uchun 14 kun deb olingan — bu TAXMIN, aniq raqam emas.")}
+              {t("Kunlik o'rtacha — oxirgi 30 kun; 30 kunda sotuv bo'lmasa 90 kunlik oyna (jadvalda \"Oyna\" ustuni).")}
             </p>
+            {rahbar ? (
+              <div className="grid grid-cols-2 gap-4 max-w-md">
+                <label className="block">
+                  <span className="block text-sm font-bold mb-2">{t("Yetkazish (kun)")}</span>
+                  <NumberField value={muddat.lead} onChange={(v) => muddatQoy({ lead: v })} />
+                </label>
+                <label className="block">
+                  <span className="block text-sm font-bold mb-2">{t("Zaxira (kun)")}</span>
+                  <NumberField value={muddat.cover} onChange={(v) => muddatQoy({ cover: v })} />
+                </label>
+              </div>
+            ) : (
+              <p className="text-sm font-semibold text-muted">{t("Muddatni rahbar belgilaydi.")}</p>
+            )}
           </div>
 
           <DataTable
@@ -108,7 +144,7 @@ export default function StockHealthReport() {
             minWidth="66rem"
             empty={{ icon: ShoppingCart, title: "Buyurtma qilinadigan tovar yo'q",
                      hint: "Hamma tovarning qoldig'i kamida 14 kunga yetadi." }}
-            qatorClass={(r) => (r.tugagan ? "bg-danger/5" : "")}
+            qatorClass={(r) => (r.tugagan && !r.sokin ? "bg-danger/5" : r.sokin ? "bg-warn/5" : "")}
             columns={[
               { key: "name", label: "Tovar", locked: true, width: "20rem",
                 value: (r) => r.product.name,
@@ -124,6 +160,14 @@ export default function StockHealthReport() {
                   : son(r.stock)),
                 total: (rs) => son(rs.reduce((a, r) => a + r.stock, 0)) },
               { key: "avgDaily", label: "Kuniga", right: true, cell: (r) => son(r.avgDaily, 2) },
+              // Tezlik qaysi oynadan — 90 bo'lsa tovar 30 kundan beri sotilmagan
+              { key: "oyna", label: "Oyna", right: true,
+                cell: (r) => (r.oyna === 30
+                  ? <span className="text-muted">{tt("{n} kun", { n: 30 })}</span>
+                  : <span className="font-bold text-warn">{tt("{n} kun", { n: r.oyna })}</span>) },
+              { key: "lastSoldAt", label: "Oxirgi sotuv", right: true,
+                value: (r) => r.lastSoldAt ?? "",
+                cell: (r) => (r.lastSoldAt ?? <span className="text-faint">—</span>) },
               { key: "daysLeft", label: "Yetadi", right: true, value: (r) => r.daysLeft ?? 9999,
                 cell: (r) => (r.tugagan
                   ? <span className="font-bold text-danger">{t("tugagan")}</span>
@@ -133,10 +177,15 @@ export default function StockHealthReport() {
                 cell: (r) => <span className="font-extrabold text-brand">{son(r.buyurtma)}</span>,
                 total: (rs) => son(rs.reduce((a, r) => a + r.buyurtma, 0)) },
               { key: "kunlikYoqotish", label: "Yo'qotish/kun", right: true,
+                value: (r) => r.kunlikYoqotish ?? -1,
+                // `null` — hisoblanmadi (30 kundan beri sotilmagan yoki
+                // tannarx noma'lum); sabab yozib turadi, 0 emas.
                 cell: (r) => (r.kunlikYoqotish > 0
                   ? <span className="font-bold text-danger">{pul(r.kunlikYoqotish)}</span>
-                  : <span className="text-faint">—</span>),
-                total: (rs) => pul(rs.reduce((a, r) => a + r.kunlikYoqotish, 0)) },
+                  : r.kunlikYoqotish == null
+                    ? <span className="text-xs font-semibold text-warn">{t(r.sokin ? "30 kundan beri sotilmagan" : "tannarx yo'q")}</span>
+                    : <span className="text-faint">—</span>),
+                total: (rs) => pul(rs.reduce((a, r) => a + (r.kunlikYoqotish ?? 0), 0)) },
               { key: "stockValue", label: "Qoldiq puli", right: true, cell: (r) => pul(r.stockValue),
                 total: (rs) => pul(rs.reduce((a, r) => a + r.stockValue, 0)) },
             ]}
