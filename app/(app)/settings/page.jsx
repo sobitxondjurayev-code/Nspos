@@ -20,7 +20,8 @@ import { listStaff, updateStaff, removeStaff, reloadStaff } from "@/lib/staffDat
 import { listInvites, addInvite, removeInvite } from "@/lib/invitesData";
 import { supabase, DEMO_MODE } from "@/lib/db";
 import { sessiyaOl } from "@/lib/sessiya";
-import { setInstallerRate, getPlan, monthKey } from "@/lib/kpiData";
+import { setInstallerRate, getPlan, monthKey, typeOf, KPI_TYPES, KPI_RULES_STANDART, MANAGER_TYPES } from "@/lib/kpiData";
+import { TIERS, tiers } from "@/lib/loyaltyData";
 import { saveRate } from "@/lib/ratesData";
 import { getUsdRate, isRateAuto, setRateAuto, refreshUsdRate, getRateDate,
   getServiceNames, setServiceNames, getLedgerStart, setLedgerStart,
@@ -708,6 +709,149 @@ function RolePermissionsCard() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// KPI QOIDALARI VA KESHBEK DARAJALARI (2026-09-03)
+// ══════════════════════════════════════════════════════════════
+// Har xodim turi uchun bonus qoidalari — kodda standart, rahbar shu
+// yerda o'zgartiradi (`companies.sozlamalar.kpi.rules.<tur>`). Yangi
+// oy va qoidasi qo'lda o'zgartirilmagan xodimlarga ta'sir qiladi;
+// KPI sahifasida alohida xodimga qo'yilgan qoida undan ustun.
+const KPI_MAYDONLAR = [
+  ["fixed", "Qat'iy maosh (so'm)"],
+  ["revisionEveryDays", "Reviziya har necha kunda"],
+  ["collection.bonus", "Inkassatsiya bonusi (so'm)"], ["collection.full", "Inkassatsiya to'liq (ulush, 0.95)"],
+  ["collection.partial", "Inkassatsiya qisman (ulush)"], ["collection.partialRate", "Qisman bonus ulushi (0.5)"],
+  ["akb.bonus", "AKB bonusi (so'm)"], ["akb.min", "AKB min (ulush)"], ["akb.max", "AKB max (ulush)"],
+  ["nps.bonus", "NPS bonusi (so'm)"], ["nps.full", "NPS to'liq (ulush)"], ["nps.partial", "NPS qisman (ulush)"], ["nps.partialRate", "NPS qisman ulushi"],
+  ["revision.bonus", "Reviziya bonusi (so'm)"], ["revision.halfUpTo", "Kamomad shu $ gacha — yarim bonus"],
+  ["late.bonus", "Kech qolmaslik bonusi (so'm)"], ["late.fullUpTo", "Kech ≤ (to'liq)"], ["late.partialUpTo", "Kech ≤ (yarim)"], ["late.partialRate", "Yarim ulushi"],
+  ["dayOff.bonus", "Dam olish bonusi (so'm)"], ["dayOff.fullUpTo", "Dam ≤ (to'liq)"], ["dayOff.partialAt", "Dam = (yarim)"], ["dayOff.partialRate", "Yarim ulushi"],
+  ["combo.bonus", "Ikkovi to'liq bonusi (so'm)"],
+];
+const yolOl = (o, yol) => yol.split(".").reduce((x, k) => (x && typeof x === "object" ? x[k] : undefined), o);
+const yolQoy = (o, yol, v) => {
+  const n = JSON.parse(JSON.stringify(o ?? {}));
+  const parts = yol.split("."); let x = n;
+  for (const k of parts.slice(0, -1)) { if (typeof x[k] !== "object" || x[k] === null) x[k] = {}; x = x[k]; }
+  x[parts.at(-1)] = v; return n;
+};
+function KpiRulesCard() {
+  const live = useLive();
+  const turlar = [...MANAGER_TYPES, "installer"];
+  const [tur, setTur] = useState(turlar[0]);
+  const [qoida, setQoida] = useState(() => typeOf(turlar[0]).defaultRules);
+  const [holat, setHolat] = useState(null);
+  const standart = KPI_RULES_STANDART[tur];
+  useEffect(() => { setQoida(typeOf(tur).defaultRules); setHolat(null); }, [tur, live]);
+  const maydonlar = KPI_MAYDONLAR.filter(([yol]) => yolOl(standart, yol) !== undefined);
+  async function saqla() {
+    const r = await setSozlama(`kpi.rules.${tur}`, qoida);
+    setHolat(r?.ok === false ? "xato" : "saqlandi");
+  }
+  async function standartga() {
+    if (!confirm(t("Shu tur uchun qoidalar standartga qaytarilsinmi?"))) return;
+    const r = await setSozlama(`kpi.rules.${tur}`, null);
+    setQoida(standart); setHolat(r?.ok === false ? "xato" : "saqlandi");
+  }
+  const pogonalar = qoida.salesTiers ?? [];
+  return (
+    <div className="card p-7 mb-6">
+      <div className="flex items-center gap-3 mb-1">
+        <span className="w-9 h-9 rounded-xl bg-brand-soft text-brand flex items-center justify-center">
+          <Coins size={18} />
+        </span>
+        <h2 className="text-xl font-extrabold">{t("KPI qoidalari — bonus va pog'onalar")}</h2>
+      </div>
+      <p className="text-sm text-muted font-semibold mb-4">
+        {t("Har xodim turi uchun standart qoidalar. Yangi oyga va qoidasi alohida o'zgartirilmagan xodimlarga ta'sir qiladi; KPI sahifasida bitta xodimga qo'yilgan qoida undan ustun. Ulush — 0 dan 1 gacha (0.95 = 95%).")}
+      </p>
+      <div className="bg-track rounded-2xl p-1.5 flex overflow-x-auto mb-4">
+        {turlar.map((k) => (
+          <button key={k} onClick={() => setTur(k)} className={`tab-btn whitespace-nowrap ${tur === k ? "active" : ""}`}>
+            {t(KPI_TYPES[k].label)}
+          </button>
+        ))}
+      </div>
+      {pogonalar.length > 0 && (
+        <div className="mb-4">
+          <p className="font-bold mb-2">{t("Savdo bonusi pog'onalari")} <span className="text-sm text-muted font-semibold">— {t("oylik savdo shu $ dan oshsa, bonus (so'm)")}</span></p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {pogonalar.map((p, i) => (
+              <div key={i} className="p-3 rounded-xl bg-surface">
+                <label className="block text-xs font-bold text-muted mb-1">{t("Savdo ($) dan")}</label>
+                <NumberField value={p.from} className="inp mb-2"
+                  onChange={(v) => setQoida((q) => ({ ...q, salesTiers: q.salesTiers.map((x, j) => (j === i ? { ...x, from: v } : x)) }))} />
+                <label className="block text-xs font-bold text-muted mb-1">{t("Bonus (so'm)")}</label>
+                <NumberField value={p.bonus} className="inp"
+                  onChange={(v) => setQoida((q) => ({ ...q, salesTiers: q.salesTiers.map((x, j) => (j === i ? { ...x, bonus: v } : x)) }))} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+        {maydonlar.map(([yol, label]) => {
+          const v = yolOl(qoida, yol); const std = yolOl(standart, yol);
+          return (
+            <label key={yol} className="block">
+              <span className="block text-xs font-bold text-muted mb-1">{t(label)}{v !== std && <span className="text-warn"> · {t("standart")} {std}</span>}</span>
+              <NumberField value={v} className="inp" onChange={(x) => setQoida((q) => yolQoy(q, yol, x))} />
+            </label>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-3">
+        <button onClick={saqla} className="rounded-xl bg-brand hover:bg-brand-dark text-white font-bold px-6 py-3">{t("Saqlash")}</button>
+        <button onClick={standartga} className="text-sm font-bold text-muted hover:text-danger">{t("Standartga qaytarish")}</button>
+        {holat === "saqlandi" && <span className="font-semibold text-ok">{t("Saqlandi")}</span>}
+        {holat === "xato" && <span className="font-semibold text-danger">{t("Saqlanmadi")}</span>}
+      </div>
+    </div>
+  );
+}
+
+function LoyaltyTiersCard() {
+  const live = useLive();
+  const [rows, setRows] = useState(() => tiers());
+  const [holat, setHolat] = useState(null);
+  useEffect(() => { setRows(tiers()); setHolat(null); }, [live]);
+  async function saqla() {
+    const r = await setSozlama("loyalty.tiers", rows.map((x) => ({ key: x.key, min: Number(x.min) || 0, cashbackPct: Number(x.cashbackPct) || 0 })));
+    setHolat(r?.ok === false ? "xato" : "saqlandi");
+  }
+  return (
+    <div className="card p-7 mb-6">
+      <div className="flex items-center gap-3 mb-1">
+        <span className="w-9 h-9 rounded-xl bg-brand-soft text-brand flex items-center justify-center">
+          <Coins size={18} />
+        </span>
+        <h2 className="text-xl font-extrabold">{t("Keshbek darajalari")}</h2>
+      </div>
+      <p className="text-sm text-muted font-semibold mb-4">
+        {t("Mijozning jami xaridi ($) shu chegaradan oshsa daraja ko'tariladi; keshbek foizi keyingi xaridlarga ta'sir qiladi, o'tgan hisob-kitob o'zgarmaydi.")}
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        {rows.map((x, i) => (
+          <div key={x.key} className="p-3 rounded-xl bg-surface">
+            <p className="font-bold mb-2" style={{ color: x.color }}>{t(x.name)}</p>
+            <label className="block text-xs font-bold text-muted mb-1">{t("Xarid ($) dan")}</label>
+            <NumberField value={x.min} className="inp mb-2" onChange={(v) => setRows((r) => r.map((y, j) => (j === i ? { ...y, min: v } : y)))} />
+            <label className="block text-xs font-bold text-muted mb-1">{t("Keshbek %")}</label>
+            <NumberField value={x.cashbackPct} className="inp" onChange={(v) => setRows((r) => r.map((y, j) => (j === i ? { ...y, cashbackPct: v } : y)))} />
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-3">
+        <button onClick={saqla} className="rounded-xl bg-brand hover:bg-brand-dark text-white font-bold px-6 py-3">{t("Saqlash")}</button>
+        <button onClick={async () => { const r = await setSozlama("loyalty.tiers", null); setRows(TIERS); setHolat(r?.ok === false ? "xato" : "saqlandi"); }}
+          className="text-sm font-bold text-muted hover:text-danger">{t("Standartga qaytarish")}</button>
+        {holat === "saqlandi" && <span className="font-semibold text-ok">{t("Saqlandi")}</span>}
+        {holat === "xato" && <span className="font-semibold text-danger">{t("Saqlanmadi")}</span>}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 // DO'KONLAR (2026-09-03)
 // ══════════════════════════════════════════════════════════════
 // Nom, tur (do'kon / sklad) va Billz nomlari. Ilgari do'kon NOMI to'rt
@@ -1210,6 +1354,8 @@ export default function Settings() {
       {isOwner && <LedgerStartCard />}
       {isOwner && <ServiceNamesCard />}
       {isOwner && <BusinessRulesCard />}
+      {isOwner && <KpiRulesCard />}
+      {isOwner && <LoyaltyTiersCard />}
       {isOwner && <RolePermissionsCard />}
       {isOwner && <StoresCard />}
       {isOwner && <ExpenseCategoriesCard />}

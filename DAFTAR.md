@@ -2429,9 +2429,16 @@ ombor operatsiyasida ASCII "-" (→ `foiz/son`), Balans strukturasida
 | 7.4 Rollar va huquqlar | `f7bc64c` | `role_permissions` + `has_perm()` — `scripts/huquq-seed.mjs` PERMISSIONS dan SQL yozadi (qo'lda ko'chirilmaydi); 20 siyosat `has_perm('<kalit>')` ga; `auth.can()` bazadan (fallback PERMISSIONS); `perms.sections` faqat toraytiradi; `npm run huquq` kutilganini bazadan oladi — 0 farq |
 
 Tegilmaganlar: profiles (rekursiya), companies, payouts, payroll,
-store_plans, invites, audit_log, stores — owner-only. KPI bonus
-pog'onalari va keshbek darajalari kodda (reja qatorlariga muhrlangan —
-alohida ish).
+store_plans, invites, audit_log, stores — owner-only.
+
+**7.5 KPI qoidalari va keshbek (19:30).** `kpi.rules.<tur>` — Sozlamalar
+→ "KPI qoidalari": qat'iy maosh, savdo pog'onalari, inkassatsiya/AKB/
+NPS/reviziya/kech/dam/kombo bonuslari; `typeOf()` standart ustiga
+sozlamani qo'yadi. Reja qatoriga muhrlangan qoida (`kpi_plan.data.
+rules`) endi faqat STANDARTDAN FARQ QILGAN qismi bilan hisobga olinadi
+(`tozaRules`) — aks holda sozlama eski oydan meros bo'lib kelaverardi.
+`loyalty.tiers` — "Keshbek darajalari" (min $, foiz); `tierOf/nextTier/
+cashbackPctFor` shundan.
 
 `01-sxema.sql` ko'zgusi yangilandi — `sxema-olish.mjs` serverda,
 `nspos` roli bilan, `/tmp/sxema` ga (`/opt/nspos/app` ga yozolmaydi,
