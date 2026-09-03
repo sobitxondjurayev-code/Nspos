@@ -3,13 +3,14 @@ import { t, tt } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import { Wallet, Clock, TriangleAlert, PieChart } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
-import { listDebts, jamiQarz, ochiqQoldiq, muddatiOtganmi } from "@/lib/debtsData";
+import { listDebts, jamiQarz, ochiqQoldiq, muddatiOtganmi, debtorRowsDavr, debtCollections } from "@/lib/debtsData";
 import { listCustomers } from "@/lib/customersData";
 import { billzVaqtMatni } from "@/lib/billzLogData";
 import { ymd } from "@/lib/dates";
 import { useLive } from "@/components/DataProvider";
 import NumberField from "@/components/NumberField";
 import DataTable from "@/components/ui/DataTable";
+import PeriodPicker, { usePeriod } from "@/components/ui/PeriodPicker";
 
 // ══════════════════════════════════════════════════════════════
 // QARZDORLAR — JAMI QARZDORLIK VA MUDDAT MATRITSASI
@@ -52,6 +53,22 @@ export default function DebtorsReport() {
     days <= cuts[0] ? 0 : days <= cuts[1] ? 1 : days <= cuts[2] ? 2 : 3;
 
   const jami = useMemo(() => jamiQarz(), [live]);
+
+  // Davr — oqim ustunlari uchun (berilgan/to'langan). Matritsa esa
+  // HOZIRGI holat (Billz "Jami qarz"), davrga bog'liq emas — sarlavhada
+  // "hozir" deb yoziladi (rahbar 2026-09-03: davr tanlansa hamma ustun
+  // davr bo'yicha; snapshot ustunlar alohida belgilanadi).
+  const davr = usePeriod("Oy");
+  const oqim = useMemo(
+    () => new Map(debtorRowsDavr(davr.range.from, davr.range.to).map((r) => [r.customer.id, r])),
+    [davr.range, live]
+  );
+  const davrTolangan = useMemo(() => debtCollections(davr.range.from, davr.range.to), [davr.range, live]);
+  const davrBerilgan = useMemo(() => {
+    let summa = 0, soni = 0;
+    for (const r of oqim.values()) { summa += r.berilgan; soni += r.berilganSoni; }
+    return { summa: +summa.toFixed(2), soni };
+  }, [oqim]);
 
   // —— Mijoz × guruh matritsasi ————————————————————————
   const debtors = useMemo(() => {
@@ -96,16 +113,23 @@ export default function DebtorsReport() {
 
   return (
     <div>
-      {/* Yig'ma kartalar — hammasi `jamiQarz()` dan, Billz bo'linishi bilan */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-4">
-        <Karta icon={Wallet} tone="danger" label="Jami qarzdorlik" value={fmtUSD(jami.jami)}
+      <PeriodPicker {...davr} />
+
+      {/* Yig'ma kartalar — snapshot `jamiQarz()` dan (Billz bo'linishi bilan,
+          "hozir"), oqim esa tanlangan davr bo'yicha */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-5 mb-4">
+        <Karta icon={Wallet} tone="danger" label="Jami qarzdorlik · hozir" value={fmtUSD(jami.jami)}
           hint={tt("{n} ta qarz", { n: jami.soni })} />
-        <Karta icon={TriangleAlert} tone="danger" label="Muddati o'tgan" value={fmtUSD(jami.muddatiOtgan.summa)}
+        <Karta icon={TriangleAlert} tone="danger" label="Muddati o'tgan · hozir" value={fmtUSD(jami.muddatiOtgan.summa)}
           hint={tt("{n} ta qarz", { n: jami.muddatiOtgan.soni })} />
-        <Karta icon={Clock} tone="ok" label="Muddati kelmagan" value={fmtUSD(jami.muddatiKelmagan.summa)}
+        <Karta icon={Clock} tone="ok" label="Muddati kelmagan · hozir" value={fmtUSD(jami.muddatiKelmagan.summa)}
           hint={tt("{n} ta qarz", { n: jami.muddatiKelmagan.soni })} />
-        <Karta icon={PieChart} tone="warn" label="Qisman to'langan" value={fmtUSD(jami.qismanTolangan.summa)}
+        <Karta icon={PieChart} tone="warn" label="Qisman to'langan · hozir" value={fmtUSD(jami.qismanTolangan.summa)}
           hint={tt("{n} ta qarz", { n: jami.qismanTolangan.soni })} />
+        <Karta icon={Wallet} tone="danger" label="Davrda berilgan" value={fmtUSD(davrBerilgan.summa)}
+          hint={tt("{n} ta yangi qarz", { n: davrBerilgan.soni })} />
+        <Karta icon={Clock} tone="ok" label="Davrda to'langan" value={fmtUSD(davrTolangan.total)}
+          hint={tt("{n} ta to'lov", { n: davrTolangan.count })} />
       </div>
 
       {/* Ta'rif va manba OCHIQ yoziladi — raqamga ishonish uchun u
@@ -166,21 +190,36 @@ export default function DebtorsReport() {
                 {d.phone && <p className="text-sm text-muted">{d.phone}</p>}
               </div>
             ) },
+          { key: "berilgan", label: "Davrda berilgan", right: true,
+            hint: "Tanlangan davrda shu mijozga ochilgan qarzlar summasi",
+            value: (d) => oqim.get(d.key)?.berilgan ?? 0,
+            cell: (d) => { const v = oqim.get(d.key)?.berilgan ?? 0;
+              return v > 0 ? <span className="font-semibold text-danger">{fmtUSD(v)}</span> : <span className="text-muted">—</span>; },
+            total: (rs) => fmtUSD(+rs.reduce((a, d) => a + (oqim.get(d.key)?.berilgan ?? 0), 0).toFixed(2)) },
+          { key: "tolangan", label: "Davrda to'langan", right: true,
+            hint: "Tanlangan davrda shu mijozdan tushgan to'lovlar",
+            value: (d) => oqim.get(d.key)?.tolangan ?? 0,
+            cell: (d) => { const v = oqim.get(d.key)?.tolangan ?? 0;
+              return v > 0 ? <span className="font-semibold text-ok">{fmtUSD(v)}</span> : <span className="text-muted">—</span>; },
+            total: (rs) => fmtUSD(+rs.reduce((a, d) => a + (oqim.get(d.key)?.tolangan ?? 0), 0).toFixed(2)) },
           ...bucketDefs.map((b, i) => ({
-            key: `b${i}`, label: b.label, right: true,
+            key: `b${i}`, label: b.label + " · hozir", right: true,
+            hint: "Hozir muddati o'tgan qarz qoldig'i — davrga bog'liq emas",
             value: (d) => d.buckets[i] ?? 0,
             cell: (d) => (d.buckets[i] > 0
               ? <span className="font-semibold">{fmtUSD(+d.buckets[i].toFixed(2))}</span>
               : <span className="text-muted">—</span>),
             total: (rs) => fmtUSD(+rs.reduce((a, d) => a + (d.buckets[i] ?? 0), 0).toFixed(2)),
           })),
-          { key: "notDue", label: "Muddati kelmagan", right: true,
+          { key: "notDue", label: "Muddati kelmagan · hozir", right: true,
+            hint: "Hozir ochiq, lekin muddati hali kelmagan qarz — davrga bog'liq emas",
             value: (d) => d.notDue,
             cell: (d) => (d.notDue > 0
               ? <span className="font-semibold text-ok">{fmtUSD(+d.notDue.toFixed(2))}</span>
               : <span className="text-muted">—</span>),
             total: (rs) => fmtUSD(+rs.reduce((a, d) => a + d.notDue, 0).toFixed(2)) },
-          { key: "total", label: "Muddati o'tgan jami", right: true,
+          { key: "total", label: "Muddati o'tgan jami · hozir", right: true,
+            hint: "Billz \"Jami qarz\" ning muddati o'tgan qismi — hozirgi holat",
             cell: (d) => <span className="font-extrabold">{fmtUSD(+d.total.toFixed(2))}</span>,
             total: (rs) => (
               <span className="text-danger">{fmtUSD(+rs.reduce((a, d) => a + d.total, 0).toFixed(2))}</span>

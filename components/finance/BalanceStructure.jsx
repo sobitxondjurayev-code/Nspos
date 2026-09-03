@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, Legend } from "recharts";
 import { useTheme } from "@/components/ThemeProvider";
 import { t, tt } from "@/lib/i18n";
-import { pul, foiz } from "@/lib/format";
+import { pul, foiz, MANFIY_SABAB } from "@/lib/format";
 import ChartCard from "@/components/ui/ChartCard";
 import { SERIES, foldSeries } from "@/lib/chartColors";
 
@@ -37,11 +37,20 @@ export default function BalanceStructure({ balance }) {
     };
   }, [balance]);
 
+  // Manfiy modda (masalan kassa hamyoni minusda) ustun UZUNLIGI bilan
+  // ko'rsatiladi, lekin belgilanadi: nomi oldida "−", ustun qizil,
+  // yorlig'i va ipuchi ishorali. Ilgari `Math.abs` uni musbat qilib
+  // yuborardi — manfiy aktiv "pul bor" bo'lib ko'rinardi (2026-09-03).
   const chiz = (rows, jami, sarlavha, izoh) => (
     <ChartCard title={sarlavha} hint={izoh} oq="USD"
       bosh={!rows.length} boshMatn="Bu yerda hech narsa yo'q"
       balandlik={rows.length > 4 ? "h-64" : "h-48"}>
-      <BarChart data={rows.map((x) => ({ nom: t(x.label), summa: +Math.abs(x.amount).toFixed(2) }))}
+      <BarChart data={rows.map((x) => ({
+          nom: (x.amount < 0 ? "− " : "") + t(x.label),
+          summa: +Math.abs(x.amount).toFixed(2),
+          ishorali: +Number(x.amount).toFixed(2),
+          manfiy: x.amount < 0,
+        }))}
         layout="vertical" margin={{ top: 4, right: 92, left: 4, bottom: 4 }}>
         <CartesianGrid horizontal={false} stroke={chart.grid} />
         <XAxis type="number" tick={{ fill: chart.tick, fontSize: 12, fontWeight: 600 }}
@@ -53,8 +62,10 @@ export default function BalanceStructure({ balance }) {
         <Tooltip cursor={{ fill: "transparent" }} content={<Ipuchi jami={jami} />} />
         <Bar dataKey="summa" radius={[0, 4, 4, 0]} maxBarSize={24}
              label={{ position: "right", fill: chart.tick, fontSize: 11, fontWeight: 700,
-                      formatter: (v) => pul(v) }}>
-          {rows.map((_, i) => <Cell key={i} fill={SERIES[i % SERIES.length]} />)}
+                      formatter: (v, entry) => pul(entry?.payload?.ishorali ?? v) }}>
+          {rows.map((x, i) => (
+            <Cell key={i} fill={x.amount < 0 ? chart.danger : SERIES[i % SERIES.length]} />
+          ))}
         </Bar>
       </BarChart>
     </ChartCard>
@@ -76,8 +87,11 @@ function Ipuchi({ active, payload, jami }) {
   return (
     <div className="bg-panel rounded-2xl shadow-pop px-4 py-3">
       <p className="font-bold mb-1">{d.nom}</p>
-      <p className="font-extrabold tabular-nums">{pul(d.summa)}</p>
-      {jami > 0 && (
+      <p className={`font-extrabold tabular-nums ${d.manfiy ? "text-danger" : ""}`}>{pul(d.ishorali ?? d.summa)}</p>
+      {d.manfiy && (
+        <p className="text-sm font-semibold text-danger max-w-[16rem]">{t(MANFIY_SABAB.hamyon)}</p>
+      )}
+      {jami > 0 && !d.manfiy && (
         <p className="text-sm font-semibold text-muted">{foiz((d.summa / jami) * 100)}</p>
       )}
     </div>

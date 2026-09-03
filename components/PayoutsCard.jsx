@@ -22,6 +22,7 @@ import { KASSAS, WALLETS } from "@/lib/kassaData";
 import { daysLeft, somOf, PAYOUT_CATEGORIES } from "@/lib/payoutsData";
 import { getUsdRate } from "@/lib/companyData";
 import PayoutWaterfall from "@/components/finance/PayoutWaterfall";
+import Manfiy from "@/components/ui/Manfiy";
 
 const fmtDay = (d) => {
   const [y, m, dd] = String(d).slice(0, 10).split("-");
@@ -252,7 +253,7 @@ export default function PayoutsCard({
                       </td>
                       <td className={`py-4 pr-3 text-right font-extrabold whitespace-nowrap ${
                         r.balance < 0 ? "text-danger" : ""}`}>
-                        {fmtUSD(r.balance)}
+                        <Manfiy v={r.balance} sabab="rejaQoldiq">{fmtUSD(r.balance)}</Manfiy>
                       </td>
                       {/* Kimga va nima uchun — o'sha kuni */}
                       <td className="py-4 pr-3">

@@ -62,7 +62,7 @@ const menu = [
       { href: "/finance/kassa", label: "Kassalar va balans" },
       { href: "/finance/plan", label: "Pul rejasi" },
       { href: "/finance/operations", label: "Kassa operatsiyalari" },
-      { href: "/finance/debts", label: "Qarz to'lovlari" },
+      { href: "/finance/debts", label: "Qarzdorlik" },
       // Yetkazib beruvchilar hozircha yuritilmaydi ("keyinroq" deyilgan)
       // — bo'sh bo'lim ro'yxatda turmasin. Sahifa kodda qoldi, kerak
       // bo'lganda bitta qator bilan qaytariladi.

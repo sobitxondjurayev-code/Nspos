@@ -14,13 +14,14 @@ import PnlWaterfall from "@/components/finance/PnlWaterfall";
 import { foiz } from "@/lib/format";
 import { demoStores } from "@/lib/demoData";
 import StatCard from "@/components/finance/StatCard";
+import Manfiy from "@/components/ui/Manfiy";
 
 const tabs = ["Foyda va zarar", "Pul oqimi"];
 
 /* Hisobot qatori — chapda nom, o'ngda summa.
    `negative` — musbat summani chiqim sifatida ko'rsatadi (ishorasini teskari qiladi).
    Ishorali qiymat (masalan sof oqim) `negative`siz beriladi va minusini saqlaydi. */
-function Row({ label, value, hint, bold, tone, indent, negative }) {
+function Row({ label, value, hint, bold, tone, indent, negative, sabab }) {
   const signed = negative ? -value : value;
   return (
     <div className={`flex items-baseline justify-between py-2.5 ${indent ? "pl-6" : ""}`}>
@@ -31,7 +32,12 @@ function Row({ label, value, hint, bold, tone, indent, negative }) {
         {hint && <span className="text-sm text-muted font-semibold ml-2">{hint}</span>}
       </div>
       <span className={`shrink-0 tabular-nums ${bold ? "text-lg font-extrabold" : "font-bold"} ${tone ?? ""}`}>
-        {signed < 0 ? "−" : ""}{fmtUSD(Math.abs(signed))}
+        {/* `negative` qatorlar (xarajat, tannarx) — ko'rsatish uchun minus,
+            ma'lumot musbat: "pul chiqdi". Ishorali qator (foyda, oqim)
+            manfiy bo'lsa — sababi bilan (`Manfiy`). */}
+        <Manfiy v={negative ? 0 : signed} sabab={sabab}>
+          {signed < 0 ? "−" : ""}{fmtUSD(Math.abs(signed))}
+        </Manfiy>
       </span>
     </div>
   );
@@ -60,7 +66,8 @@ function PnlView({ range, rows }) {
         <StatCard icon={TrendingDown} label="Operatsion xarajatlar" tone="red"
           value={fmtUSD(exp.total + exp.installerShare)} />
         <StatCard icon={p.netProfit >= 0 ? TrendingUp : AlertTriangle} label="Sof foyda"
-          tone={p.netProfit >= 0 ? "green" : "red"} value={fmtUSD(p.netProfit)}
+          tone={p.netProfit >= 0 ? "green" : "red"}
+          value={<Manfiy v={p.netProfit} sabab="sofFoyda">{fmtUSD(p.netProfit)}</Manfiy>}
           hint={tt("Marja {n}%", { n: p.netMargin })} />
       </div>
 
@@ -101,7 +108,7 @@ function PnlView({ range, rows }) {
             tone="text-danger" negative />
         )}
         <Divider />
-        <Row label={t("Yalpi foyda")} value={p.grossProfit} bold
+        <Row label={t("Yalpi foyda")} value={p.grossProfit} bold sabab="sofFoyda"
           tone={p.grossProfit >= 0 ? "text-ok" : "text-danger"}
           hint={tt("{n}%", { n: p.grossMargin })} />
 
@@ -135,7 +142,7 @@ function PnlView({ range, rows }) {
           tone="text-danger" negative />
 
         <div className="border-t-2 border-line mt-4 pt-3">
-          <Row label={t("SOF FOYDA")} value={p.netProfit} bold
+          <Row label={t("SOF FOYDA")} value={p.netProfit} bold sabab="sofFoyda"
             tone={p.netProfit >= 0 ? "text-ok" : "text-danger"}
             hint={tt("{n}%", { n: p.netMargin })} />
         </div>
@@ -205,7 +212,7 @@ function CashFlowView({ range, rows }) {
           <Row label={t("Jami chiqim")} value={c.out.total} bold tone="text-danger" negative />
 
           <div className="border-t-2 border-line mt-6 pt-3">
-            <Row label={t("Sof pul oqimi")} value={c.net} bold
+            <Row label={t("Sof pul oqimi")} value={c.net} bold sabab="pulOqimi"
               tone={c.net >= 0 ? "text-ok" : "text-danger"} />
           </div>
 

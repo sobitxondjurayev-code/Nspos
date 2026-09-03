@@ -3,6 +3,7 @@ import { t, tt } from "@/lib/i18n";
 import { X } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { kassaControlDays } from "@/lib/kassaData";
+import Manfiy from "@/components/ui/Manfiy";
 
 const fmtDay = (d) => {
   const [y, m, dd] = String(d).slice(0, 10).split("-");
@@ -73,7 +74,9 @@ export default function ControlDays({ kassaId, label, onClose }) {
                 <th className="px-4 py-4 text-right">{fmtUSD(+totals.kpi.toFixed(2))}</th>
                 <th className="px-6 py-4 text-right">
                   <span className={totals.diff < -1 ? "text-danger" : "text-ok"}>
-                    {totals.diff > 0 ? "+" : ""}{fmtUSD(+totals.diff.toFixed(2))}
+                    <Manfiy v={totals.diff < -1 ? totals.diff : 0} sabab="kamomad">
+                      {totals.diff > 0 ? "+" : ""}{fmtUSD(+totals.diff.toFixed(2))}
+                    </Manfiy>
                   </span>
                   {(short < -0.01 || over > 0.01) && (
                     <span className="block text-sm font-bold">
@@ -114,7 +117,8 @@ export default function ControlDays({ kassaId, label, onClose }) {
                     <td className={`px-6 py-3.5 text-right font-extrabold ${
                       yoq || none || small ? "text-muted" : d.diff < 0 ? "text-danger" : "text-ok"}`}>
                       {yoq ? <span title={t("Bu kun qo'lda to'ldirilmagan — solishtiradigan ikkinchi manba yo'q")}>—</span>
-                        : none ? "—" : `${d.diff > 0 ? "+" : ""}${fmtUSD(d.diff)}`}
+                        : none ? "—"
+                        : <Manfiy v={small ? 0 : d.diff} sabab="kamomad">{d.diff > 0 ? "+" : ""}{fmtUSD(d.diff)}</Manfiy>}
                     </td>
                   </tr>
                 );

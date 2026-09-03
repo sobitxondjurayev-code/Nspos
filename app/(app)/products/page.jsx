@@ -12,6 +12,7 @@ import FilterBar, { applyFilters } from "@/components/FilterBar";
 import StatsStrip from "@/components/StatsStrip";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
+import Manfiy from "@/components/ui/Manfiy";
 
 export default function Products() {
   const [items, setItems] = useState(listProducts);
@@ -161,8 +162,8 @@ export default function Products() {
           ...demoStores.map((st) => ({
             key: `st-${st.id}`, label: st.name.replace("NScamera ", ""), right: true,
             value: (p) => p.stock[st.id] ?? 0,
-            cell: (p) => <span className={`font-bold ${p.stock[st.id] === 0 ? "text-danger" : ""}`}>
-              {p.stock[st.id] ?? 0}</span>,
+            cell: (p) => <span className={`font-bold ${(p.stock[st.id] ?? 0) <= 0 ? "text-danger" : ""}`}>
+              <Manfiy v={p.stock[st.id] ?? 0} sabab="xizmatQoldiq">{p.stock[st.id] ?? 0}</Manfiy></span>,
             total: (rs) => rs.reduce((a, p) => a + (p.stock[st.id] ?? 0), 0).toLocaleString("ru-RU"),
           })),
           { key: "jami", label: "Jami", right: true, value: (p) => totalQty(p),

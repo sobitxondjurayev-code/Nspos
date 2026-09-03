@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { SlidersHorizontal, Download, ChevronsUpDown, ChevronUp, ChevronDown } from "lucide-react";
+import { SlidersHorizontal, Download, ChevronsUpDown, ChevronUp, ChevronDown, Info } from "lucide-react";
 import { t, tt } from "@/lib/i18n";
 import { solishtir } from "@/components/SortTh";
 import { useColumns } from "@/components/useColumns";
@@ -38,6 +38,7 @@ import { exportRows } from "@/lib/exportXlsx";
 //     total:  (rows) => "…",           // "Jami" katagi
 //     width:  "10rem",
 //     locked: true,                    // "Ustunlar" da yashirib bo'lmaydi
+//     hint:   "Qoldiq ÷ kuniga",       // ustun nimani bildiradi (sarlavhada ⓘ, hover'da matn)
 //   }
 // `value` berilmasa `row[key]` olinadi. `cell` berilmasa `value` chiqadi.
 
@@ -137,10 +138,14 @@ export default function DataTable({
                         bosilib nima bo'lishini hech kim tushunmaydi. */}
                     {c.harakat ? <span className="sr-only">{t(c.label)}</span> : (
                       <button type="button" onClick={() => bosSort(c.key)}
-                        title={t("Bosing — saralash")}
+                        title={c.hint ? `${t(c.hint)}\n(${t("Bosing — saralash")})` : t("Bosing — saralash")}
                         className={`inline-flex items-center gap-1.5 hover:text-brand transition-colors
                                     ${c.right ? "flex-row-reverse" : ""} ${faol ? "text-brand" : ""}`}>
                         <span>{t(c.label)}</span>
+                        {/* `hint` — ustun nimani bildirishi (2026-09-03: "Qoldiq
+                            salomatligi ustunida nima ko'rsatilmoqda?"). Sarlavhada
+                            belgi turadi, matn hover'da. Excelga chiqmaydi. */}
+                        {c.hint && <Info size={12} className="opacity-50 shrink-0" />}
                         <Icon size={13} className={faol ? "" : "opacity-30"} />
                       </button>
                     )}

@@ -10,6 +10,7 @@ import { fmtDate } from "@/lib/dates";
 import StatCard from "@/components/finance/StatCard";
 import { balanceSheet, ledgerStartDate } from "@/lib/balanceData";
 import BalanceStructure from "@/components/finance/BalanceStructure";
+import Manfiy from "@/components/ui/Manfiy";
 import useUploadRows from "@/components/useUploadRows";
 
 export default function FinanceBalance() {
@@ -40,7 +41,7 @@ export default function FinanceBalance() {
           hint={tt("Aktivning {n}%", { n: b.equityRatio })} />
         <StatCard icon={Boxes} label="Aylanma kapital"
           tone={b.workingCapital >= 0 ? "green" : "red"}
-          value={fmtUSD(b.workingCapital)}
+          value={<Manfiy v={b.workingCapital} sabab="majburiyat">{fmtUSD(b.workingCapital)}</Manfiy>}
           hint={b.currentRatio !== null ? tt("Joriy likvidlik {n}", { n: b.currentRatio }) : "—"} />
       </div>
 

@@ -26,6 +26,7 @@ import { useColumns } from "@/components/useColumns";
 import StatCard from "@/components/finance/StatCard";
 import CellSources from "@/components/finance/CellSources";
 import CloseKassaModal from "@/components/CloseKassaModal";
+import Manfiy from "@/components/ui/Manfiy";
 import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
 import { getStaff } from "@/lib/staffData";
@@ -262,7 +263,9 @@ export default function KassaDays() {
                     : c.tone === "out" ? "text-danger"
                     : c.tone === "in" ? "text-ok"
                     : v < 0 ? "text-danger" : ""}`;
-                const text = `${c.tone === "out" && v > 0 ? "−" : ""}${fmtUSD(v)}`;
+                const matn = `${c.tone === "out" && v > 0 ? "−" : ""}${fmtUSD(v)}`;
+                // "Kassada qoldi" minusda — sababi katakning o'zida (2026-09-03)
+                const text = c.key === "left" ? <Manfiy v={v} sabab="kassaQoldi">{matn}</Manfiy> : matn;
                 return (
                   <td key={c.key} className="px-3 py-5 text-right whitespace-nowrap">
                     {open ? (
@@ -322,10 +325,12 @@ export default function KassaDays() {
                             <button
                               onClick={() => setSrc(srcFor(c, r.date))}
                               className={`${cls} ${LINKY}`}>
-                              {c.tone === "out" ? "−" : ""}{fmtUSD(v)}
+                              <Manfiy v={c.key === "left" ? v : 0} sabab="kassaQoldi">{c.tone === "out" ? "−" : ""}{fmtUSD(v)}</Manfiy>
                             </button>
                           ) : (
-                            <span className={cls}>{c.tone === "out" ? "−" : ""}{fmtUSD(v)}</span>
+                            <span className={cls}>
+                              <Manfiy v={c.key === "left" ? v : 0} sabab="kassaQoldi">{c.tone === "out" ? "−" : ""}{fmtUSD(v)}</Manfiy>
+                            </span>
                           )}
                       </td>
                     );

@@ -32,6 +32,7 @@ import {
   walletSources, COMPANY,
 } from "@/lib/kassaData";
 import { getLedgerStart } from "@/lib/companyData";
+import Manfiy from "@/components/ui/Manfiy";
 import {
   listPayouts, addPayout, updatePayout, removePayout, payPayout, unpayPayout,
   payoutSummary, plannedByKassa,
@@ -393,7 +394,7 @@ export default function FinancePlan() {
                   </td>
                   <td className={`px-6 py-4 text-right font-extrabold ${
                     free < 0 ? "text-danger" : "text-ok"}`}>
-                    {fmtUSD(free)}
+                    <Manfiy v={free} sabab="rejaQoldiq">{fmtUSD(free)}</Manfiy>
                   </td>
                 </tr>
               );

@@ -177,7 +177,9 @@ export default function StockHealthReport() {
                 cell: (r) => <span className="font-extrabold text-brand">{son(r.buyurtma)}</span>,
                 total: (rs) => son(rs.reduce((a, r) => a + r.buyurtma, 0)) },
               { key: "kunlikYoqotish", label: "Yo'qotish/kun", right: true,
-                value: (r) => r.kunlikYoqotish ?? -1,
+                // `null` Excelga bo'sh tushadi (ilgari −1 chiqardi — rahbarning
+                // "minus qayerdan?" savolining bir manbai, 2026-09-03)
+                value: (r) => r.kunlikYoqotish ?? null,
                 // `null` — hisoblanmadi (30 kundan beri sotilmagan yoki
                 // tannarx noma'lum); sabab yozib turadi, 0 emas.
                 cell: (r) => (r.kunlikYoqotish > 0

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import NumberField from "@/components/NumberField";
 import NpsModal from "@/components/NpsModal";
+import Manfiy from "@/components/ui/Manfiy";
 import SortTh, { useSort } from "@/components/SortTh";
 import ColumnSettings from "@/components/ColumnSettings";
 import { useColumns } from "@/components/useColumns";
@@ -567,13 +568,15 @@ function StaffDetail({ staffId, month, canEdit, canRules, canEditPast = false, s
                       {tt("{m} dan qolgan", { m: MONTHS[+c.month.slice(5) - 1] })}
                     </span>
                     <span className={c.balance < 0 ? "text-danger" : "text-ok"}>
-                      {som(c.balance)} {t("so'm")}
+                      <Manfiy v={c.balance} sabab="ustaBalans">{som(c.balance)} {t("so'm")}</Manfiy>
                     </span>
                   </div>
                 ))}
                 <div className="flex justify-between font-extrabold">
                   <span>{t("Balans")}</span>
-                  <span className={m.qoldiq < 0 ? "text-danger" : "text-ok"}>{som(m.qoldiq)} {t("so'm")}</span>
+                  <span className={m.qoldiq < 0 ? "text-danger" : "text-ok"}>
+                    <Manfiy v={m.qoldiq} sabab="kpiQoldiq">{som(m.qoldiq)} {t("so'm")}</Manfiy>
+                  </span>
                 </div>
                 {!m.monthDone && (
                   <div className="flex justify-between text-sm font-semibold pt-1">
@@ -968,7 +971,9 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
                   <th className="px-3 py-4 text-center">{rows.reduce((a, r) => a + r.off, 0)}</th>
                   <th className="px-3 py-4 text-right text-brand">{som(totalFund)}</th>
                   <th className="px-3 py-4 text-right text-muted">{som(totalOlgan)}</th>
-                  <th className={`px-3 py-4 text-right ${totalQoldiq < 0 ? "text-danger" : ""}`}>{som(totalQoldiq)}</th>
+                  <th className={`px-3 py-4 text-right ${totalQoldiq < 0 ? "text-danger" : ""}`}>
+                    <Manfiy v={totalQoldiq} sabab="kpiQoldiq">{som(totalQoldiq)}</Manfiy>
+                  </th>
                   <th className="px-3 py-4"></th>
                 </tr>
               )}
@@ -1014,7 +1019,7 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
                     <td className="px-3 py-3 text-right font-extrabold text-brand">{som(r0.total)}</td>
                     <td className="px-3 py-3 text-right font-semibold text-muted">{som(r0.olgan)}</td>
                     <td className={`px-3 py-3 text-right font-extrabold ${r0.qoldiq < 0 ? "text-danger" : ""}`}>
-                      {som(r0.qoldiq)}
+                      <Manfiy v={r0.qoldiq} sabab="kpiQoldiq">{som(r0.qoldiq)}</Manfiy>
                       {/* O'tgan oydan qarz bo'lsa — ochiq yozamiz, aks
                           holda "nega bu raqam?" degan savol qoladi */}
                       {Math.abs(r0.carryIn ?? 0) > 0.5 && (

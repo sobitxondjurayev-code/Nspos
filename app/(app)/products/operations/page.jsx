@@ -12,6 +12,8 @@ import {
   computeOperation, applyOperation, warehouseSummary, OP_TYPES, WRITEOFF_REASONS,
 } from "@/lib/warehouseData";
 import StatCard from "@/components/finance/StatCard";
+import Manfiy from "@/components/ui/Manfiy";
+import { pul, son, foiz } from "@/lib/format";
 
 const ICONS = {
   transfer: ArrowRightLeft,
@@ -190,17 +192,18 @@ function OperationEditor({ id, onBack, onChanged }) {
 
                   {op.type === "revaluation" ? (
                     <>
-                      <td className="px-3 py-3 text-right font-semibold text-muted">{r.oldPrice.toFixed(2)}</td>
+                      <td className="px-3 py-3 text-right font-semibold text-muted">{pul(r.oldPrice, { qisqa: true })}</td>
                       <td className="px-3 py-3 text-right">
-                        {locked ? <span className="font-extrabold">{r.newPrice.toFixed(2)}</span> : (
+                        {locked ? <span className="font-extrabold">{pul(r.newPrice, { qisqa: true })}</span> : (
                           <input type="number" value={r.newSalePrice}
                             onChange={(e) => setItem(i, { newSalePrice: Number(e.target.value) || 0 })}
                             className="w-full bg-surface rounded-lg px-2 py-1.5 font-bold text-right outline-none" />
                         )}
                       </td>
+                      {/* `foiz()` — tipografik minus, ASCII "-" emas (format.js) */}
                       <td className={`px-3 py-3 text-right font-extrabold ${
                         r.deltaPct > 0 ? "text-ok" : r.deltaPct < 0 ? "text-danger" : "text-muted"}`}>
-                        {r.deltaPct > 0 ? "+" : ""}{r.deltaPct}%
+                        <Manfiy v={r.deltaPct} sabab="narx">{r.deltaPct > 0 ? "+" : ""}{foiz(r.deltaPct)}</Manfiy>
                       </td>
                     </>
                   ) : op.type === "inventory" ? (
@@ -215,7 +218,7 @@ function OperationEditor({ id, onBack, onChanged }) {
                       </td>
                       <td className={`px-3 py-3 text-center font-extrabold ${
                         r.diff > 0 ? "text-ok" : r.diff < 0 ? "text-danger" : "text-muted"}`}>
-                        {r.diff > 0 ? "+" : ""}{r.diff}
+                        <Manfiy v={r.diff} sabab="inventar">{r.diff > 0 ? "+" : ""}{son(r.diff)}</Manfiy>
                       </td>
                     </>
                   ) : (
@@ -284,7 +287,9 @@ function OperationEditor({ id, onBack, onChanged }) {
               </span>
               <span className={`font-extrabold ${
                 calc.totalValue < 0 ? "text-danger" : calc.totalValue > 0 ? "text-ok" : ""}`}>
-                {fmtUSD(calc.totalValue)}
+                <Manfiy v={calc.totalValue} sabab={op.type === "revaluation" ? "narx" : "inventar"}>
+                  {fmtUSD(calc.totalValue)}
+                </Manfiy>
               </span>
             </div>
           </div>
@@ -429,7 +434,9 @@ export default function WarehouseOperations() {
                   <td className="px-4 py-4 font-semibold text-muted">{o.author}</td>
                   <td className="px-4 py-4 text-center font-bold">{o.items.length}</td>
                   <td className={`px-4 py-4 text-right font-extrabold ${
-                    c.totalValue < 0 ? "text-danger" : ""}`}>{fmtUSD(c.totalValue)}</td>
+                    c.totalValue < 0 ? "text-danger" : ""}`}>
+                    <Manfiy v={c.totalValue} sabab={o.type === "revaluation" ? "narx" : "inventar"}>{fmtUSD(c.totalValue)}</Manfiy>
+                  </td>
                   <td className="px-4 py-4">
                     <span className={`text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap ${
                       o.status === "applied" ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn"}`}>

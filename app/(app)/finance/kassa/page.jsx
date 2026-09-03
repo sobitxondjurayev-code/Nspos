@@ -21,6 +21,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
 import KassaBalanceChart from "@/components/finance/KassaBalanceChart";
 import KassaModal from "@/components/KassaModal";
+import Manfiy from "@/components/ui/Manfiy";
 import Warnings from "@/components/finance/Warnings";
 import CloseKassaModal from "@/components/CloseKassaModal";
 import {
@@ -247,7 +248,7 @@ export default function KassaPage() {
                   <div key={w} className="flex items-baseline justify-between gap-3 font-semibold text-[0.9375rem]">
                     <span className="text-muted shrink-0">{t(WALLETS[w])}</span>
                     <span className={`font-bold tabular-nums ${b[w] < 0 ? "text-danger" : ""}`}>
-                      {fmtUSD(b[w])}
+                      <Manfiy v={b[w]} sabab="hamyon">{fmtUSD(b[w])}</Manfiy>
                     </span>
                   </div>
                 ))}

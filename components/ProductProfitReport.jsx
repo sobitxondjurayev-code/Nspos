@@ -10,6 +10,7 @@ import { productProfit, storeOptions } from "@/lib/analytics";
 import DataTable from "@/components/ui/DataTable";
 import ChartCard from "@/components/ui/ChartCard";
 import PeriodPicker, { usePeriod } from "@/components/ui/PeriodPicker";
+import Manfiy from "@/components/ui/Manfiy";
 import { SERIES } from "@/lib/chartColors";
 
 // ══════════════════════════════════════════════════════════════
@@ -124,7 +125,7 @@ export default function ProductProfitReport() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Kartochka label="Tushum" value={pul(jami.revenue)} />
         <Kartochka label="Tannarx (COGS)" value={pul(jami.cogs)} />
-        <Kartochka label="Yalpi foyda" value={pul(jami.profit)}
+        <Kartochka label="Yalpi foyda" value={<Manfiy v={jami.profit} sabab="foyda">{pul(jami.profit)}</Manfiy>}
           rang={jami.profit < 0 ? "text-danger" : "text-ok"} />
         <Kartochka label="Marja" value={jami.margin == null ? "—" : foiz(jami.margin)}
           hint={tt("{n} ta {k}", { n: son(rows.length), k: t(kesimNomi).toLowerCase() })} />
@@ -221,7 +222,7 @@ export default function ProductProfitReport() {
           { key: "profit", label: "Foyda", right: true,
             cell: (r) => (
               <span className={`font-extrabold ${r.profit < 0 ? "text-danger" : "text-ok"}`}>
-                {pul(r.profit)}
+                <Manfiy v={r.profit} sabab="foyda">{pul(r.profit)}</Manfiy>
               </span>
             ),
             total: (rs) => pul(rs.reduce((a, r) => a + r.profit, 0)) },
