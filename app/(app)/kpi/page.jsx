@@ -1225,10 +1225,14 @@ export default function Kpi() {
 
   // Ustalarga "installer" turini bir marta biriktiramiz (agar hali yo'q bo'lsa).
   // Faqat haqiqiy hisoblar (uuid) — demo seed id'lari (u4) bazaga yozilmasin.
+  // Faqat rahbar/menejer: `kpi_assign` ga boshqa xodim uchun yozish RLS'da
+  // rad etiladi (2026-09-03) — usta yoki kassir sahifani ochganda har usta
+  // uchun rad etilgan yozuv ketardi va endi u jim emas, toast beradi.
   const isUuid = (id) => /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(String(id));
   useEffect(() => {
+    if (!isAdmin) return;
     for (const s of installers) if (isUuid(s.id) && !hasType(s.id)) setType(s.id, "installer");
-  }, [installers.map((s) => s.id).join(",")]);
+  }, [isAdmin, installers.map((s) => s.id).join(",")]);
 
   const TITLES = {
     kpi: isAdmin ? "Xodimlar KPI — boshqaruv" : "Mening KPI va oyligim",

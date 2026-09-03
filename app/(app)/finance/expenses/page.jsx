@@ -24,6 +24,7 @@ import {
   expenseSeries, monthlyFixedRunRate,
   listRecurring, addRecurring, removeRecurring, updateRecurring,
   addExpense, removeExpense, updateExpense, somOf, monthlyFixedRunRateSom, listOneOff,
+  canTouchExpense,
 } from "@/lib/expensesData";
 import { getStaff } from "@/lib/staffData";
 import ColumnSettings from "@/components/ColumnSettings";
@@ -56,18 +57,18 @@ export default function FinanceExpenses() {
   // Menejer faqat O'Z kassasining xarajatini ko'radi va kiritadi.
   // Rahbarning shaxsiy xarajati yoki boshqa do'kon raqami unga ochilmasin.
   const isOwner = user?.role === "owner";
-  // Menejer FAQAT bugungi xarajatni tuzata va o'chira oladi. Kechagi
-  // yozuvni o'zgartirish — hisobni orqadan tahrirlash degani, uni faqat
-  // rahbar qiladi. Doimiy (takrorlanuvchi) xarajat esa har oyga ta'sir
-  // qiladi, shuning uchun u ham faqat rahbarniki.
-  const today = new Date();
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  // Menejer FAQAT bugungi (Toshkent vaqti), O'Z kassasidagi xarajatni
+  // tuzata va o'chira oladi. Kechagi yozuvni o'zgartirish — hisobni
+  // orqadan tahrirlash degani, uni faqat rahbar qiladi. Doimiy
+  // (takrorlanuvchi) xarajat esa har oyga ta'sir qiladi, u ham faqat
+  // rahbarniki. Shart bazadagi RLS bilan BIR XIL (`canTouchExpense`) —
+  // ilgari bu yerda brauzer sanasi va kassasiz tekshirilardi, tugma
+  // chiqib, bosilgach baza rad etardi (2026-09-03).
   // Usta olgan puli KPI jadvalida yuritiladi — bu yerda faqat
   // ko'rinadi, tahrirlanmaydi (aks holda ikki joyda ikki xil raqam).
   // Rahbarga o'tkazma ham shu ro'yxatda ko'rinadi, lekin Kassa
   // bo'limida yuritiladi — bu yerda tahrirlanmaydi.
-  const canTouch = (e) => e.source !== "installer" && e.source !== "transfer"
-    && (isOwner || (e.source !== "recurring" && String(e.date).slice(0, 10) === todayKey));
+  const canTouch = (e) => canTouchExpense(e, user);
   const myKassas = useMemo(() => kassasOf(user), [user]);
   const mineOnly = (list) => isOwner ? list : list.filter((e) => myKassas.includes(e.kassa));
   const [period, setPeriod] = useState("Yil");

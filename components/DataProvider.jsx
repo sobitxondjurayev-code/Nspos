@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { t } from "@/lib/i18n";
 import { AlertTriangle, X } from "lucide-react";
-import { bootstrap, subscribeAll, onDbError, onBackgroundReady, DEMO_MODE } from "@/lib/db";
+import { bootstrap, subscribeAll, onDbError, onBackgroundReady, onXotira, DEMO_MODE } from "@/lib/db";
 import { useAuth } from "@/components/AuthProvider";
 
 // Barcha modullar o'zini db.js ga qayd qilishi uchun shu yerda
@@ -96,7 +96,10 @@ export default function DataProvider({ children }) {
     });
     const stop = subscribeAll(() => setVersion((v) => v + 1));
     const off = onDbError(setError);
-    return () => { alive = false; ochirBg(); stop(); off(); };
+    // Baza yozuvni rad etib xotira orqaga qaytganda ham qayta chiziladi —
+    // aks holda ekranda "saqlangan" turib, F5 da yo'qolardi
+    const offXotira = onXotira(() => setVersion((v) => v + 1));
+    return () => { alive = false; ochirBg(); stop(); off(); offXotira(); };
   }, [authReady, authed, user.id]);
 
   return (
