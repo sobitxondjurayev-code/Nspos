@@ -87,6 +87,13 @@ export async function POST(req) {
     storeId = null;
     salary = 0; salesPct = 0; servicePct = 0;
   }
+  // Menejerga do'kon SHART (2026-09-03): xarajat siyosati `kassa =
+  // auth_store_id()` deb tekshiradi, kassa ro'yxati ham do'kondan
+  // (`kassasOf`). Do'konsiz menejer xarajat ham, kassa ham yozolmaydi —
+  // va buni "saqlash ishlamayapti" deb biladi.
+  if (role === "manager" && !storeId) {
+    return json({ error: "Menejer uchun do'kon tanlanishi shart — busiz u xarajat va kassa yoza olmaydi" }, 400);
+  }
   if (!(await ownStore(admin, prof, storeId))) {
     return json({ error: "Bu do'kon sizning kompaniyangizda emas" }, 403);
   }

@@ -3,7 +3,7 @@ import { t } from "@/lib/i18n";
 import { useState, useEffect } from "react";
 import { X, Eye } from "lucide-react";
 import NumberField from "@/components/NumberField";
-import { ROLES, SECTIONS, canOpen } from "@/lib/auth";
+import { ROLES, SECTIONS, canOpen, PERMISSIONS, ROUTE_PERMISSION } from "@/lib/auth";
 import { EXPENSE_CATEGORIES } from "@/lib/expensesData";
 import { ANALYSES } from "@/lib/analyses";
 import { demoStores } from "@/lib/demoData";
@@ -13,6 +13,16 @@ import { useOyna } from "@/components/ui/Modal";
 // Rol standarti bo'yicha qaysi bo'limlar ochiq — boshlang'ich holat
 const roleDefaults = (r) =>
   Object.fromEntries(SECTIONS.map((s) => [s.key, canOpen(s.key, { role: r })]));
+
+// Bazada (RLS) FAQAT rahbar yoza oladigan bo'lim — boshqa rolga
+// ochilsa sahifa ochiladi-yu, har saqlash rad etiladi ("saqlash
+// ishlamayapti", 2026-09-03). Shuning uchun bunday bo'lim rahbar
+// bo'lmagan xodimga umuman taklif qilinmaydi.
+const ownerOnly = (key) => {
+  const perm = ROUTE_PERMISSION[key];
+  const roles = perm ? PERMISSIONS[perm] : null;
+  return !!roles && roles.length === 1 && roles[0] === "owner";
+};
 
 // Xodim qo'shish / tahrirlash oynasi.
 // Yangi xodimda EMAIL so'raladi — u taklif bo'lib yoziladi va xodim
@@ -56,7 +66,11 @@ export default function StaffModal({ initial = null, busy = false, lockRole = nu
   const phoneDigits = phone.replace(/\D/g, "");
   // Telefon (login) har doim kerak. Yangi xodimda parol ham shart;
   // tahrirda parol ixtiyoriy (bo'sh qoldirilsa o'zgarmaydi).
-  const valid = name.trim() && phoneDigits.length >= 9 &&
+  // Menejerga do'kon SHART: xarajat va kassa siyosati `auth_store_id()`
+  // ga bog'liq — do'konsiz menejer hech narsa yozolmaydi (server ham
+  // `/api/staff` da shuni tekshiradi, 2026-09-03).
+  const storeKerak = full && role === "manager" && !storeId;
+  const valid = name.trim() && phoneDigits.length >= 9 && !storeKerak &&
     (isEdit ? (!password || password.length >= 6)
             : password.length >= 6);
 
@@ -131,7 +145,9 @@ export default function StaffModal({ initial = null, busy = false, lockRole = nu
           {demoStores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <p className="text-sm text-muted font-semibold mb-4">
-          {t("Do'kon tanlansa — xodim faqat o'sha do'kon ma'lumotini ko'radi.")}
+          {storeKerak
+            ? <span className="text-danger">{t("Menejer uchun do'kon shart — busiz u xarajat va kassa yoza olmaydi.")}</span>
+            : t("Do'kon tanlansa — xodim faqat o'sha do'kon ma'lumotini ko'radi.")}
         </p>
         </>)}
 
@@ -146,16 +162,23 @@ export default function StaffModal({ initial = null, busy = false, lockRole = nu
               {t("Xodim qaysi bo'limlarni ko'radi. O'chirilgani unga umuman ko'rinmaydi.")}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {SECTIONS.map((s) => (
-                <label key={s.key}
-                  className={`flex items-center gap-3 rounded-xl border-2 px-3 py-2.5 cursor-pointer transition-colors ${
-                    perms[s.key] ? "border-brand bg-brand-soft" : "border-line hover:border-brand"}`}>
-                  <input type="checkbox" checked={!!perms[s.key]}
-                    onChange={(e) => setPerms((p) => ({ ...p, [s.key]: e.target.checked }))}
-                    className="w-4 h-4 accent-brand shrink-0" />
-                  <span className="font-semibold text-sm">{t(s.label)}</span>
-                </label>
-              ))}
+              {SECTIONS.map((s) => {
+                const qulf = role !== "owner" && ownerOnly(s.key);
+                const yoq = qulf ? false : !!perms[s.key];
+                return (
+                  <label key={s.key}
+                    title={qulf ? t("Bu bo'limda faqat rahbar yoza oladi (baza siyosati)") : undefined}
+                    className={`flex items-center gap-3 rounded-xl border-2 px-3 py-2.5 transition-colors ${
+                      qulf ? "border-line opacity-50 cursor-not-allowed"
+                           : yoq ? "border-brand bg-brand-soft cursor-pointer" : "border-line hover:border-brand cursor-pointer"}`}>
+                    <input type="checkbox" checked={yoq} disabled={qulf}
+                      onChange={(e) => setPerms((p) => ({ ...p, [s.key]: e.target.checked }))}
+                      className="w-4 h-4 accent-brand shrink-0" />
+                    <span className="font-semibold text-sm">{t(s.label)}</span>
+                    {qulf && <span className="ml-auto text-xs font-bold text-muted">{t("faqat rahbar")}</span>}
+                  </label>
+                );
+              })}
             </div>
 
             {/* Xarajat bo'limi ochiq bo'lsa — qaysi turlarni kirita
