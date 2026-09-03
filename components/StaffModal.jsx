@@ -3,7 +3,7 @@ import { t } from "@/lib/i18n";
 import { useState, useEffect } from "react";
 import { X, Eye } from "lucide-react";
 import NumberField from "@/components/NumberField";
-import { ROLES, SECTIONS, canOpen, PERMISSIONS, ROUTE_PERMISSION } from "@/lib/auth";
+import { ROLES, SECTIONS, canOpen, can, ROUTE_PERMISSION } from "@/lib/auth";
 import { EXPENSE_CATEGORIES } from "@/lib/expensesData";
 import { ANALYSES } from "@/lib/analyses";
 import { demoStores } from "@/lib/demoData";
@@ -20,8 +20,9 @@ const roleDefaults = (r) =>
 // bo'lmagan xodimga umuman taklif qilinmaydi.
 const ownerOnly = (key) => {
   const perm = ROUTE_PERMISSION[key];
-  const roles = perm ? PERMISSIONS[perm] : null;
-  return !!roles && roles.length === 1 && roles[0] === "owner";
+  if (!perm) return false;
+  // Matritsa (baza) yoki standart — `can` ikkalasini biladi
+  return !["manager", "cashier", "storekeeper", "installer"].some((r) => can(perm, { role: r }));
 };
 
 // Xodim qo'shish / tahrirlash oynasi.

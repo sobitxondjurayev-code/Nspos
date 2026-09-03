@@ -119,6 +119,14 @@ const ids = psql(`
 `).out.trim().split("\n").filter(Boolean).map((l) => l.split("|"));
 const xodim = Object.fromEntries(ids.map(([role, id, store]) => [role, { id, store }]));
 
+// Kutilgan javob: bazadagi matritsa (`role_permissions`) — rahbar
+// o'zgartirgan bo'lsa shu; qator yo'q bo'lsa lib/auth.js PERMISSIONS
+const matritsa = new Map();
+for (const l of psql(`select role || '|' || key || '|' || allowed from role_permissions
+  where company_id = (select id from companies order by created_at limit 1);`).out.trim().split("\n").filter(Boolean)) {
+  const [role, key, allowed] = l.split("|");
+  matritsa.set(`${role}|${key}`, allowed === "t" || allowed === "true");
+}
 const boshqaId = (role) => (role === "owner" ? xodim.manager?.id ?? xodim.cashier?.id : xodim.owner?.id) ?? null;
 
 console.log(`huquq sinovi — ${SERVER} · ${BAZA} · ${new Date().toISOString().slice(0, 16)}`);
@@ -176,7 +184,8 @@ rollback;
 
 // 3) Solishtirish: kutilgan (PERMISSIONS) ↔ haqiqat (RLS)
 const rollarBor = ROLLAR.filter((r) => xodim[r]);
-const kutilgan = (kalit, role) => (kalit === "*" ? true : (PERMISSIONS[kalit] ?? []).includes(role));
+const kutilgan = (kalit, role) => (kalit === "*" ? true : role === "owner" ? true
+  : (matritsa.get(`${role}|${kalit}`) ?? (PERMISSIONS[kalit] ?? []).includes(role)));
 let farq = 0, xato = 0;
 const kenglik = Math.max(...SINOVLAR.map((s) => (s.t + " " + s.op).length)) + 2;
 console.log("\n" + "".padEnd(kenglik) + rollarBor.map((r) => r.padStart(12)).join(""));

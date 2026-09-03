@@ -1,6 +1,6 @@
 "use client";
 import { t, tt } from "@/lib/i18n";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, Fragment } from "react";
 import {
   Check, RotateCcw, Sun, Moon, Monitor, Plus, Pencil, Trash2, UserPlus, Clock,
   KeyRound, Eye, EyeOff, Coins, Wrench, CalendarDays, Shield, Download, Send,
@@ -10,7 +10,8 @@ import { useTheme } from "@/components/ThemeProvider";
 import { useLang } from "@/components/LangProvider";
 import { MODES, DARK_PRESETS, ACCENTS } from "@/lib/themes";
 import { LANGS } from "@/lib/i18n";
-import { ROLES, can } from "@/lib/auth";
+import { ROLES, can, PERMISSIONS, PERMISSION_LABELS } from "@/lib/auth";
+import { allowedIn, setPerm, permsLoaded } from "@/lib/permsData";
 import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
 import { demoStores } from "@/lib/demoData";
@@ -616,6 +617,97 @@ function BusinessRulesCard() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// ROLLAR VA HUQUQLAR (2026-09-03)
+// ══════════════════════════════════════════════════════════════
+// Bitta jadval — `role_permissions`: interfeys (`auth.can`) ham,
+// bazadagi RLS (`has_perm`) ham shundan. Belgi o'zgarsa tugma ham,
+// baza ruxsati ham o'sha zahoti. Owner ustuni qulf — u doim ruxsatli.
+// Standart — `lib/auth.js` PERMISSIONS; "Standartga qaytarish" shunga.
+const HUQUQ_ROLLAR = ["manager", "cashier", "storekeeper", "installer"];
+function RolePermissionsCard() {
+  const live = useLive();
+  const [tick, setTick] = useState(0);
+  const bump = () => setTick((v) => v + 1);
+  const yuklangan = permsLoaded();
+  // Domen bo'yicha guruhlar: "sale.create" → "sale"
+  const guruhlar = useMemo(() => {
+    const m = new Map();
+    for (const k of Object.keys(PERMISSIONS)) {
+      const d = k.split(".")[0];
+      if (!m.has(d)) m.set(d, []);
+      m.get(d).push(k);
+    }
+    return [...m.entries()];
+  }, [live, tick]);
+  const DOMEN = {
+    sale: "Sotuv", product: "Tovar va ombor", warehouse: "Ombor operatsiyalari", customer: "Mijozlar",
+    kassa: "Kassalar", finance: "Moliya", service: "Xizmatlar", nps: "NPS", kpi: "KPI",
+    report: "Hisobotlar", management: "Rahbariyat", settings: "Sozlamalar", staff: "Xodimlar",
+  };
+  async function standart() {
+    if (!confirm(t("Barcha rollar huquqi standartga (kodda turgan ro'yxatga) qaytarilsinmi?"))) return;
+    for (const [k, roles] of Object.entries(PERMISSIONS))
+      for (const r of HUQUQ_ROLLAR) if (allowedIn(r, k) !== roles.includes(r)) await setPerm(r, k, roles.includes(r));
+    bump();
+  }
+  return (
+    <div className="card p-7 mb-6">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-3">
+          <span className="w-9 h-9 rounded-xl bg-brand-soft text-brand flex items-center justify-center">
+            <KeyRound size={18} />
+          </span>
+          <h2 className="text-xl font-extrabold">{t("Rollar va huquqlar")}</h2>
+        </div>
+        <button onClick={standart} className="text-sm font-bold text-muted hover:text-danger">{t("Standartga qaytarish")}</button>
+      </div>
+      <p className="text-sm text-muted font-semibold mb-4">
+        {t("Bu jadval bazadagi himoyaning O'ZI: belgi olib tashlansa xodim tugmani ham ko'rmaydi, baza ham yozuvni qabul qilmaydi. Egasi doim hamma narsaga ruxsatli. Har xodimga alohida bo'lim yopish — Xodimlar → tahrirlash (u faqat toraytiradi).")}
+        {!yuklangan && <span className="block text-warn mt-1">{t("Matritsa bazadan hali kelmadi — standart ko'rsatilmoqda.")}</span>}
+      </p>
+      <div className="overflow-auto max-h-[36rem] rounded-2xl border border-line">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 bg-panel z-10">
+            <tr className="text-left text-muted border-b border-line">
+              <th className="px-3 py-3 font-bold">{t("Huquq")}</th>
+              <th className="px-3 py-3 font-bold text-center">{t(ROLES.owner.label)}</th>
+              {HUQUQ_ROLLAR.map((r) => <th key={r} className="px-3 py-3 font-bold text-center">{t(ROLES[r].label)}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {guruhlar.map(([domen, keys]) => (
+              <Fragment key={domen}>
+                <tr className="bg-surface"><td colSpan={2 + HUQUQ_ROLLAR.length} className="px-3 py-2 text-xs font-extrabold uppercase tracking-wide text-muted">{t(DOMEN[domen] ?? domen)}</td></tr>
+                {keys.map((k) => (
+                  <tr key={k} className="border-b border-line last:border-0">
+                    <td className="px-3 py-2">
+                      <p className="font-semibold">{t(PERMISSION_LABELS[k] ?? k)}</p>
+                      <p className="text-xs text-muted font-mono">{k}</p>
+                    </td>
+                    <td className="px-3 py-2 text-center"><Check size={16} className="inline text-ok" /></td>
+                    {HUQUQ_ROLLAR.map((r) => {
+                      const on = can(k, { role: r });
+                      const standartmi = on === PERMISSIONS[k].includes(r);
+                      return (
+                        <td key={r} className="px-3 py-2 text-center" title={standartmi ? "" : t("Standartdan farq qiladi")}>
+                          <input type="checkbox" checked={on}
+                            onChange={(e) => { setPerm(r, k, e.target.checked); bump(); }}
+                            className={`w-4 h-4 accent-brand ${standartmi ? "" : "outline outline-2 outline-warn rounded"}`} />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 // DO'KONLAR (2026-09-03)
 // ══════════════════════════════════════════════════════════════
 // Nom, tur (do'kon / sklad) va Billz nomlari. Ilgari do'kon NOMI to'rt
@@ -1118,6 +1210,7 @@ export default function Settings() {
       {isOwner && <LedgerStartCard />}
       {isOwner && <ServiceNamesCard />}
       {isOwner && <BusinessRulesCard />}
+      {isOwner && <RolePermissionsCard />}
       {isOwner && <StoresCard />}
       {isOwner && <ExpenseCategoriesCard />}
 
