@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Search, Barcode, Plus, Minus, Trash2, ShoppingCart, Receipt, User, X, Undo2 } from "lucide-react";
 import { demoStores, demoUser, fmtUSD } from "@/lib/demoData";
 import { listProducts, findByBarcode } from "@/lib/productsData";
+import { asosiyDokonId } from "@/lib/storesData";
 import { listSales, addSale, addReturn, returnedQtyOf, sotuvchiNomi } from "@/lib/salesData";
 import { searchCustomers } from "@/lib/customersData";
 import { listStaff } from "@/lib/staffData";
@@ -20,7 +21,7 @@ const tabs = ["Kassa", "Cheklar tarixi"];
 
 export default function Sales() {
   const [tab, setTab] = useState("Kassa");
-  const [storeId, setStoreId] = useState(demoStores[0].id);
+  const [storeId, setStoreId] = useState(() => asosiyDokonId());
   const [q, setQ] = useState("");
   const [cart, setCart] = useState([]);
   const [discountPct, setDiscountPct] = useState("");

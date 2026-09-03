@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import {
   Check, RotateCcw, Sun, Moon, Monitor, Plus, Pencil, Trash2, UserPlus, Clock,
   KeyRound, Eye, EyeOff, Coins, Wrench, CalendarDays, Shield, Download, Send,
-  RefreshCw, Stethoscope, TriangleAlert, Wallet,
+  RefreshCw, Stethoscope, TriangleAlert, Wallet, Boxes,
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useLang } from "@/components/LangProvider";
@@ -14,6 +14,7 @@ import { ROLES, can } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
 import { demoStores } from "@/lib/demoData";
+import { listStores, updateStore } from "@/lib/storesData";
 import { listStaff, updateStaff, removeStaff, reloadStaff } from "@/lib/staffData";
 import { listInvites, addInvite, removeInvite } from "@/lib/invitesData";
 import { supabase, DEMO_MODE } from "@/lib/db";
@@ -615,6 +616,72 @@ function BusinessRulesCard() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// DO'KONLAR (2026-09-03)
+// ══════════════════════════════════════════════════════════════
+// Nom, tur (do'kon / sklad) va Billz nomlari. Ilgari do'kon NOMI to'rt
+// joyda kalit edi — o'zgartirilsa do'kon ikkilanar, kassa yo'qolardi.
+// Endi kalit `code` (o'zgarmaydi), nom faqat ko'rsatish uchun. Billz
+// nomlari — Billz do'koni/kassasi nomidagi kalit so'zlar (sinxron va
+// kassa kirimi shundan bog'laydi); o'zgartirgach "Billz'dan yangilash"
+// bosilib, Tashxisda bog'lanmagan do'kon yo'qligi tekshiriladi.
+function StoresCard() {
+  const live = useLive();
+  const [tick, setTick] = useState(0);
+  const [holat, setHolat] = useState({});
+  const stores = useMemo(() => listStores(), [live, tick]);
+  async function saqla(s, patch) {
+    const r = await updateStore(s.id, patch);
+    setHolat((h) => ({ ...h, [s.id]: r?.ok === false ? "xato" : "saqlandi" }));
+    setTick((v) => v + 1);
+  }
+  return (
+    <div className="card p-7 mb-6">
+      <div className="flex items-center gap-3 mb-1">
+        <span className="w-9 h-9 rounded-xl bg-brand-soft text-brand flex items-center justify-center">
+          <Boxes size={18} />
+        </span>
+        <h2 className="text-xl font-extrabold">{t("Do'konlar va kassalar")}</h2>
+      </div>
+      <p className="text-sm text-muted font-semibold mb-5">
+        {t("Nomni o'zgartirsangiz hamma joyda (menyu, kassa, hisobot) darrov almashadi. \"Sklad\" turidagi do'konda kassa bo'lmaydi va u Qoldiq salomatligida ombor hisoblanadi. Billz nomlari — Billz'dagi do'kon yoki kassa nomidagi so'zlar (kichik harf, vergul bilan): sinxron shu bo'yicha bog'laydi.")}
+      </p>
+      <div className="space-y-3">
+        {stores.map((s) => (
+          <div key={s.id} className="grid grid-cols-1 lg:grid-cols-[1fr_10rem_1fr_auto] gap-3 items-end p-4 rounded-2xl bg-surface">
+            <label className="block">
+              <span className="block text-xs font-bold text-muted mb-1">{t("Nomi")} · <span className="font-mono">{s.code ?? "—"}</span></span>
+              <input defaultValue={s.name} key={`n-${s.id}-${s.name}`} className="inp"
+                onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== s.name) saqla(s, { name: v }); }} />
+            </label>
+            <label className="block">
+              <span className="block text-xs font-bold text-muted mb-1">{t("Turi")}</span>
+              <select value={s.kind === "warehouse" ? "warehouse" : "shop"} className="inp"
+                onChange={(e) => saqla(s, { kind: e.target.value })}>
+                <option value="shop">{t("Do'kon (kassa bor)")}</option>
+                <option value="warehouse">{t("Sklad (ombor)")}</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="block text-xs font-bold text-muted mb-1">{t("Billz nomlari (vergul bilan)")}</span>
+              <input defaultValue={(s.billzNames ?? []).join(", ")} key={`b-${s.id}-${(s.billzNames ?? []).join("|")}`} className="inp"
+                placeholder="optim, nskamera"
+                onBlur={(e) => {
+                  const list = e.target.value.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+                  if (list.join("|") !== (s.billzNames ?? []).join("|")) saqla(s, { billzNames: list });
+                }} />
+            </label>
+            <div className="pb-3 text-sm font-semibold min-w-[5rem]">
+              {holat[s.id] === "saqlandi" && <span className="text-ok">{t("Saqlandi")}</span>}
+              {holat[s.id] === "xato" && <span className="text-danger">{t("Saqlanmadi")}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 // XARAJAT TURLARI (2026-09-03)
 // ══════════════════════════════════════════════════════════════
 // Rahbar: "xarajat turini qo'shish/o'chirish mumkin bo'lsin". Ro'yxat
@@ -1051,6 +1118,7 @@ export default function Settings() {
       {isOwner && <LedgerStartCard />}
       {isOwner && <ServiceNamesCard />}
       {isOwner && <BusinessRulesCard />}
+      {isOwner && <StoresCard />}
       {isOwner && <ExpenseCategoriesCard />}
 
       {/* Parolni yangilash — har bir kirgan xodim o'ziniki uchun */}

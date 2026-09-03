@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { demoStores, fmtUSD } from "@/lib/demoData";
 import { listProducts } from "@/lib/productsData";
+import { asosiyDokonId, skladId } from "@/lib/storesData";
 import {
   listOperations, getOperation, addOperation, updateOperation, removeOperation,
   computeOperation, applyOperation, warehouseSummary, OP_TYPES, WRITEOFF_REASONS,
@@ -330,8 +331,9 @@ export default function WarehouseOperations() {
     const cfg = OP_TYPES[type];
     const op = addOperation({
       type,
-      fromStoreId: cfg.needsFrom ? demoStores[0].id : null,
-      toStoreId: cfg.needsTo ? demoStores[2].id : null,
+      // Transfer standart: Skladdan asosiy do'konga (kod bo'yicha, tartib emas)
+      fromStoreId: cfg.needsFrom ? (cfg.needsTo ? (skladId() ?? asosiyDokonId()) : asosiyDokonId()) : null,
+      toStoreId: cfg.needsTo ? asosiyDokonId() : null,
     });
     bump();
     setOpenId(op.id);

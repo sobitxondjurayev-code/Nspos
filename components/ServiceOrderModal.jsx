@@ -4,6 +4,7 @@ import { useState } from "react";
 import { X, Plus, Trash2, Wrench, Package } from "lucide-react";
 import { demoStores, fmtUSD } from "@/lib/demoData";
 import { listProducts } from "@/lib/productsData";
+import { asosiyDokonId } from "@/lib/storesData";
 import { listCustomers } from "@/lib/customersData";
 import { listInstallers } from "@/lib/staffData";
 import { listServiceTypes, computeOrder, STATUSES } from "@/lib/servicesData";
@@ -21,7 +22,7 @@ export default function ServiceOrderModal({ initial, onClose, onSave }) {
     initial ?? {
       customerId: clients[0]?.id ?? null,
       address: "",
-      storeId: demoStores[0].id,
+      storeId: asosiyDokonId(),
       installerId: installers[0]?.id ?? null,
       installerPct: installers[0]?.sharePct ?? 30,
       services: [],
