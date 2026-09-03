@@ -32,6 +32,7 @@ import "@/lib/kassaData";
 import "@/lib/payoutsData";
 import "@/lib/ratesData";
 import "@/lib/billzLogData";
+import "@/lib/transfersData";
 
 const DataCtx = createContext({ ready: DEMO_MODE, demo: DEMO_MODE, version: 0 });
 export const useData = () => useContext(DataCtx);

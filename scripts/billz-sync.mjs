@@ -103,7 +103,8 @@ log(`manba: ${manba}`);
 // —— Tashxis ————————————————————————————————
 if (flag("probe")) {
   const { probe } = await import("../lib/billzApi.js");
-  const r = await probe();
+  // `--transfer` — Billz'da transfer (sklad → filial) metodi bormi, sinov
+  const r = await probe({ kengaytirilgan: flag("transfer") });
   console.table(r);
   const orders = r.orders;
   if (orders?.empty || orders?.forbidden) {

@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from "recharts";
-import { PackageX, ShoppingCart, Snowflake, TriangleAlert } from "lucide-react";
+import { PackageX, ShoppingCart, Snowflake, TriangleAlert, Truck } from "lucide-react";
 import { t, tt } from "@/lib/i18n";
 import { pul, son } from "@/lib/format";
 import { useTheme } from "@/components/ThemeProvider";
@@ -9,6 +9,13 @@ import { useLive } from "@/components/DataProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { can } from "@/lib/auth";
 import { reorderList, reorderSummary, deadStock, storeOptions } from "@/lib/analytics";
+import { skladId } from "@/lib/storesData";
+import { transferSummary } from "@/lib/transfersData";
+import { sana } from "@/lib/format";
+import BillzMuhr from "@/components/BillzMuhr";
+
+// "NScamera Optim" → "Optim" — bo'linma satrida qisqa
+const qisqaNom = (n) => String(n ?? "").replace(/^NScamera\s+/i, "");
 import { getReorderDays, setReorderDays } from "@/lib/companyData";
 import NumberField from "@/components/NumberField";
 import DataTable from "@/components/ui/DataTable";
@@ -56,6 +63,23 @@ export default function StockHealthReport() {
 
   const buyurtma = useMemo(() => reorderList({ storeId }), [storeId, live, tick]);
   const olik = useMemo(() => deadStock({ storeId }), [storeId, live]);
+  // Filial tanlanganmi (Sklad emas, "Barcha" emas) — "Skladda" ustuni shunda
+  const sklad = skladId();
+  const filial = storeId !== "all" && !!sklad && storeId !== sklad;
+  // "Barcha do'konlar" — Qoldiq YIG'INDI; nimadan yig'ilgani katakda
+  // ko'rinsin (rahbar 2026-09-03: "yig'indi ko'rinishi kerak emasmi?")
+  const bolinma = (r) => storeOptions.filter((s) => s.id !== "all")
+    .map((s) => `${qisqaNom(s.name)} ${son(r.stockByStore?.[s.id] ?? 0)}`).join(" · ");
+
+  // Transferlar — Billz `/v2/transfer` ko'zgusi, oxirgi 30 kun ("Kuniga"
+  // ustuni bilan bitta davr). Filial tanlanganda — O'SHA filialga
+  // kelganlar; "Barcha" — hamma yo'nalish. Rahbar (2026-09-03):
+  // "skladdan qancha transfer bo'layotgani ko'rinmayapti".
+  const transfer = useMemo(() => {
+    const to = new Date();
+    const from = new Date(to.getTime() - 30 * 86400000);
+    return transferSummary(from, to, storeId === "all" ? {} : { toStoreId: storeId });
+  }, [storeId, live]);
   // Kartochkalar — API va bot bilan BITTA yig'indi (`reorderSummary`)
   const yig = useMemo(() => reorderSummary(buyurtma), [buyurtma]);
   const muddat = yig.muddat;
@@ -92,7 +116,7 @@ export default function StockHealthReport() {
 
       {bolim === "reorder" ? (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <div className={`grid grid-cols-2 ${filial ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-4 mb-6`}>
             {/* Faqat oxirgi 30 kunda sotilganlar. 90 kunlik zaxira oyna
                 orqali "sotilyapti" bo'lib chiqqanlar (30 kundan beri
                 sotilmagan) ALOHIDA aytiladi va pulga kirmaydi — 02.09 da
@@ -107,6 +131,16 @@ export default function StockHealthReport() {
                 + (yig.tannarxsiz ? " · " + tt("{n} ta tovar tannarxsiz — hisobga kirmadi", { n: son(yig.tannarxsiz) }) : "")} />
             <Kartochka label="Buyurtma ro'yxati" value={son(yig.buyurtma)}
               hint={tt("Tugaganlar + {n} kunda tugaydiganlar", { n: muddat.lead })} />
+            {/* Filial tanlanganda: qanchasi Skladdan ko'chirish bilan yopiladi
+                (2026-09-03 — ilgari filialda 0 bo'lsa "buyurtma" derdi,
+                Skladda turgan bo'lsa ham) */}
+            {filial && (
+              <Kartochka label="Skladdan ko'chirish kerak" value={son(yig.kochirishKerak)}
+                icon={Truck} rang="text-brand"
+                hint={yig.kochirishKerak
+                  ? tt("{n} dona Skladda bor — buyurtma emas, ko'chirish", { n: son(yig.kochirishDona) })
+                  : t("Skladda bu tovarlar yo'q")} />
+            )}
           </div>
 
           {/* Formulani YASHIRMAYMIZ — raqamga ishonish uchun uni
@@ -136,6 +170,58 @@ export default function StockHealthReport() {
             )}
           </div>
 
+          {/* ── TRANSFERLAR (Billz) ── oxirgi 30 kun, yo'nalish bo'yicha.
+              Tovar kesimi yo'q: Billz API transfer qatorlarini bermaydi
+              (DAFTAR 18) — sarlavha (dona, tannarx, sana) bor. */}
+          <div className="card p-5 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+              <p className="font-bold flex items-center gap-2">
+                <Truck size={16} className="text-brand" />
+                {t(storeId === "all" ? "Transferlar — oxirgi 30 kun" : "Bu do'konga kelgan transferlar — oxirgi 30 kun")}
+              </p>
+              <BillzMuhr entity="transfers" className="sm:ml-auto" />
+            </div>
+            <p className="text-sm font-semibold text-muted mb-3">
+              {transfer.soni
+                ? tt("{n} ta transfer · {d} dona · tannarxda {s} · sotuv narxida {r}", {
+                    n: son(transfer.soni), d: son(transfer.dona), s: pul(transfer.supplyTotal), r: pul(transfer.retailTotal) })
+                : t("Bu davrda transfer yo'q (yoki Billz'dan hali tortilmagan)")}
+              {" · "}
+              {t("Billz transferning tovar qatorlarini API orqali bermaydi — shuning uchun yo'nalish va summa ko'rinadi, tovar nomi emas.")}
+            </p>
+            {transfer.routes.length > 0 && (
+              <DataTable
+                id="transfer-routes"
+                name={t("Transferlar")}
+                rows={transfer.routes}
+                rowKey={(r) => r.key}
+                pin={false}
+                minWidth="40rem"
+                maxHeight="24rem"
+                columns={[
+                  { key: "yol", label: "Yo'nalish", locked: true,
+                    value: (r) => `${r.fromName} → ${r.toName}`,
+                    cell: (r) => <span className="font-bold">{qisqaNom(r.fromName)} → {qisqaNom(r.toName)}</span> },
+                  { key: "soni", label: "Transfer", right: true, hint: "Necha marta yuborilgan",
+                    cell: (r) => son(r.soni), total: (rs) => son(rs.reduce((a, r) => a + r.soni, 0)) },
+                  { key: "dona", label: "Dona", right: true, hint: "Yuborilgan dona (Billz)",
+                    cell: (r) => son(r.dona), total: (rs) => son(rs.reduce((a, r) => a + r.dona, 0)) },
+                  { key: "donaQabul", label: "Qabul", right: true, hint: "Qabul qilingan dona; farq bo'lsa Billz'da belgilangan",
+                    cell: (r) => (r.farqli
+                      ? <span className="font-bold text-warn" title={t("Farqli transferlar bor")}>{son(r.donaQabul)} ⚠</span>
+                      : son(r.donaQabul)),
+                    total: (rs) => son(rs.reduce((a, r) => a + r.donaQabul, 0)) },
+                  { key: "supplyTotal", label: "Tannarxda", right: true, hint: "Billz tannarx summasi",
+                    cell: (r) => pul(r.supplyTotal), total: (rs) => pul(rs.reduce((a, r) => a + r.supplyTotal, 0)) },
+                  { key: "retailTotal", label: "Sotuv narxida", right: true, hint: "Billz sotuv narxi summasi",
+                    cell: (r) => pul(r.retailTotal), total: (rs) => pul(rs.reduce((a, r) => a + r.retailTotal, 0)) },
+                  { key: "oxirgi", label: "Oxirgi", right: true, value: (r) => r.oxirgi ?? "",
+                    cell: (r) => (r.oxirgi ? sana(r.oxirgi) : "—") },
+                ]}
+              />
+            )}
+          </div>
+
           <DataTable
             id="reorder-db"
             name={t("Buyurtma ro'yxati")}
@@ -154,29 +240,61 @@ export default function StockHealthReport() {
                     {r.product.name}
                   </span>
                 ) },
-              { key: "stock", label: "Qoldiq", right: true,
-                cell: (r) => (r.stock <= 0
-                  ? <span className="font-extrabold text-danger">0</span>
-                  : son(r.stock)),
+              { key: "stock", label: storeId === "all" ? "Qoldiq (jami)" : "Qoldiq", right: true,
+                hint: storeId === "all"
+                  ? "Billz joriy qoldig'i — HAMMA do'kon (Sklad ham) yig'indisi; ostida bo'linma"
+                  : "Billz joriy qoldig'i — tanlangan do'kon",
+                cell: (r) => (
+                  <>
+                    {r.stock <= 0 ? <span className="font-extrabold text-danger">0</span> : son(r.stock)}
+                    {storeId === "all" && (
+                      <span className="block text-xs font-semibold text-muted whitespace-nowrap">{bolinma(r)}</span>
+                    )}
+                  </>
+                ),
                 total: (rs) => son(rs.reduce((a, r) => a + r.stock, 0)) },
-              { key: "avgDaily", label: "Kuniga", right: true, cell: (r) => son(r.avgDaily, 2) },
+              ...(filial ? [{
+                key: "skladda", label: "Skladda", right: true,
+                hint: "Sklad (markaziy ombor) qoldig'i — Billz. Filialda tugagan bo'lsa avval shundan ko'chiriladi",
+                value: (r) => r.skladda ?? 0,
+                cell: (r) => (r.skladda > 0
+                  ? <span className="font-bold text-brand">{son(r.skladda)}</span>
+                  : <span className="text-faint">0</span>),
+                total: (rs) => son(rs.reduce((a, r) => a + (r.skladda ?? 0), 0)),
+              }] : []),
+              { key: "avgDaily", label: "Kuniga", right: true,
+                hint: "Kunlik o'rtacha sotuv: oxirgi 30 kunda sotilgan dona ÷ 30 (30 kunda sotilmagan bo'lsa 90 kun ÷ 90)",
+                cell: (r) => son(r.avgDaily, 2) },
               // Tezlik qaysi oynadan — 90 bo'lsa tovar 30 kundan beri sotilmagan
               { key: "oyna", label: "Oyna", right: true,
+                hint: "Tezlik qaysi davrdan hisoblangan: 30 kun — oxirgi oyda sotilgan; 90 kun — oxirgi oyda sotilmagan, zaxira oyna (raqam taxminiyroq)",
                 cell: (r) => (r.oyna === 30
                   ? <span className="text-muted">{tt("{n} kun", { n: 30 })}</span>
                   : <span className="font-bold text-warn">{tt("{n} kun", { n: r.oyna })}</span>) },
               { key: "lastSoldAt", label: "Oxirgi sotuv", right: true,
+                hint: "Oxirgi marta qachon sotilgan (Billz cheklari bo'yicha)",
                 value: (r) => r.lastSoldAt ?? "",
                 cell: (r) => (r.lastSoldAt ?? <span className="text-faint">—</span>) },
               { key: "daysLeft", label: "Yetadi", right: true, value: (r) => r.daysLeft ?? 9999,
+                hint: "Qoldiq necha kunga yetadi: qoldiq ÷ kunlik o'rtacha",
                 cell: (r) => (r.tugagan
                   ? <span className="font-bold text-danger">{t("tugagan")}</span>
                   : r.daysLeft == null ? <span className="text-faint">—</span>
                   : tt("{n} kun", { n: r.daysLeft })) },
-              { key: "buyurtma", label: "Buyurtma", right: true,
-                cell: (r) => <span className="font-extrabold text-brand">{son(r.buyurtma)}</span>,
+              { key: "buyurtma", label: filial ? "Buyurtma / ko'chirish" : "Buyurtma", right: true,
+                hint: filial
+                  ? "Kerak = kuniga × (yetkazish + zaxira) − qoldiq. Skladda bor qismi KO'CHIRISH, qolgani buyurtma"
+                  : "Kuniga × (yetkazish + zaxira kuni) − qoldiq — kamida 1",
+                value: (r) => r.buyurtma,
+                cell: (r) => (r.kochirish > 0
+                  ? <span className="whitespace-nowrap">
+                      <span className="font-extrabold text-brand">{tt("ko'chirish {n}", { n: son(r.kochirish) })}</span>
+                      {r.buyurtmaQoldiq > 0 && <span className="block text-xs font-semibold text-muted">{tt("+ buyurtma {n}", { n: son(r.buyurtmaQoldiq) })}</span>}
+                    </span>
+                  : <span className="font-extrabold text-brand">{son(r.buyurtma)}</span>),
                 total: (rs) => son(rs.reduce((a, r) => a + r.buyurtma, 0)) },
               { key: "kunlikYoqotish", label: "Yo'qotish/kun", right: true,
+                hint: "Tugagan tovarda kuniga yo'qotilayotgan foyda: kuniga × (narx − tannarx). Faqat 30 kun oynasi va tannarxi ma'lum tovar uchun",
                 // `null` Excelga bo'sh tushadi (ilgari −1 chiqardi — rahbarning
                 // "minus qayerdan?" savolining bir manbai, 2026-09-03)
                 value: (r) => r.kunlikYoqotish ?? null,
@@ -189,6 +307,7 @@ export default function StockHealthReport() {
                     : <span className="text-faint">—</span>),
                 total: (rs) => pul(rs.reduce((a, r) => a + (r.kunlikYoqotish ?? 0), 0)) },
               { key: "stockValue", label: "Qoldiq puli", right: true, cell: (r) => pul(r.stockValue),
+                hint: "Qoldiq × tannarx — qoldiqqa bog'langan pul",
                 total: (rs) => pul(rs.reduce((a, r) => a + r.stockValue, 0)) },
             ]}
           />
