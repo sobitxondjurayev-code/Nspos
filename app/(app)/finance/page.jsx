@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Wallet, ListChecks, Receipt, Users, Truck, Banknote, TrendingUp,
-  Scale, Upload, Package, Clock, ArrowDownLeft, ArrowUpRight, PiggyBank,
+  Scale, Package, Clock, ArrowDownLeft, ArrowUpRight, PiggyBank,
   ChevronRight, SlidersHorizontal,
 } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
@@ -142,10 +142,6 @@ export default function FinanceHome() {
       href: "/finance/balance", icon: Scale, label: "Balans", term: "Balance sheet",
       hint: "Aktiv va passiv",
       value: fmtUSD(sheet.totalAssets), tone: "brand", note: t("Jami aktiv"),
-    },
-    {
-      href: "/finance/import", icon: Upload, label: "Billz'dan yuklash", term: "Import",
-      hint: "ДДС va boshqa hisobotlarni yuklash",
     },
     {
       href: "/finance/cost", icon: Package, label: "Import va tannarx", term: "Landed cost",

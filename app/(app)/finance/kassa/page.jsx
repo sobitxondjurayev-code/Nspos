@@ -18,7 +18,7 @@ import { fmtDate } from "@/lib/dates";
 import CellSources from "@/components/finance/CellSources";
 import { getLedgerStart } from "@/lib/companyData";
 import { useAuth } from "@/components/AuthProvider";
-import { useLive } from "@/components/DataProvider";
+import { useLive, useToliq } from "@/components/DataProvider";
 import KassaBalanceChart from "@/components/finance/KassaBalanceChart";
 import KassaModal from "@/components/KassaModal";
 import Manfiy from "@/components/ui/Manfiy";
@@ -49,6 +49,9 @@ export default function KassaPage() {
   const [tick, setTick] = useState(0);
   // Boshqa xodim yozgan o'zgarish ham darrov ko'rinsin
   const live = useLive();
+  // Og'ir jadvallar (chek, qarz to'lovi) kelguncha balans qisman —
+  // "minusda" degan ogohlantirish shu paytda YOLG'ON bo'ladi
+  const toliq = useToliq();
   const [modal, setModal] = useState(null);   // { kassa, mode }
 
   const isOwner = user?.role === "owner";
@@ -168,8 +171,14 @@ export default function KassaPage() {
         {t("Kassa kirimi menejerlarning kunlik jadvalidan olinadi (KPI va oylik bo'limi), chiqim esa shu yerda va Xarajatlar bo'limida kiritiladi. Kassa har kun alohida yopiladi: o'sha kunning qoldig'i rahbarga topshiriladi va u tasdiqlagach asosiy balansga qo'shiladi. Qaysi kun yopilgani, qancha bilan yopilgani va yopilmay qolgani \"Kunlar\" ichida ko'rinadi.")}
       </p>
 
-      {/* Hisobdagi nomuvofiqliklar — menejer ham ko'radi */}
-      <Warnings />
+      {/* Hisobdagi nomuvofiqliklar — menejer ham ko'radi. Billz
+          ma'lumoti to'liq kelmaguncha TEKSHIRILMAYDI: 2026-09-03 da
+          yuklanish paytida "Optim naqd minusda −61 367 $" chiqqan edi. */}
+      {toliq ? <Warnings /> : (
+        <p className="mb-6 text-sm font-bold text-muted animate-pulse">
+          {t("Nomuvofiqliklar Billz ma'lumoti to'liq kelgach tekshiriladi…")}
+        </p>
+      )}
 
 
       {/* Qoldiq o'syaptimi yoki kamayyaptimi — jadvaldan buni ko'z

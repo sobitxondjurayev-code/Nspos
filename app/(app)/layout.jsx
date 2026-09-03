@@ -21,6 +21,7 @@ import Shell from "@/components/Shell";
 import RouteGuard from "@/components/RouteGuard";
 import Brauzerda from "@/components/Brauzerda";
 import BillzAutoSync from "@/components/BillzAutoSync";
+import YuklanmoqdaBanner from "@/components/YuklanmoqdaBanner";
 
 export default function AppLayout({ children }) {
   return (
@@ -28,6 +29,8 @@ export default function AppLayout({ children }) {
       {/* Billz'dan fonda tortish — eskirgan bo'lsa, rahbar ochganda */}
       <BillzAutoSync />
       <Brauzerda>
+        {/* Og'ir jadvallar kelguncha — har sahifada bitta ogohlantirish */}
+        <YuklanmoqdaBanner />
         <RouteGuard>{children}</RouteGuard>
       </Brauzerda>
     </Shell>

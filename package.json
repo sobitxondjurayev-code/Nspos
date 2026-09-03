@@ -11,7 +11,8 @@
     "billz": "node --import ./scripts/lib/register.mjs --no-warnings scripts/billz-sync.mjs",
     "billz:solishtir": "node --import ./scripts/lib/register.mjs --no-warnings scripts/billz-solishtir.mjs",
     "nomlar": "eslint --config scripts/eslint-nomlar.mjs lib components app",
-    "huquq": "node --import ./scripts/lib/register.mjs --no-warnings scripts/huquq-sinov.mjs"
+    "huquq": "node --import ./scripts/lib/register.mjs --no-warnings scripts/huquq-sinov.mjs",
+    "xodim": "node scripts/server/xodim-sinov.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

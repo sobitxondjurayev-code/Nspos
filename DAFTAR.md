@@ -2449,3 +2449,50 @@ skript tuzatildi.
 > kalit `lib/auth.js` PERMISSIONS da, matritsa `role_permissions` da,
 > seed `npm run`… `scripts/huquq-seed.mjs`. PERMISSIONS o'zgarsa: seed
 > → `sql.mjs` → `npm run huquq`.
+
+### 18.10. Saytda xodim hisobi bilan sinov (03.09, 22:30–00:30)
+
+Rahbar: "saytda xodim hisobi bilan tekshirib ko'r". Parol so'ralmadi —
+`scripts/server/xodim-sinov.mjs` (`npm run xodim -- --rol=manager`)
+JWT'ni serverdagi sir bilan imzolab, menejer (Abduvahid, Optim) va usta
+(Tohir aka) sifatida ikki qism sinaydi: (1) o'sha token bilan PostgREST
+orqali HAQIQIY yozuv → darrov o'chirish, ruxsatsiz yozuv 42501 bilan rad;
+(2) sahifalar Chrome'da — konsol xatosi, 4xx/5xx, /login, banner,
+skrinshot. Qo'shimcha `NSPOS_UI_KPI=1`: /kpi da bugungi "Dam"
+katakchasini bosib → F5 → turibdi → qaytarish (UI yozuv yo'li).
+
+| Kim | Natija |
+|---|---|
+| Menejer | 28/28 ✓ — KPI kuni (o'ziga, rahbarga), xarajat (o'z kassasi, bugun), kassa kirimi, NPS, qarz to'lovi jurnali yozildi va o'chirildi; kompaniya balansi xarajati, payouts, xarajat turi — 42501 rad; mijoz/tovar yangilash 1 qator. 14 sahifa xatosiz. UI: "Dam" false→true F5 dan keyin turdi, qaytarildi |
+| Usta | 17/17 ✓ — faqat o'z KPI kuni yoziladi, qolgan 8 yozuv rad; mijoz/tovar yangilash 0 qator (RLS jim toraytiradi, xato emas) |
+
+Topilgani (hammasi tuzatildi, kommit shu bo'limdan keyin):
+
+1. **Kassa sahifasi yuklanish paytida yolg'on.** Og'ir jadvallar
+   (chek 9 637, qarz 11 752, mijoz 9 196) tarmoqqa qarab 15–60 s keladi.
+   Shu paytda rahbar ham, menejer ham "Optim naqd minusda −61 367 $,
+   Payme −15 358 $" va 6 ta "nomuvofiqlik" ko'radi; to'liq kelgach
+   Optim 14 452.45 $ (serverdagi `tekshir:server` bilan tiyinigacha
+   teng). Banner faqat KPI va bosh sahifada edi. Endi
+   `components/YuklanmoqdaBanner.jsx` ilova qobig'ida (`app/(app)/
+   layout.jsx`) — har sahifada bitta; kassa `Warnings` `useToliq()`
+   bilan to'liq kelguncha ko'rsatilmaydi. KPI'dagi alohida banner olib
+   tashlandi.
+2. **/finance → "Billz'dan yuklash" kartasi** `/finance/import` ga
+   olib borardi — sahifa `151a7e1` da o'chirilgan, katalog bo'sh, 404.
+   Karta olib tashlandi.
+3. **"−0 so'm"** — menejerning Xarajatlar jadvalida Jami "−0 so'm"
+   (−0.004 yaxlitlanib 0, `v < 0` hamon rost). `format.belgi` endi
+   ko'rinadigan raqamda 1–9 bo'lmasa minus qo'ymaydi.
+
+O'lchov usuli (keyingi safar): `NSPOS_REST=1` har PostgREST so'rovini
+range/hajm/vaqt bilan yozadi — rahbarda `sales` 2 sahifa (1 327 KB +
+1 306 KB, 17–25 s), `debts` 3 sahifa; `[db] yuklandi:` konsoli qatorlar
+sonini beradi. Tarmoq almashsa (`ERR_NETWORK_CHANGED`) o'lchov yaroqsiz.
+
+Kutilgan, xato emas: menejer Abduvahid `/products`, `/clients`,
+`/services`, `/nps`, `/finance/debts` ga kirolmaydi — rahbar
+`perms.sections` da yopgan (`/kpi` ga qaytaradi); usta `/services` ni
+ko'rmaydi (`service.view` yo'q, o'z ishini KPI'da ko'radi); Sozlamalardagi
+"Standartga qaytarish" faqat ko'rinish (tema) — biznes sozlamasi emas.
+
