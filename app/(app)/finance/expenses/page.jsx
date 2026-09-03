@@ -47,8 +47,10 @@ const fmtDay = (s) => s.split("-").reverse().join(".");
 // Filtrdagi kategoriya tartibi — xarajat oynasidagi bilan bir xil
 // (`EXPENSE_CATEGORIES` e'lon tartibi); eski (tanlanmaydigan) kalitlar
 // keyin, "Rahbarga o'tkazma" eng oxirida.
-const CAT_ORDER = Object.keys(EXPENSE_CATEGORIES);
-const catRank = (k) => (k === "owner_transfer" ? 1e6 : (CAT_ORDER.indexOf(k) + 1 || 1e5));
+// Tartib CHAQIRUV vaqtida o'qiladi — ro'yxat bazadan keladi va rahbar
+// o'zgartirishi mumkin (2026-09-03); modul yuklanganda muzlatilsa
+// yangi tur oxirida qolardi.
+const catRank = (k) => (k === "owner_transfer" ? 1e6 : (Object.keys(EXPENSE_CATEGORIES).indexOf(k) + 1 || 1e5));
 const storeName = (id) => demoStores.find((s) => s.id === id)?.name ?? null;
 
 export default function FinanceExpenses() {

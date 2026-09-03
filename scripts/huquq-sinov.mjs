@@ -93,6 +93,12 @@ const SINOVLAR = [
     sql: "update store_plans set monthly = monthly where store_id = (select store_id from store_plans limit 1)" },
   { t: "companies", op: "update", kalit: "settings.edit",
     sql: "update companies set name = name where id = auth_company_id()" },
+  { t: "expense_categories", op: "insert", kalit: "settings.edit",
+    sql: "insert into expense_categories (key, label) values ('__sinov', '__sinov')" },
+  { t: "expense_categories", op: "update", kalit: "settings.edit",
+    sql: "update expense_categories set label = label where key = 'other'" },
+  { t: "stock_transfers", op: "select", kalit: "*",
+    sql: "select count(*) into n from stock_transfers", select: true },
 ];
 
 function psql(sql) {

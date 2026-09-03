@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import {
   Check, RotateCcw, Sun, Moon, Monitor, Plus, Pencil, Trash2, UserPlus, Clock,
   KeyRound, Eye, EyeOff, Coins, Wrench, CalendarDays, Shield, Download, Send,
-  RefreshCw, Stethoscope, TriangleAlert,
+  RefreshCw, Stethoscope, TriangleAlert, Wallet,
 } from "lucide-react";
 import { useTheme } from "@/components/ThemeProvider";
 import { useLang } from "@/components/LangProvider";
@@ -24,6 +24,10 @@ import { getUsdRate, isRateAuto, setRateAuto, refreshUsdRate, getRateDate,
   getServiceNames, setServiceNames, getLedgerStart, setLedgerStart } from "@/lib/companyData";
 import NumberField from "@/components/NumberField";
 import StaffModal from "@/components/StaffModal";
+import {
+  listExpenseCategories, addExpenseCategory, updateExpenseCategory,
+  setExpenseCategoryActive, removeExpenseCategory, categoryUsage,
+} from "@/lib/expensesData";
 
 const MODE_ICONS = { light: Sun, dark: Moon, system: Monitor };
 const storeName = (id) => demoStores.find((s) => s.id === id)?.name ?? null;
@@ -482,6 +486,148 @@ function ServiceNamesCard() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// XARAJAT TURLARI (2026-09-03)
+// ══════════════════════════════════════════════════════════════
+// Rahbar: "xarajat turini qo'shish/o'chirish mumkin bo'lsin". Ro'yxat
+// `expense_categories` jadvalida; bu yerda qo'shish, nom, guruh
+// (doimiy/o'zgaruvchan — "qat'iy" emas, CLAUDE.md), servis belgisi,
+// izoh majburiyligi, yashirish. O'chirish — faqat hech qachon
+// ishlatilmagan tur; ishlatilgani yashiriladi (eski xarajatda nomi
+// qoladi). Kalit (`key`) ko'rsatilmaydi — u tizim uchun.
+function ExpenseCategoriesCard() {
+  const live = useLive();
+  const [tick, setTick] = useState(0);
+  const [nom, setNom] = useState("");
+  const [guruh, setGuruh] = useState("variable");
+  const [servis, setServis] = useState(false);
+  const [izoh, setIzoh] = useState(false);
+  const [xabar, setXabar] = useState(null);
+  const rows = useMemo(() => listExpenseCategories(), [live, tick]);
+  const bump = () => setTick((v) => v + 1);
+
+  function qosh() {
+    const c = addExpenseCategory({ label: nom, group: guruh, service: servis, noteRequired: izoh });
+    if (!c) return;
+    setNom(""); setServis(false); setIzoh(false); setGuruh("variable");
+    setXabar(tt("\"{n}\" qo'shildi — Xarajat oynasida darrov tanlanadi", { n: c.label }));
+    bump();
+  }
+  function ochir(c) {
+    const n = categoryUsage(c.key);
+    const savol = n > 0
+      ? tt("\"{n}\" {k} ta xarajatda ishlatilgan — o'chirib bo'lmaydi, YASHIRILADI (eski xarajatlarda nomi qoladi). Davom etilsinmi?", { n: c.label, k: n })
+      : tt("\"{n}\" hech qachon ishlatilmagan — butunlay o'chirilsinmi?", { n: c.label });
+    if (!confirm(savol)) return;
+    const r = removeExpenseCategory(c.key);
+    setXabar(r.yashirildi ? tt("\"{n}\" yashirildi", { n: c.label }) : tt("\"{n}\" o'chirildi", { n: c.label }));
+    bump();
+  }
+
+  const GURUH = { fixed: "Doimiy", variable: "O'zgaruvchan" };
+  return (
+    <div className="card p-7 mb-6">
+      <div className="flex items-center gap-3 mb-1">
+        <span className="w-9 h-9 rounded-xl bg-brand-soft text-brand flex items-center justify-center">
+          <Wallet size={18} />
+        </span>
+        <h2 className="text-xl font-extrabold">{t("Xarajat turlari")}</h2>
+      </div>
+      <p className="text-sm text-muted font-semibold mb-5">
+        {t("Xarajat oynasida tanlanadigan turlar. \"Doimiy\" — savdo tushsa ham to'lanadi (ijara, internet), \"O'zgaruvchan\" — hajmga qarab. \"Servis\" — servis tannarxiga kiradi va faqat servis pulidan chiqadi. Ishlatilgan tur o'chmaydi — yashiriladi.")}
+      </p>
+
+      {/* Yangi tur */}
+      <div className="flex flex-wrap items-end gap-3 mb-5 p-4 rounded-2xl bg-surface">
+        <label className="block flex-1 min-w-[12rem]">
+          <span className="block text-sm font-bold mb-2">{t("Yangi tur nomi")}</span>
+          <input value={nom} onChange={(e) => setNom(e.target.value)} className="inp"
+            placeholder={t("masalan: Reklama")} onKeyDown={(e) => e.key === "Enter" && qosh()} />
+        </label>
+        <label className="block">
+          <span className="block text-sm font-bold mb-2">{t("Guruh")}</span>
+          <select value={guruh} onChange={(e) => setGuruh(e.target.value)} className="inp">
+            <option value="variable">{t("O'zgaruvchan")}</option>
+            <option value="fixed">{t("Doimiy")}</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2 font-semibold text-sm pb-3">
+          <input type="checkbox" checked={servis} onChange={(e) => setServis(e.target.checked)} className="w-4 h-4 accent-brand" />
+          {t("Servis")}
+        </label>
+        <label className="flex items-center gap-2 font-semibold text-sm pb-3">
+          <input type="checkbox" checked={izoh} onChange={(e) => setIzoh(e.target.checked)} className="w-4 h-4 accent-brand" />
+          {t("Izoh majburiy")}
+        </label>
+        <button onClick={qosh} disabled={!nom.trim()}
+          className="rounded-xl bg-brand hover:bg-brand-dark text-white font-bold px-6 py-3 disabled:opacity-40">
+          {t("Qo'shish")}
+        </button>
+      </div>
+      {xabar && <p className="text-sm font-semibold text-ok mb-3">{xabar}</p>}
+
+      {/* Ro'yxat */}
+      <div className="overflow-auto max-h-[28rem] rounded-2xl border border-line">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 bg-panel">
+            <tr className="text-left text-muted border-b border-line">
+              <th className="px-3 py-3 font-bold">{t("Nomi")}</th>
+              <th className="px-3 py-3 font-bold">{t("Guruh")}</th>
+              <th className="px-3 py-3 font-bold text-center">{t("Servis")}</th>
+              <th className="px-3 py-3 font-bold text-center">{t("Izoh majburiy")}</th>
+              <th className="px-3 py-3 font-bold text-right">{t("Ishlatilgan")}</th>
+              <th className="px-3 py-3 font-bold text-center">{t("Faol")}</th>
+              <th className="px-3 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((c) => (
+              <tr key={c.key} className={`border-b border-line last:border-0 ${c.isActive ? "" : "opacity-50"}`}>
+                <td className="px-3 py-2">
+                  <input defaultValue={c.label} key={c.label}
+                    onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== c.label) { updateExpenseCategory(c.key, { label: v }); bump(); } }}
+                    className="bg-transparent font-bold outline-none w-full rounded-lg px-2 py-1 hover:bg-surface focus:bg-surface" />
+                </td>
+                <td className="px-3 py-2">
+                  <select value={c.group} onChange={(e) => { updateExpenseCategory(c.key, { group: e.target.value }); bump(); }}
+                    className="bg-transparent font-semibold outline-none rounded-lg px-2 py-1 hover:bg-surface">
+                    {Object.entries(GURUH).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}
+                  </select>
+                </td>
+                <td className="px-3 py-2 text-center">
+                  <input type="checkbox" checked={c.service}
+                    onChange={(e) => { updateExpenseCategory(c.key, { service: e.target.checked }); bump(); }}
+                    className="w-4 h-4 accent-brand" />
+                </td>
+                <td className="px-3 py-2 text-center">
+                  <input type="checkbox" checked={c.noteRequired}
+                    onChange={(e) => { updateExpenseCategory(c.key, { noteRequired: e.target.checked }); bump(); }}
+                    className="w-4 h-4 accent-brand" />
+                </td>
+                <td className="px-3 py-2 text-right font-semibold text-muted">{categoryUsage(c.key) || "—"}</td>
+                <td className="px-3 py-2 text-center">
+                  <input type="checkbox" checked={c.isActive}
+                    onChange={(e) => { setExpenseCategoryActive(c.key, e.target.checked); bump(); }}
+                    className="w-4 h-4 accent-brand" title={t("Yashirilgan tur tanlanmaydi; eski xarajatlarda nomi qoladi")} />
+                </td>
+                <td className="px-3 py-2 text-right">
+                  <button onClick={() => ochir(c)} title={t("O'chirish / yashirish")}
+                    className="p-2 rounded-lg text-muted hover:bg-danger-soft hover:text-danger"><Trash2 size={16} /></button>
+                </td>
+              </tr>
+            ))}
+            {!rows.length && (
+              <tr><td colSpan={7} className="px-3 py-6 text-center text-muted font-semibold">
+                {t("Turlar bazadan hali kelmadi")}
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 // ZAXIRA NUSXA
 // ══════════════════════════════════════════════════════════════
 // Baza Supabase'da, bepul tarifda — u yerda avtomatik zaxira ham,
@@ -775,6 +921,7 @@ export default function Settings() {
       {isOwner && <UsdRateCard />}
       {isOwner && <LedgerStartCard />}
       {isOwner && <ServiceNamesCard />}
+      {isOwner && <ExpenseCategoriesCard />}
 
       {/* Parolni yangilash — har bir kirgan xodim o'ziniki uchun */}
       {!demo && <PasswordCard />}
