@@ -2420,8 +2420,25 @@ ombor operatsiyasida ASCII "-" (→ `foiz/son`), Balans strukturasida
 | 5 Qoldiq + transferlar | `147c11c` | `stock-transfers.sql` serverda; probe 12 nomzod |
 | 6 Xarajat turlari | `b0369d9` | `expense-categories.sql` serverda; huquq ✓ |
 
-Qolgan (6-band, alohida): `companies.sozlamalar` (biznes raqamlari),
-do'kon/kassa sozlamasi (`stores.code/kind/billz_names`), huquq
-matritsasi UI (`role_permissions` + `has_perm()`), KPI bonus
-pog'onalari (reja qatorlariga muhrlangan). `01-sxema.sql` ko'zgusi
-`sxema-olish.mjs` bilan yangilanishi kerak (serverda yurgiziladi).
+### 18.9. Sozlamalar — rahbar hamma narsani sozlaydi (6-band, 17:30–19:00)
+
+| Guruh | Kommit | Nima |
+|---|---|---|
+| 7.1 Biznes qoidalari | `f8e45ce` | `companies.sozlamalar` jsonb; `companyData.sozlama(yol, standart)` — o'qish chaqiruv vaqtida, kodda turgani standart. Usta pul kunlari, "shu oyga cheklovni ochish" (endi kodda emas), kam qoldiq chegarasi, sotuv oynasi, qarz/AR guruhlari, buyurtma muddati |
+| 7.3 Do'konlar | `f2c1ab9` | `stores.code/billz_names`; bog'lash nom emas KOD bo'yicha — nom to'rt joyda kalit edi (storesData, kassaNomlari, billzMap, kassaData regex); `demoStores[0]/[2]` → `asosiyDokonId()/skladId()` |
+| 7.4 Rollar va huquqlar | `f7bc64c` | `role_permissions` + `has_perm()` — `scripts/huquq-seed.mjs` PERMISSIONS dan SQL yozadi (qo'lda ko'chirilmaydi); 20 siyosat `has_perm('<kalit>')` ga; `auth.can()` bazadan (fallback PERMISSIONS); `perms.sections` faqat toraytiradi; `npm run huquq` kutilganini bazadan oladi — 0 farq |
+
+Tegilmaganlar: profiles (rekursiya), companies, payouts, payroll,
+store_plans, invites, audit_log, stores — owner-only. KPI bonus
+pog'onalari va keshbek darajalari kodda (reja qatorlariga muhrlangan —
+alohida ish).
+
+`01-sxema.sql` ko'zgusi yangilandi — `sxema-olish.mjs` serverda,
+`nspos` roli bilan, `/tmp/sxema` ga (`/opt/nspos/app` ga yozolmaydi,
+`root` da esa psql roli yo'q); `pg` `name[]` ni massiv qilib beradi —
+skript tuzatildi.
+
+> Qoida: RLS siyosatida rol ro'yxati qotirilmaydi — `has_perm('kalit')`;
+> kalit `lib/auth.js` PERMISSIONS da, matritsa `role_permissions` da,
+> seed `npm run`… `scripts/huquq-seed.mjs`. PERMISSIONS o'zgarsa: seed
+> → `sql.mjs` → `npm run huquq`.

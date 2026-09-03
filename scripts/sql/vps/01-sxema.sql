@@ -23,7 +23,6 @@ create extension if not exists "pg_stat_statements";
 create extension if not exists "pg_trgm";
 create extension if not exists "pgcrypto";
 -- plpgsql — Supabase'ga xos, VPS'da kerak emas
--- supabase_vault — Supabase'ga xos, VPS'da kerak emas
 create extension if not exists "uuid-ossp";
 
 -- ══════════════════════════════════════════════════════════════
@@ -53,11 +52,11 @@ end $$;
 -- KETMA-KETLIKLAR (2 ta)
 -- ══════════════════════════════════════════════════════════════
 
-create sequence if not exists "audit_log_id_seq" as bigint increment by 1 minvalue 1 maxvalue 9223372036854775807 start with 1 cache 1;
-create sequence if not exists "dataset_chunks_id_seq" as bigint increment by 1 minvalue 1 maxvalue 9223372036854775807 start with 1 cache 1;
+create sequence if not exists "audit_log_id_seq" as bigint increment by 1 minvalue 1 maxvalue 9223372036854776000 start with 1 cache 1;
+create sequence if not exists "dataset_chunks_id_seq" as bigint increment by 1 minvalue 1 maxvalue 9223372036854776000 start with 1 cache 1;
 
 -- ══════════════════════════════════════════════════════════════
--- FUNKSIYALAR (13 ta)
+-- FUNKSIYALAR (16 ta)
 -- ══════════════════════════════════════════════════════════════
 
 CREATE OR REPLACE FUNCTION public.apply_stock(p_product uuid, p_store uuid, p_delta numeric, p_allow_negative boolean DEFAULT false)
@@ -227,6 +226,20 @@ begin
 end $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.has_perm(p_key text)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select case
+    when auth_role() = 'owner' then true
+    else coalesce((select rp.allowed from role_permissions rp
+                   where rp.company_id = auth_company_id() and rp.role = auth_role() and rp.key = p_key), false)
+  end
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.is_manager()
  RETURNS boolean
  LANGUAGE sql
@@ -302,6 +315,45 @@ end;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.service_status_set(p_id uuid, p_status text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  n int;
+begin
+  if p_status is null or p_status not in ('yangi','jarayonda','bajarildi','bekor') then
+    raise exception 'Holat noto''g''ri: %', p_status using errcode = '22023';
+  end if;
+  update service_orders
+     set status = p_status,
+         finished_at = case when p_status = 'bajarildi' then coalesce(finished_at, now()) else finished_at end
+   where id = p_id
+     and company_id = auth_company_id()
+     and (installer_id = auth.uid()
+          or auth_role() = any (array['owner','manager']::user_role[]));
+  get diagnostics n = row_count;
+  if n = 0 then
+    raise exception 'Ruxsat yo''q yoki buyurtma topilmadi' using errcode = '42501';
+  end if;
+  return true;
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+begin
+  new.updated_at = now();
+  return new;
+end
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.set_usd_rate(p_rate numeric, p_source text DEFAULT 'manual'::text)
  RETURNS numeric
  LANGUAGE plpgsql
@@ -349,7 +401,7 @@ $function$
 
 
 -- ══════════════════════════════════════════════════════════════
--- JADVALLAR (39 ta)
+-- JADVALLAR (42 ta)
 -- ══════════════════════════════════════════════════════════════
 
 create table if not exists "audit_log" (
@@ -361,7 +413,8 @@ create table if not exists "audit_log" (
   "action" text not null,
   "before" jsonb,
   "after" jsonb,
-  "at" timestamp with time zone default now() not null
+  "at" timestamp with time zone default now() not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "billz_sync_log" (
@@ -376,7 +429,11 @@ create table if not exists "billz_sync_log" (
   "inserted" integer default 0 not null,
   "updated" integer default 0 not null,
   "skipped" integer default 0 not null,
-  "error" text
+  "error" text,
+  "updated_at" timestamp with time zone default now() not null,
+  "no_store" integer default 0 not null,
+  "exhausted" boolean,
+  "warnings" jsonb
 );
 
 create table if not exists "cash_operations" (
@@ -390,14 +447,16 @@ create table if not exists "cash_operations" (
   "method" text default 'cash'::text not null,
   "note" text,
   "created_by" uuid default auth.uid(),
-  "created_at" timestamp with time zone default now() not null
+  "created_at" timestamp with time zone default now() not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "categories" (
   "id" uuid default uuid_generate_v4() not null,
   "company_id" uuid default auth_company_id() not null,
   "name" text not null,
-  "billz_id" uuid
+  "billz_id" uuid,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "companies" (
@@ -409,7 +468,11 @@ create table if not exists "companies" (
   "usd_rate_auto" boolean default true not null,
   "usd_rate_at" timestamp with time zone,
   "service_names" text default 'montaj'::text,
-  "ledger_start" date default (date_trunc('month'::text, now()))::date not null
+  "ledger_start" date default (date_trunc('month'::text, now()))::date not null,
+  "updated_at" timestamp with time zone default now() not null,
+  "reorder_lead_days" integer default 14 not null,
+  "reorder_cover_days" integer default 30 not null,
+  "sozlamalar" jsonb default '{}'::jsonb not null
 );
 
 create table if not exists "customers" (
@@ -429,14 +492,16 @@ create table if not exists "customers" (
   "purchases_total" numeric(14,2) default 0 not null,
   "sales_count" integer default 0 not null,
   "items_bought" numeric(14,3) default 0 not null,
-  "is_returning" boolean default false not null
+  "is_returning" boolean default false not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "dataset_chunks" (
   "id" bigint default nextval('dataset_chunks_id_seq'::regclass) not null,
   "dataset_id" uuid not null,
   "seq" integer not null,
-  "rows" jsonb not null
+  "rows" jsonb not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "datasets" (
@@ -450,7 +515,8 @@ create table if not exists "datasets" (
   "profile" jsonb,
   "row_count" integer default 0 not null,
   "created_at" timestamp with time zone default now() not null,
-  "company_id" uuid default auth_company_id() not null
+  "company_id" uuid default auth_company_id() not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "debt_payments" (
@@ -461,7 +527,8 @@ create table if not exists "debt_payments" (
   "method" text default 'cash'::text not null,
   "kind" text default 'payment'::text not null,
   "received_by" uuid,
-  "billz_key" text
+  "billz_key" text,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "debts" (
@@ -478,14 +545,30 @@ create table if not exists "debts" (
   "status" text,
   "paid_amount" numeric(14,4) default 0 not null,
   "comment" text,
-  "source" text default 'nspos'::text not null
+  "source" text default 'nspos'::text not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "doc_counters" (
   "company_id" uuid default auth_company_id() not null,
   "store_id" uuid not null,
   "kind" text not null,
-  "next_no" bigint default 1 not null
+  "next_no" bigint default 1 not null,
+  "updated_at" timestamp with time zone default now() not null
+);
+
+create table if not exists "expense_categories" (
+  "id" uuid default gen_random_uuid() not null,
+  "company_id" uuid default auth_company_id() not null,
+  "key" text not null,
+  "label" text not null,
+  "group" text default 'variable'::text not null,
+  "service" boolean default false not null,
+  "note_required" boolean default false not null,
+  "sort" integer default 100 not null,
+  "is_active" boolean default true not null,
+  "created_at" timestamp with time zone default now() not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "expenses" (
@@ -507,7 +590,8 @@ create table if not exists "expenses" (
   "amount_som" numeric,
   "rate_used" numeric,
   "staff_id" uuid,
-  "paid_to" text
+  "paid_to" text,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "invites" (
@@ -521,7 +605,8 @@ create table if not exists "invites" (
   "sales_pct" numeric(6,2) default 0,
   "service_pct" numeric(6,2) default 0,
   "created_at" timestamp with time zone default now() not null,
-  "company_id" uuid default auth_company_id()
+  "company_id" uuid default auth_company_id(),
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "kassa_ops" (
@@ -540,7 +625,8 @@ create table if not exists "kassa_ops" (
   "created_at" timestamp with time zone default now() not null,
   "company_id" uuid default auth_company_id() not null,
   "amount_som" numeric(16,2),
-  "rate_used" numeric(14,2)
+  "rate_used" numeric(14,2),
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "kpi_assign" (
@@ -578,7 +664,8 @@ create table if not exists "nps_records" (
   "created_at" timestamp with time zone default now(),
   "installed_date" date,
   "product_score" integer,
-  "product_comment" text
+  "product_comment" text,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "payouts" (
@@ -597,7 +684,8 @@ create table if not exists "payouts" (
   "paid_at" timestamp with time zone,
   "op_id" uuid,
   "created_by" uuid default auth.uid(),
-  "created_at" timestamp with time zone default now() not null
+  "created_at" timestamp with time zone default now() not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "payroll_payments" (
@@ -610,7 +698,8 @@ create table if not exists "payroll_payments" (
   "method" text default 'cash'::text not null,
   "note" text,
   "paid_at" timestamp with time zone default now() not null,
-  "paid_by" uuid
+  "paid_by" uuid,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "products" (
@@ -631,7 +720,9 @@ create table if not exists "products" (
   "billz_id" uuid,
   "unit" text,
   "description" text,
-  "is_variative" boolean default false not null
+  "is_variative" boolean default false not null,
+  "archived_at" timestamp with time zone,
+  "archived_by" uuid
 );
 
 create table if not exists "profiles" (
@@ -646,7 +737,16 @@ create table if not exists "profiles" (
   "sales_pct" numeric(5,2) default 0 not null,
   "service_pct" numeric(5,2) default 0 not null,
   "created_at" timestamp with time zone default now() not null,
-  "perms" jsonb
+  "perms" jsonb,
+  "updated_at" timestamp with time zone default now() not null
+);
+
+create table if not exists "role_permissions" (
+  "company_id" uuid default auth_company_id() not null,
+  "role" user_role not null,
+  "key" text not null,
+  "allowed" boolean default false not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "sale_items" (
@@ -659,7 +759,8 @@ create table if not exists "sale_items" (
   "cost_price" numeric(12,2) default 0 not null,
   "total" numeric(12,2) not null,
   "billz_product_id" uuid,
-  "billz_id" uuid
+  "billz_id" uuid,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "sales" (
@@ -685,7 +786,10 @@ create table if not exists "sales" (
   "created_at" timestamp with time zone default now() not null,
   "billz_id" uuid,
   "billz_user_id" uuid,
-  "billz_user_name" text
+  "billz_user_name" text,
+  "updated_at" timestamp with time zone default now() not null,
+  "superseded_by" uuid,
+  "unknown_paid" numeric(12,2) default 0 not null
 );
 
 create table if not exists "service_items" (
@@ -696,7 +800,8 @@ create table if not exists "service_items" (
   "name" text not null,
   "qty" numeric(12,3) default 1 not null,
   "price" numeric(12,2) default 0 not null,
-  "cost" numeric(12,2) default 0 not null
+  "cost" numeric(12,2) default 0 not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "service_orders" (
@@ -711,7 +816,8 @@ create table if not exists "service_orders" (
   "note" text,
   "scheduled_at" timestamp with time zone,
   "finished_at" timestamp with time zone,
-  "created_at" timestamp with time zone default now() not null
+  "created_at" timestamp with time zone default now() not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "shifts" (
@@ -723,7 +829,8 @@ create table if not exists "shifts" (
   "closed_at" timestamp with time zone,
   "opening_cash" numeric(12,2) default 0 not null,
   "counted_cash" numeric(12,2),
-  "note" text
+  "note" text,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "shipment_costs" (
@@ -731,7 +838,8 @@ create table if not exists "shipment_costs" (
   "shipment_id" uuid not null,
   "type" text not null,
   "amount" numeric(12,2) not null,
-  "note" text
+  "note" text,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "shipment_items" (
@@ -739,7 +847,8 @@ create table if not exists "shipment_items" (
   "shipment_id" uuid not null,
   "product_id" uuid not null,
   "qty" numeric(12,3) not null,
-  "unit_price" numeric(12,2) not null
+  "unit_price" numeric(12,2) not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "shipments" (
@@ -750,13 +859,38 @@ create table if not exists "shipments" (
   "store_id" uuid,
   "shipped_at" date not null,
   "status" text default 'draft'::text not null,
-  "created_at" timestamp with time zone default now() not null
+  "created_at" timestamp with time zone default now() not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "stock" (
   "product_id" uuid not null,
   "store_id" uuid not null,
   "qty" numeric(12,3) default 0 not null,
+  "updated_at" timestamp with time zone default now() not null
+);
+
+create table if not exists "stock_transfers" (
+  "id" uuid default gen_random_uuid() not null,
+  "company_id" uuid default auth_company_id() not null,
+  "billz_id" uuid not null,
+  "external_id" bigint,
+  "name" text,
+  "from_store_id" uuid,
+  "to_store_id" uuid,
+  "from_name" text,
+  "to_name" text,
+  "qty" numeric(12,3) default 0 not null,
+  "qty_arrived" numeric(12,3) default 0 not null,
+  "retail_total" numeric(14,2) default 0 not null,
+  "supply_total" numeric(14,2) default 0 not null,
+  "status_id" text,
+  "differs" boolean default false not null,
+  "created_by" text,
+  "accepted_by" text,
+  "comment" text,
+  "created_at" timestamp with time zone not null,
+  "accepted_at" timestamp with time zone,
   "updated_at" timestamp with time zone default now() not null
 );
 
@@ -772,7 +906,10 @@ create table if not exists "stores" (
   "name" text not null,
   "kind" text default 'shop'::text not null,
   "is_active" boolean default true not null,
-  "created_at" timestamp with time zone default now() not null
+  "created_at" timestamp with time zone default now() not null,
+  "updated_at" timestamp with time zone default now() not null,
+  "code" text,
+  "billz_names" text[] default '{}'::text[] not null
 );
 
 create table if not exists "supplier_invoices" (
@@ -783,7 +920,8 @@ create table if not exists "supplier_invoices" (
   "amount" numeric(12,2) not null,
   "invoice_date" date not null,
   "due_date" date,
-  "note" text
+  "note" text,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "supplier_payments" (
@@ -792,7 +930,8 @@ create table if not exists "supplier_payments" (
   "amount" numeric(12,2) not null,
   "paid_at" timestamp with time zone default now() not null,
   "method" text default 'cash'::text not null,
-  "paid_by" uuid
+  "paid_by" uuid,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "suppliers" (
@@ -801,7 +940,8 @@ create table if not exists "suppliers" (
   "name" text not null,
   "phone" text,
   "note" text,
-  "billz_id" uuid
+  "billz_id" uuid,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "usd_rates" (
@@ -811,7 +951,8 @@ create table if not exists "usd_rates" (
   "source" text default 'manual'::text not null,
   "note" text,
   "created_by" uuid default auth.uid(),
-  "created_at" timestamp with time zone default now() not null
+  "created_at" timestamp with time zone default now() not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "warehouse_items" (
@@ -820,7 +961,8 @@ create table if not exists "warehouse_items" (
   "product_id" uuid not null,
   "qty" numeric(12,3) not null,
   "counted_qty" numeric(12,3),
-  "unit_cost" numeric(12,2) default 0 not null
+  "unit_cost" numeric(12,2) default 0 not null,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 create table if not exists "warehouse_operations" (
@@ -835,7 +977,8 @@ create table if not exists "warehouse_operations" (
   "created_by" uuid default auth.uid(),
   "applied_by" uuid,
   "created_at" timestamp with time zone default now() not null,
-  "applied_at" timestamp with time zone
+  "applied_at" timestamp with time zone,
+  "updated_at" timestamp with time zone default now() not null
 );
 
 
@@ -847,7 +990,7 @@ alter sequence "audit_log_id_seq" owned by "audit_log"."id";
 alter sequence "dataset_chunks_id_seq" owned by "dataset_chunks"."id";
 
 -- ══════════════════════════════════════════════════════════════
--- CHEKLOVLAR (154 ta)
+-- CHEKLOVLAR (167 ta)
 -- ══════════════════════════════════════════════════════════════
 
 
@@ -874,6 +1017,8 @@ alter table "debts" drop constraint if exists "debts_pkey";
 alter table "debts" add constraint "debts_pkey" PRIMARY KEY (id);
 alter table "doc_counters" drop constraint if exists "doc_counters_pkey";
 alter table "doc_counters" add constraint "doc_counters_pkey" PRIMARY KEY (company_id, store_id, kind);
+alter table "expense_categories" drop constraint if exists "expense_categories_pkey";
+alter table "expense_categories" add constraint "expense_categories_pkey" PRIMARY KEY (id);
 alter table "expenses" drop constraint if exists "expenses_pkey";
 alter table "expenses" add constraint "expenses_pkey" PRIMARY KEY (id);
 alter table "invites" drop constraint if exists "invites_pkey";
@@ -896,6 +1041,8 @@ alter table "products" drop constraint if exists "products_pkey";
 alter table "products" add constraint "products_pkey" PRIMARY KEY (id);
 alter table "profiles" drop constraint if exists "profiles_pkey";
 alter table "profiles" add constraint "profiles_pkey" PRIMARY KEY (id);
+alter table "role_permissions" drop constraint if exists "role_permissions_pkey";
+alter table "role_permissions" add constraint "role_permissions_pkey" PRIMARY KEY (company_id, role, key);
 alter table "sale_items" drop constraint if exists "sale_items_pkey";
 alter table "sale_items" add constraint "sale_items_pkey" PRIMARY KEY (id);
 alter table "sales" drop constraint if exists "sales_pkey";
@@ -914,6 +1061,8 @@ alter table "shipments" drop constraint if exists "shipments_pkey";
 alter table "shipments" add constraint "shipments_pkey" PRIMARY KEY (id);
 alter table "stock" drop constraint if exists "stock_pkey";
 alter table "stock" add constraint "stock_pkey" PRIMARY KEY (product_id, store_id);
+alter table "stock_transfers" drop constraint if exists "stock_transfers_pkey";
+alter table "stock_transfers" add constraint "stock_transfers_pkey" PRIMARY KEY (id);
 alter table "store_plans" drop constraint if exists "store_plans_pkey";
 alter table "store_plans" add constraint "store_plans_pkey" PRIMARY KEY (store_id);
 alter table "stores" drop constraint if exists "stores_pkey";
@@ -936,6 +1085,8 @@ alter table "categories" drop constraint if exists "categories_company_id_name_k
 alter table "categories" add constraint "categories_company_id_name_key" UNIQUE (company_id, name);
 alter table "dataset_chunks" drop constraint if exists "dataset_chunks_dataset_id_seq_key";
 alter table "dataset_chunks" add constraint "dataset_chunks_dataset_id_seq_key" UNIQUE (dataset_id, seq);
+alter table "expense_categories" drop constraint if exists "expense_categories_company_id_key_key";
+alter table "expense_categories" add constraint "expense_categories_company_id_key_key" UNIQUE (company_id, key);
 alter table "invites" drop constraint if exists "invites_email_key";
 alter table "invites" add constraint "invites_email_key" UNIQUE (email);
 alter table "kpi_day" drop constraint if exists "kpi_day_staff_id_date_key";
@@ -948,6 +1099,8 @@ alter table "service_orders" drop constraint if exists "service_orders_company_i
 alter table "service_orders" add constraint "service_orders_company_id_no_key" UNIQUE (company_id, no);
 alter table "shipments" drop constraint if exists "shipments_company_id_no_key";
 alter table "shipments" add constraint "shipments_company_id_no_key" UNIQUE (company_id, no);
+alter table "stock_transfers" drop constraint if exists "stock_transfers_company_id_billz_id_key";
+alter table "stock_transfers" add constraint "stock_transfers_company_id_billz_id_key" UNIQUE (company_id, billz_id);
 alter table "warehouse_operations" drop constraint if exists "warehouse_operations_company_id_no_key";
 alter table "warehouse_operations" add constraint "warehouse_operations_company_id_no_key" UNIQUE (company_id, no);
 
@@ -958,6 +1111,8 @@ alter table "cash_operations" drop constraint if exists "cash_operations_directi
 alter table "cash_operations" add constraint "cash_operations_direction_check" CHECK ((direction = ANY (ARRAY['in'::text, 'out'::text])));
 alter table "debt_payments" drop constraint if exists "debt_payments_kind_check";
 alter table "debt_payments" add constraint "debt_payments_kind_check" CHECK ((kind = ANY (ARRAY['payment'::text, 'return'::text])));
+alter table "expense_categories" drop constraint if exists "expense_categories_group_check";
+alter table "expense_categories" add constraint "expense_categories_group_check" CHECK (("group" = ANY (ARRAY['fixed'::text, 'variable'::text])));
 alter table "expenses" drop constraint if exists "expense_kind";
 alter table "expenses" add constraint "expense_kind" CHECK (((is_recurring AND (day_of_month IS NOT NULL) AND (active_from IS NOT NULL)) OR ((NOT is_recurring) AND (spent_on IS NOT NULL))));
 alter table "expenses" drop constraint if exists "expenses_day_of_month_check";
@@ -1038,6 +1193,8 @@ alter table "doc_counters" drop constraint if exists "doc_counters_company_id_fk
 alter table "doc_counters" add constraint "doc_counters_company_id_fkey" FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 alter table "doc_counters" drop constraint if exists "doc_counters_store_id_fkey";
 alter table "doc_counters" add constraint "doc_counters_store_id_fkey" FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE;
+alter table "expense_categories" drop constraint if exists "expense_categories_company_id_fkey";
+alter table "expense_categories" add constraint "expense_categories_company_id_fkey" FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 alter table "expenses" drop constraint if exists "expenses_company_id_fkey";
 alter table "expenses" add constraint "expenses_company_id_fkey" FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 alter table "expenses" drop constraint if exists "expenses_created_by_fkey";
@@ -1074,6 +1231,8 @@ alter table "payroll_payments" drop constraint if exists "payroll_payments_paid_
 alter table "payroll_payments" add constraint "payroll_payments_paid_by_fkey" FOREIGN KEY (paid_by) REFERENCES profiles(id);
 alter table "payroll_payments" drop constraint if exists "payroll_payments_staff_id_fkey";
 alter table "payroll_payments" add constraint "payroll_payments_staff_id_fkey" FOREIGN KEY (staff_id) REFERENCES profiles(id);
+alter table "products" drop constraint if exists "products_archived_by_fkey";
+alter table "products" add constraint "products_archived_by_fkey" FOREIGN KEY (archived_by) REFERENCES profiles(id) ON DELETE SET NULL;
 alter table "products" drop constraint if exists "products_category_id_fkey";
 alter table "products" add constraint "products_category_id_fkey" FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL;
 alter table "products" drop constraint if exists "products_company_id_fkey";
@@ -1084,6 +1243,8 @@ alter table "profiles" drop constraint if exists "profiles_id_fkey";
 alter table "profiles" add constraint "profiles_id_fkey" FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table "profiles" drop constraint if exists "profiles_store_id_fkey";
 alter table "profiles" add constraint "profiles_store_id_fkey" FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE SET NULL;
+alter table "role_permissions" drop constraint if exists "role_permissions_company_id_fkey";
+alter table "role_permissions" add constraint "role_permissions_company_id_fkey" FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 alter table "sale_items" drop constraint if exists "sale_items_product_id_fkey";
 alter table "sale_items" add constraint "sale_items_product_id_fkey" FOREIGN KEY (product_id) REFERENCES products(id);
 alter table "sale_items" drop constraint if exists "sale_items_sale_id_fkey";
@@ -1100,6 +1261,8 @@ alter table "sales" drop constraint if exists "sales_shift_id_fkey";
 alter table "sales" add constraint "sales_shift_id_fkey" FOREIGN KEY (shift_id) REFERENCES shifts(id);
 alter table "sales" drop constraint if exists "sales_store_id_fkey";
 alter table "sales" add constraint "sales_store_id_fkey" FOREIGN KEY (store_id) REFERENCES stores(id);
+alter table "sales" drop constraint if exists "sales_superseded_by_fkey";
+alter table "sales" add constraint "sales_superseded_by_fkey" FOREIGN KEY (superseded_by) REFERENCES sales(id);
 alter table "service_items" drop constraint if exists "service_items_order_id_fkey";
 alter table "service_items" add constraint "service_items_order_id_fkey" FOREIGN KEY (order_id) REFERENCES service_orders(id) ON DELETE CASCADE;
 alter table "service_items" drop constraint if exists "service_items_product_id_fkey";
@@ -1132,6 +1295,12 @@ alter table "stock" drop constraint if exists "stock_product_id_fkey";
 alter table "stock" add constraint "stock_product_id_fkey" FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE;
 alter table "stock" drop constraint if exists "stock_store_id_fkey";
 alter table "stock" add constraint "stock_store_id_fkey" FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE;
+alter table "stock_transfers" drop constraint if exists "stock_transfers_company_id_fkey";
+alter table "stock_transfers" add constraint "stock_transfers_company_id_fkey" FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+alter table "stock_transfers" drop constraint if exists "stock_transfers_from_store_id_fkey";
+alter table "stock_transfers" add constraint "stock_transfers_from_store_id_fkey" FOREIGN KEY (from_store_id) REFERENCES stores(id);
+alter table "stock_transfers" drop constraint if exists "stock_transfers_to_store_id_fkey";
+alter table "stock_transfers" add constraint "stock_transfers_to_store_id_fkey" FOREIGN KEY (to_store_id) REFERENCES stores(id);
 alter table "store_plans" drop constraint if exists "store_plans_store_id_fkey";
 alter table "store_plans" add constraint "store_plans_store_id_fkey" FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE;
 alter table "stores" drop constraint if exists "stores_company_id_fkey";
@@ -1168,7 +1337,7 @@ alter table "warehouse_operations" drop constraint if exists "warehouse_operatio
 alter table "warehouse_operations" add constraint "warehouse_operations_to_store_id_fkey" FOREIGN KEY (to_store_id) REFERENCES stores(id);
 
 -- ══════════════════════════════════════════════════════════════
--- INDEKSLAR (50 ta)
+-- INDEKSLAR (94 ta)
 -- ══════════════════════════════════════════════════════════════
 
 CREATE INDEX audit_log_company_id_at_idx ON public.audit_log USING btree (company_id, at DESC);
@@ -1194,6 +1363,45 @@ CREATE INDEX debts_status_idx ON public.debts USING btree (company_id, status);
 CREATE INDEX expenses_company_id_spent_on_idx ON public.expenses USING btree (company_id, spent_on);
 CREATE INDEX expenses_kassa_idx ON public.expenses USING btree (kassa);
 CREATE INDEX expenses_staff_idx ON public.expenses USING btree (staff_id) WHERE (staff_id IS NOT NULL);
+CREATE INDEX idx_audit_log_updated_at ON public.audit_log USING btree (updated_at DESC);
+CREATE INDEX idx_billz_sync_log_updated_at ON public.billz_sync_log USING btree (updated_at DESC);
+CREATE INDEX idx_cash_operations_updated_at ON public.cash_operations USING btree (updated_at DESC);
+CREATE INDEX idx_categories_updated_at ON public.categories USING btree (updated_at DESC);
+CREATE INDEX idx_companies_updated_at ON public.companies USING btree (updated_at DESC);
+CREATE INDEX idx_customers_updated_at ON public.customers USING btree (updated_at DESC);
+CREATE INDEX idx_dataset_chunks_updated_at ON public.dataset_chunks USING btree (updated_at DESC);
+CREATE INDEX idx_datasets_updated_at ON public.datasets USING btree (updated_at DESC);
+CREATE INDEX idx_debt_payments_updated_at ON public.debt_payments USING btree (updated_at DESC);
+CREATE INDEX idx_debts_updated_at ON public.debts USING btree (updated_at DESC);
+CREATE INDEX idx_doc_counters_updated_at ON public.doc_counters USING btree (updated_at DESC);
+CREATE INDEX idx_expenses_updated_at ON public.expenses USING btree (updated_at DESC);
+CREATE INDEX idx_invites_updated_at ON public.invites USING btree (updated_at DESC);
+CREATE INDEX idx_kassa_ops_updated_at ON public.kassa_ops USING btree (updated_at DESC);
+CREATE INDEX idx_kpi_assign_updated_at ON public.kpi_assign USING btree (updated_at DESC);
+CREATE INDEX idx_kpi_day_updated_at ON public.kpi_day USING btree (updated_at DESC);
+CREATE INDEX idx_kpi_plan_updated_at ON public.kpi_plan USING btree (updated_at DESC);
+CREATE INDEX idx_nps_records_updated_at ON public.nps_records USING btree (updated_at DESC);
+CREATE INDEX idx_payouts_updated_at ON public.payouts USING btree (updated_at DESC);
+CREATE INDEX idx_payroll_payments_updated_at ON public.payroll_payments USING btree (updated_at DESC);
+CREATE INDEX idx_products_updated_at ON public.products USING btree (updated_at DESC);
+CREATE INDEX idx_profiles_updated_at ON public.profiles USING btree (updated_at DESC);
+CREATE INDEX idx_sale_items_updated_at ON public.sale_items USING btree (updated_at DESC);
+CREATE INDEX idx_sales_updated_at ON public.sales USING btree (updated_at DESC);
+CREATE INDEX idx_service_items_updated_at ON public.service_items USING btree (updated_at DESC);
+CREATE INDEX idx_service_orders_updated_at ON public.service_orders USING btree (updated_at DESC);
+CREATE INDEX idx_shifts_updated_at ON public.shifts USING btree (updated_at DESC);
+CREATE INDEX idx_shipment_costs_updated_at ON public.shipment_costs USING btree (updated_at DESC);
+CREATE INDEX idx_shipment_items_updated_at ON public.shipment_items USING btree (updated_at DESC);
+CREATE INDEX idx_shipments_updated_at ON public.shipments USING btree (updated_at DESC);
+CREATE INDEX idx_stock_updated_at ON public.stock USING btree (updated_at DESC);
+CREATE INDEX idx_store_plans_updated_at ON public.store_plans USING btree (updated_at DESC);
+CREATE INDEX idx_stores_updated_at ON public.stores USING btree (updated_at DESC);
+CREATE INDEX idx_supplier_invoices_updated_at ON public.supplier_invoices USING btree (updated_at DESC);
+CREATE INDEX idx_supplier_payments_updated_at ON public.supplier_payments USING btree (updated_at DESC);
+CREATE INDEX idx_suppliers_updated_at ON public.suppliers USING btree (updated_at DESC);
+CREATE INDEX idx_usd_rates_updated_at ON public.usd_rates USING btree (updated_at DESC);
+CREATE INDEX idx_warehouse_items_updated_at ON public.warehouse_items USING btree (updated_at DESC);
+CREATE INDEX idx_warehouse_operations_updated_at ON public.warehouse_operations USING btree (updated_at DESC);
 CREATE UNIQUE INDEX kassa_ops_close_once ON public.kassa_ops USING btree (company_id, kassa, wallet, op_date) WHERE ((kind = 'transfer'::text) AND (category = 'close'::text) AND (status <> 'rejected'::text));
 CREATE INDEX kassa_ops_date_idx ON public.kassa_ops USING btree (op_date DESC);
 CREATE INDEX kassa_ops_kassa_idx ON public.kassa_ops USING btree (kassa, wallet);
@@ -1201,6 +1409,7 @@ CREATE INDEX kassa_ops_pending_idx ON public.kassa_ops USING btree (status) WHER
 CREATE UNIQUE INDEX one_open_shift_per_store ON public.shifts USING btree (store_id) WHERE (closed_at IS NULL);
 CREATE INDEX payouts_due_idx ON public.payouts USING btree (due_date);
 CREATE INDEX payouts_open_idx ON public.payouts USING btree (status, due_date) WHERE (status = 'planned'::text);
+CREATE INDEX products_archived_idx ON public.products USING btree (company_id) WHERE (archived_at IS NOT NULL);
 CREATE INDEX products_barcode_idx ON public.products USING btree (company_id, barcode);
 CREATE UNIQUE INDEX products_billz_uniq ON public.products USING btree (company_id, billz_id);
 CREATE INDEX products_company_id_is_active_idx ON public.products USING btree (company_id, is_active);
@@ -1215,16 +1424,77 @@ CREATE INDEX sales_company_id_sold_at_idx ON public.sales USING btree (company_i
 CREATE INDEX sales_customer_id_idx ON public.sales USING btree (customer_id) WHERE (customer_id IS NOT NULL);
 CREATE UNIQUE INDEX sales_no_unique ON public.sales USING btree (company_id, no) WHERE (NOT imported);
 CREATE INDEX sales_store_id_sold_at_idx ON public.sales USING btree (store_id, sold_at DESC);
+CREATE INDEX sales_superseded_by_idx ON public.sales USING btree (superseded_by) WHERE (superseded_by IS NOT NULL);
 CREATE INDEX service_orders_installer_id_status_idx ON public.service_orders USING btree (installer_id, status);
 CREATE INDEX stock_store_id_idx ON public.stock USING btree (store_id);
+CREATE INDEX stock_transfers_created_idx ON public.stock_transfers USING btree (company_id, created_at DESC);
+CREATE INDEX stock_transfers_route_idx ON public.stock_transfers USING btree (company_id, from_store_id, to_store_id);
+CREATE UNIQUE INDEX stores_code_uniq ON public.stores USING btree (company_id, code) WHERE (code IS NOT NULL);
 CREATE INDEX stores_company_id_idx ON public.stores USING btree (company_id);
 CREATE UNIQUE INDEX suppliers_billz_uniq ON public.suppliers USING btree (company_id, billz_id);
 CREATE INDEX usd_rates_at_idx ON public.usd_rates USING btree (created_at DESC);
 CREATE INDEX warehouse_items_operation_id_idx ON public.warehouse_items USING btree (operation_id);
 
 -- ══════════════════════════════════════════════════════════════
--- KO'RINISHLAR (6 ta)
+-- KO'RINISHLAR (10 ta)
 -- ══════════════════════════════════════════════════════════════
+
+create or replace view "pg_stat_statements" as
+ SELECT userid,
+    dbid,
+    toplevel,
+    queryid,
+    query,
+    plans,
+    total_plan_time,
+    min_plan_time,
+    max_plan_time,
+    mean_plan_time,
+    stddev_plan_time,
+    calls,
+    total_exec_time,
+    min_exec_time,
+    max_exec_time,
+    mean_exec_time,
+    stddev_exec_time,
+    rows,
+    shared_blks_hit,
+    shared_blks_read,
+    shared_blks_dirtied,
+    shared_blks_written,
+    local_blks_hit,
+    local_blks_read,
+    local_blks_dirtied,
+    local_blks_written,
+    temp_blks_read,
+    temp_blks_written,
+    shared_blk_read_time,
+    shared_blk_write_time,
+    local_blk_read_time,
+    local_blk_write_time,
+    temp_blk_read_time,
+    temp_blk_write_time,
+    wal_records,
+    wal_fpi,
+    wal_bytes,
+    jit_functions,
+    jit_generation_time,
+    jit_inlining_count,
+    jit_inlining_time,
+    jit_optimization_count,
+    jit_optimization_time,
+    jit_emission_count,
+    jit_emission_time,
+    jit_deform_count,
+    jit_deform_time,
+    stats_since,
+    minmax_stats_since
+   FROM pg_stat_statements(true) pg_stat_statements(userid, dbid, toplevel, queryid, query, plans, total_plan_time, min_plan_time, max_plan_time, mean_plan_time, stddev_plan_time, calls, total_exec_time, min_exec_time, max_exec_time, mean_exec_time, stddev_exec_time, rows, shared_blks_hit, shared_blks_read, shared_blks_dirtied, shared_blks_written, local_blks_hit, local_blks_read, local_blks_dirtied, local_blks_written, temp_blks_read, temp_blks_written, shared_blk_read_time, shared_blk_write_time, local_blk_read_time, local_blk_write_time, temp_blk_read_time, temp_blk_write_time, wal_records, wal_fpi, wal_bytes, jit_functions, jit_generation_time, jit_inlining_count, jit_inlining_time, jit_optimization_count, jit_optimization_time, jit_emission_count, jit_emission_time, jit_deform_count, jit_deform_time, stats_since, minmax_stats_since);
+
+create or replace view "pg_stat_statements_info" as
+ SELECT dealloc,
+    stats_reset
+   FROM pg_stat_statements_info() pg_stat_statements_info(dealloc, stats_reset);
 
 create or replace view "products_public" with (security_invoker=true) as
  SELECT id,
@@ -1236,7 +1506,8 @@ create or replace view "products_public" with (security_invoker=true) as
     brand,
     sale_price,
     is_service,
-    is_active
+    is_active,
+    archived_at
    FROM products;
 
 create or replace view "staff_directory" with (security_invoker=false) as
@@ -1263,6 +1534,26 @@ create or replace view "staff_directory" with (security_invoker=false) as
         END AS service_pct
    FROM profiles p
   WHERE company_id = auth_company_id();
+
+create or replace view "v_billz_sync_oxirgi" with (security_invoker=true) as
+ SELECT DISTINCT ON (entity) id,
+    company_id,
+    entity,
+    mode,
+    started_at,
+    finished_at,
+    cursor_at,
+    fetched,
+    inserted,
+    updated,
+    skipped,
+    error,
+    updated_at,
+    no_store,
+    exhausted,
+    warnings
+   FROM billz_sync_log
+  ORDER BY entity, started_at DESC;
 
 create or replace view "v_billz_unlinked" as
  SELECT 'products'::text AS entity,
@@ -1300,6 +1591,30 @@ create or replace view "v_daily_sales" with (security_invoker=true) as
    FROM sales s
   GROUP BY company_id, store_id, (date_trunc('day'::text, sold_at)::date);
 
+create or replace view "v_debts_faol" with (security_invoker=true) as
+ SELECT id,
+    company_id,
+    customer_id,
+    sale_id,
+    store_id,
+    amount,
+    issued_at,
+    due_date,
+    closed_at,
+    billz_id,
+    status,
+    paid_amount,
+    comment,
+    source,
+    updated_at
+   FROM debts d
+  WHERE status IS DISTINCT FROM 'fully_paid'::text OR (EXISTS ( SELECT 1
+           FROM debt_payments p
+          WHERE p.debt_id = d.id AND p.paid_at >= (( SELECT COALESCE(companies.ledger_start, '2026-08-01'::date) AS "coalesce"
+                   FROM companies
+                  ORDER BY companies.created_at
+                 LIMIT 1))));
+
 create or replace view "v_open_debts" with (security_invoker=true) as
  SELECT d.company_id,
     d.customer_id,
@@ -1331,22 +1646,100 @@ create or replace view "v_product_margin" with (security_invoker=true) as
 
 
 -- ══════════════════════════════════════════════════════════════
--- TETIKLAR (5 ta)
+-- TETIKLAR (44 ta)
 -- ══════════════════════════════════════════════════════════════
 
+drop trigger if exists "trg_updated_at" on "audit_log";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.audit_log FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "billz_sync_log";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.billz_sync_log FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "cash_operations";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.cash_operations FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "categories";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.categories FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "companies";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.companies FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "customers";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.customers FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "dataset_chunks";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.dataset_chunks FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "datasets";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.datasets FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "debt_payments";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.debt_payments FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 drop trigger if exists "audit_debts" on "debts";
 CREATE TRIGGER audit_debts AFTER INSERT OR DELETE OR UPDATE ON public.debts FOR EACH ROW EXECUTE FUNCTION audit_trigger();
+drop trigger if exists "trg_updated_at" on "debts";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.debts FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "doc_counters";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.doc_counters FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 drop trigger if exists "audit_expenses" on "expenses";
 CREATE TRIGGER audit_expenses AFTER INSERT OR DELETE OR UPDATE ON public.expenses FOR EACH ROW EXECUTE FUNCTION audit_trigger();
+drop trigger if exists "trg_updated_at" on "expenses";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.expenses FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "invites";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.invites FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "kassa_ops";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.kassa_ops FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "kpi_assign";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.kpi_assign FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "kpi_day";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.kpi_day FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "kpi_plan";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.kpi_plan FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "nps_records";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.nps_records FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "payouts";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.payouts FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "payroll_payments";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.payroll_payments FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 drop trigger if exists "audit_products" on "products";
 CREATE TRIGGER audit_products AFTER INSERT OR DELETE OR UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION audit_trigger();
+drop trigger if exists "trg_updated_at" on "products";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.products FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 drop trigger if exists "audit_profiles" on "profiles";
 CREATE TRIGGER audit_profiles AFTER INSERT OR DELETE OR UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION audit_trigger();
+drop trigger if exists "trg_updated_at" on "profiles";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "sale_items";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.sale_items FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 drop trigger if exists "audit_sales" on "sales";
 CREATE TRIGGER audit_sales AFTER INSERT OR DELETE OR UPDATE ON public.sales FOR EACH ROW EXECUTE FUNCTION audit_trigger();
+drop trigger if exists "trg_updated_at" on "sales";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.sales FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "service_items";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.service_items FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "service_orders";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.service_orders FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "shifts";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.shifts FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "shipment_costs";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.shipment_costs FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "shipment_items";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.shipment_items FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "shipments";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.shipments FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "stock";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.stock FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "store_plans";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.store_plans FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "stores";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.stores FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "supplier_invoices";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.supplier_invoices FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "supplier_payments";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.supplier_payments FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "suppliers";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.suppliers FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "usd_rates";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.usd_rates FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "warehouse_items";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.warehouse_items FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+drop trigger if exists "trg_updated_at" on "warehouse_operations";
+CREATE TRIGGER trg_updated_at BEFORE UPDATE ON public.warehouse_operations FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ══════════════════════════════════════════════════════════════
--- RLS — QATOR DARAJASIDAGI HIMOYA (39 jadval, 56 siyosat)
+-- RLS — QATOR DARAJASIDAGI HIMOYA (42 jadval, 68 siyosat)
 -- ══════════════════════════════════════════════════════════════
 
 -- Siyosatlar `auth.uid()` / `auth.role()` ga murojaat qiladi.
@@ -1365,6 +1758,7 @@ alter table "datasets" enable row level security;
 alter table "debt_payments" enable row level security;
 alter table "debts" enable row level security;
 alter table "doc_counters" enable row level security;
+alter table "expense_categories" enable row level security;
 alter table "expenses" enable row level security;
 alter table "invites" enable row level security;
 alter table "kassa_ops" enable row level security;
@@ -1376,6 +1770,7 @@ alter table "payouts" enable row level security;
 alter table "payroll_payments" enable row level security;
 alter table "products" enable row level security;
 alter table "profiles" enable row level security;
+alter table "role_permissions" enable row level security;
 alter table "sale_items" enable row level security;
 alter table "sales" enable row level security;
 alter table "service_items" enable row level security;
@@ -1385,6 +1780,7 @@ alter table "shipment_costs" enable row level security;
 alter table "shipment_items" enable row level security;
 alter table "shipments" enable row level security;
 alter table "stock" enable row level security;
+alter table "stock_transfers" enable row level security;
 alter table "store_plans" enable row level security;
 alter table "stores" enable row level security;
 alter table "supplier_invoices" enable row level security;
@@ -1404,14 +1800,14 @@ drop policy if exists "billz_sync_log_read" on "billz_sync_log";
 create policy "billz_sync_log_read" on "billz_sync_log"
   for select
   to public
-  using ((is_manager() AND (company_id = auth_company_id())));
+  using (((company_id = auth_company_id()) AND has_perm('report.view'::text)));
 
 drop policy if exists "cash_rw" on "cash_operations";
 create policy "cash_rw" on "cash_operations"
   for all
   to public
-  using (((company_id = auth_company_id()) AND can_see_store(store_id)))
-  with check (((company_id = auth_company_id()) AND can_see_store(store_id)));
+  using (((company_id = auth_company_id()) AND can_see_store(store_id) AND has_perm('finance.cash'::text)))
+  with check (((company_id = auth_company_id()) AND can_see_store(store_id) AND has_perm('finance.cash'::text)));
 
 drop policy if exists "company_read" on "categories";
 create policy "company_read" on "categories"
@@ -1438,6 +1834,19 @@ create policy "company_read" on "customers"
   to public
   using ((company_id = auth_company_id()));
 
+drop policy if exists "customer_update" on "customers";
+create policy "customer_update" on "customers"
+  for update
+  to public
+  using (((company_id = auth_company_id()) AND has_perm('customer.edit'::text)))
+  with check (((company_id = auth_company_id()) AND has_perm('customer.edit'::text)));
+
+drop policy if exists "customer_write" on "customers";
+create policy "customer_write" on "customers"
+  for insert
+  to public
+  with check (((company_id = auth_company_id()) AND has_perm('customer.edit'::text)));
+
 drop policy if exists "dataset_chunks_rw" on "dataset_chunks";
 create policy "dataset_chunks_rw" on "dataset_chunks"
   for all
@@ -1453,16 +1862,16 @@ drop policy if exists "datasets_rw" on "datasets";
 create policy "datasets_rw" on "datasets"
   for all
   to public
-  using ((is_manager() AND (company_id = auth_company_id())))
-  with check ((is_manager() AND (company_id = auth_company_id())));
+  using (((company_id = auth_company_id()) AND has_perm('report.view'::text)))
+  with check (((company_id = auth_company_id()) AND has_perm('report.view'::text)));
 
 drop policy if exists "debt_pay" on "debt_payments";
 create policy "debt_pay" on "debt_payments"
   for insert
   to public
-  with check ((EXISTS ( SELECT 1
+  with check (((EXISTS ( SELECT 1
    FROM debts d
-  WHERE ((d.id = debt_payments.debt_id) AND (d.company_id = auth_company_id())))));
+  WHERE ((d.id = debt_payments.debt_id) AND (d.company_id = auth_company_id())))) AND has_perm('customer.debt'::text)));
 
 drop policy if exists "debt_payment_read" on "debt_payments";
 create policy "debt_payment_read" on "debt_payments"
@@ -1478,30 +1887,57 @@ create policy "debt_read" on "debts"
   to public
   using ((company_id = auth_company_id()));
 
+drop policy if exists "expcat_delete" on "expense_categories";
+create policy "expcat_delete" on "expense_categories"
+  for delete
+  to public
+  using (((company_id = auth_company_id()) AND has_perm('settings.edit'::text) AND (NOT (EXISTS ( SELECT 1
+   FROM expenses e
+  WHERE ((e.company_id = expense_categories.company_id) AND (e.category = expense_categories.key)))))));
+
+drop policy if exists "expcat_insert" on "expense_categories";
+create policy "expcat_insert" on "expense_categories"
+  for insert
+  to public
+  with check (((company_id = auth_company_id()) AND has_perm('settings.edit'::text)));
+
+drop policy if exists "expcat_read" on "expense_categories";
+create policy "expcat_read" on "expense_categories"
+  for select
+  to public
+  using ((company_id = auth_company_id()));
+
+drop policy if exists "expcat_update" on "expense_categories";
+create policy "expcat_update" on "expense_categories"
+  for update
+  to public
+  using (((company_id = auth_company_id()) AND has_perm('settings.edit'::text)))
+  with check (((company_id = auth_company_id()) AND has_perm('settings.edit'::text)));
+
 drop policy if exists "expense_delete" on "expenses";
 create policy "expense_delete" on "expenses"
   for delete
   to public
-  using (((company_id = auth_company_id()) AND (is_owner() OR (is_manager() AND (kassa = (auth_store_id())::text) AND (spent_on = ((now() AT TIME ZONE 'Asia/Tashkent'::text))::date)))));
+  using (((company_id = auth_company_id()) AND has_perm('finance.expenses'::text) AND ((auth_role() = 'owner'::user_role) OR ((kassa = (auth_store_id())::text) AND (spent_on = ((now() AT TIME ZONE 'Asia/Tashkent'::text))::date)))));
 
 drop policy if exists "expense_insert" on "expenses";
 create policy "expense_insert" on "expenses"
   for insert
   to public
-  with check (((company_id = auth_company_id()) AND (is_owner() OR (is_manager() AND (kassa = (auth_store_id())::text)))));
+  with check (((company_id = auth_company_id()) AND has_perm('finance.expenses'::text) AND ((auth_role() = 'owner'::user_role) OR (kassa = (auth_store_id())::text))));
 
 drop policy if exists "expense_read" on "expenses";
 create policy "expense_read" on "expenses"
   for select
   to public
-  using (((company_id = auth_company_id()) AND (is_owner() OR (is_manager() AND (kassa = (auth_store_id())::text)))));
+  using (((company_id = auth_company_id()) AND has_perm('finance.expenses'::text) AND ((auth_role() = 'owner'::user_role) OR (kassa = (auth_store_id())::text))));
 
 drop policy if exists "expense_update" on "expenses";
 create policy "expense_update" on "expenses"
   for update
   to public
-  using (((company_id = auth_company_id()) AND (is_owner() OR (is_manager() AND (kassa = (auth_store_id())::text) AND (spent_on = ((now() AT TIME ZONE 'Asia/Tashkent'::text))::date)))))
-  with check (((company_id = auth_company_id()) AND (is_owner() OR (is_manager() AND (kassa = (auth_store_id())::text) AND (spent_on = ((now() AT TIME ZONE 'Asia/Tashkent'::text))::date)))));
+  using (((company_id = auth_company_id()) AND has_perm('finance.expenses'::text) AND ((auth_role() = 'owner'::user_role) OR ((kassa = (auth_store_id())::text) AND (spent_on = ((now() AT TIME ZONE 'Asia/Tashkent'::text))::date)))))
+  with check (((company_id = auth_company_id()) AND has_perm('finance.expenses'::text) AND ((auth_role() = 'owner'::user_role) OR ((kassa = (auth_store_id())::text) AND (spent_on = ((now() AT TIME ZONE 'Asia/Tashkent'::text))::date)))));
 
 drop policy if exists "invites_rw" on "invites";
 create policy "invites_rw" on "invites"
@@ -1514,47 +1950,47 @@ drop policy if exists "kassa_ops_delete" on "kassa_ops";
 create policy "kassa_ops_delete" on "kassa_ops"
   for delete
   to public
-  using (((company_id = auth_company_id()) AND (is_owner() OR (is_manager() AND (kassa <> 'company'::text))) AND (COALESCE(status, 'x'::text) <> 'approved'::text)));
+  using (((company_id = auth_company_id()) AND (has_perm('kassa.company'::text) OR (has_perm('kassa.operate'::text) AND (kassa <> 'company'::text))) AND (COALESCE(status, 'x'::text) <> 'approved'::text)));
 
 drop policy if exists "kassa_ops_insert" on "kassa_ops";
 create policy "kassa_ops_insert" on "kassa_ops"
   for insert
   to public
-  with check (((company_id = auth_company_id()) AND (is_owner() OR (is_manager() AND (kassa <> 'company'::text)))));
+  with check (((company_id = auth_company_id()) AND (has_perm('kassa.company'::text) OR (has_perm('kassa.operate'::text) AND (kassa <> 'company'::text)))));
 
 drop policy if exists "kassa_ops_read" on "kassa_ops";
 create policy "kassa_ops_read" on "kassa_ops"
   for select
   to public
-  using ((is_manager() AND (company_id = auth_company_id())));
+  using (((company_id = auth_company_id()) AND has_perm('kassa.view'::text)));
 
 drop policy if exists "kassa_ops_update" on "kassa_ops";
 create policy "kassa_ops_update" on "kassa_ops"
   for update
   to public
-  using (((company_id = auth_company_id()) AND (is_owner() OR (is_manager() AND (kassa <> 'company'::text) AND (COALESCE(status, 'x'::text) <> 'approved'::text)))))
-  with check (((company_id = auth_company_id()) AND (is_owner() OR (is_manager() AND (kassa <> 'company'::text) AND (COALESCE(status, 'x'::text) <> 'approved'::text)))));
+  using (((company_id = auth_company_id()) AND (has_perm('kassa.company'::text) OR (has_perm('kassa.operate'::text) AND (kassa <> 'company'::text) AND (COALESCE(status, 'x'::text) <> 'approved'::text)))))
+  with check (((company_id = auth_company_id()) AND (has_perm('kassa.company'::text) OR (has_perm('kassa.operate'::text) AND (kassa <> 'company'::text) AND (COALESCE(status, 'x'::text) <> 'approved'::text)))));
 
 drop policy if exists "kpi_assign_rw" on "kpi_assign";
 create policy "kpi_assign_rw" on "kpi_assign"
   for all
   to public
-  using (((staff_company_id(staff_id) = auth_company_id()) AND (is_manager() OR (staff_id = auth.uid()))))
-  with check (((staff_company_id(staff_id) = auth_company_id()) AND (is_manager() OR (staff_id = auth.uid()))));
+  using (((staff_company_id(staff_id) = auth_company_id()) AND (has_perm('kpi.manage'::text) OR (staff_id = auth.uid()))))
+  with check (((staff_company_id(staff_id) = auth_company_id()) AND (has_perm('kpi.manage'::text) OR (staff_id = auth.uid()))));
 
 drop policy if exists "kpi_day_rw" on "kpi_day";
 create policy "kpi_day_rw" on "kpi_day"
   for all
   to public
-  using (((staff_company_id(staff_id) = auth_company_id()) AND (is_manager() OR (staff_id = auth.uid()))))
-  with check (((staff_company_id(staff_id) = auth_company_id()) AND (is_manager() OR (staff_id = auth.uid()))));
+  using (((staff_company_id(staff_id) = auth_company_id()) AND (has_perm('kpi.manage'::text) OR (staff_id = auth.uid()))))
+  with check (((staff_company_id(staff_id) = auth_company_id()) AND (has_perm('kpi.manage'::text) OR (staff_id = auth.uid()))));
 
 drop policy if exists "kpi_plan_rw" on "kpi_plan";
 create policy "kpi_plan_rw" on "kpi_plan"
   for all
   to public
-  using (((staff_company_id(staff_id) = auth_company_id()) AND (is_manager() OR (staff_id = auth.uid()))))
-  with check (((staff_company_id(staff_id) = auth_company_id()) AND (is_manager() OR (staff_id = auth.uid()))));
+  using (((staff_company_id(staff_id) = auth_company_id()) AND (has_perm('kpi.manage'::text) OR (staff_id = auth.uid()))))
+  with check (((staff_company_id(staff_id) = auth_company_id()) AND (has_perm('kpi.manage'::text) OR (staff_id = auth.uid()))));
 
 drop policy if exists "nps_records_read" on "nps_records";
 create policy "nps_records_read" on "nps_records"
@@ -1566,8 +2002,8 @@ drop policy if exists "nps_records_write" on "nps_records";
 create policy "nps_records_write" on "nps_records"
   for all
   to public
-  using ((is_manager() AND (company_id = auth_company_id())))
-  with check ((is_manager() AND (company_id = auth_company_id())));
+  using (((company_id = auth_company_id()) AND has_perm('nps.edit'::text)))
+  with check (((company_id = auth_company_id()) AND has_perm('nps.edit'::text)));
 
 drop policy if exists "payouts_rw" on "payouts";
 create policy "payouts_rw" on "payouts"
@@ -1593,13 +2029,14 @@ drop policy if exists "product_update" on "products";
 create policy "product_update" on "products"
   for update
   to public
-  using (((company_id = auth_company_id()) AND (auth_role() = ANY (ARRAY['owner'::user_role, 'manager'::user_role]))));
+  using (((company_id = auth_company_id()) AND has_perm('product.edit'::text)))
+  with check (((company_id = auth_company_id()) AND has_perm('product.edit'::text)));
 
 drop policy if exists "product_write" on "products";
 create policy "product_write" on "products"
   for insert
   to public
-  with check (((company_id = auth_company_id()) AND (auth_role() = ANY (ARRAY['owner'::user_role, 'manager'::user_role]))));
+  with check (((company_id = auth_company_id()) AND has_perm('product.edit'::text)));
 
 drop policy if exists "profile_admin" on "profiles";
 create policy "profile_admin" on "profiles"
@@ -1621,6 +2058,19 @@ create policy "profiles_owner_update" on "profiles"
   using (((auth_role() = 'owner'::user_role) AND (company_id = auth_company_id())))
   with check (((auth_role() = 'owner'::user_role) AND (company_id = auth_company_id())));
 
+drop policy if exists "rp_read" on "role_permissions";
+create policy "rp_read" on "role_permissions"
+  for select
+  to public
+  using ((company_id = auth_company_id()));
+
+drop policy if exists "rp_write" on "role_permissions";
+create policy "rp_write" on "role_permissions"
+  for all
+  to public
+  using (((company_id = auth_company_id()) AND (auth_role() = 'owner'::user_role)))
+  with check (((company_id = auth_company_id()) AND (auth_role() = 'owner'::user_role)));
+
 drop policy if exists "sale_item_read" on "sale_items";
 create policy "sale_item_read" on "sale_items"
   for select
@@ -1641,13 +2091,13 @@ drop policy if exists "sale_insert" on "sales";
 create policy "sale_insert" on "sales"
   for insert
   to public
-  with check (((company_id = auth_company_id()) AND can_see_store(store_id)));
+  with check (((company_id = auth_company_id()) AND can_see_store(store_id) AND has_perm('sale.create'::text)));
 
 drop policy if exists "sale_read" on "sales";
 create policy "sale_read" on "sales"
   for select
   to public
-  using (((company_id = auth_company_id()) AND ((auth_role() = ANY (ARRAY['owner'::user_role, 'manager'::user_role])) OR can_see_store(store_id))));
+  using (((company_id = auth_company_id()) AND (has_perm('sale.viewAll'::text) OR can_see_store(store_id))));
 
 drop policy if exists "service_item_rw" on "service_items";
 create policy "service_item_rw" on "service_items"
@@ -1664,14 +2114,14 @@ drop policy if exists "service_read" on "service_orders";
 create policy "service_read" on "service_orders"
   for select
   to public
-  using (((company_id = auth_company_id()) AND ((auth_role() = ANY (ARRAY['owner'::user_role, 'manager'::user_role, 'cashier'::user_role])) OR (installer_id = auth.uid()))));
+  using (((company_id = auth_company_id()) AND (has_perm('service.view'::text) OR (installer_id = auth.uid()))));
 
 drop policy if exists "service_write" on "service_orders";
 create policy "service_write" on "service_orders"
   for all
   to public
-  using (((company_id = auth_company_id()) AND (auth_role() = ANY (ARRAY['owner'::user_role, 'manager'::user_role]))))
-  with check (((company_id = auth_company_id()) AND (auth_role() = ANY (ARRAY['owner'::user_role, 'manager'::user_role]))));
+  using (((company_id = auth_company_id()) AND has_perm('service.edit'::text)))
+  with check (((company_id = auth_company_id()) AND has_perm('service.edit'::text)));
 
 drop policy if exists "shift_rw" on "shifts";
 create policy "shift_rw" on "shifts"
@@ -1706,8 +2156,8 @@ drop policy if exists "shipment_rw" on "shipments";
 create policy "shipment_rw" on "shipments"
   for all
   to public
-  using (((company_id = auth_company_id()) AND (auth_role() = ANY (ARRAY['owner'::user_role, 'manager'::user_role]))))
-  with check (((company_id = auth_company_id()) AND (auth_role() = ANY (ARRAY['owner'::user_role, 'manager'::user_role]))));
+  using (((company_id = auth_company_id()) AND has_perm('finance.suppliers'::text)))
+  with check (((company_id = auth_company_id()) AND has_perm('finance.suppliers'::text)));
 
 drop policy if exists "stock_read" on "stock";
 create policy "stock_read" on "stock"
@@ -1716,6 +2166,31 @@ create policy "stock_read" on "stock"
   using ((EXISTS ( SELECT 1
    FROM products p
   WHERE ((p.id = stock.product_id) AND (p.company_id = auth_company_id())))));
+
+drop policy if exists "stock_update" on "stock";
+create policy "stock_update" on "stock"
+  for update
+  to public
+  using (((EXISTS ( SELECT 1
+   FROM products p
+  WHERE ((p.id = stock.product_id) AND (p.company_id = auth_company_id())))) AND has_perm('product.edit'::text)))
+  with check (((EXISTS ( SELECT 1
+   FROM products p
+  WHERE ((p.id = stock.product_id) AND (p.company_id = auth_company_id())))) AND has_perm('product.edit'::text)));
+
+drop policy if exists "stock_write" on "stock";
+create policy "stock_write" on "stock"
+  for insert
+  to public
+  with check (((EXISTS ( SELECT 1
+   FROM products p
+  WHERE ((p.id = stock.product_id) AND (p.company_id = auth_company_id())))) AND has_perm('product.edit'::text)));
+
+drop policy if exists "transfer_read" on "stock_transfers";
+create policy "transfer_read" on "stock_transfers"
+  for select
+  to public
+  using ((company_id = auth_company_id()));
 
 drop policy if exists "plan_owner" on "store_plans";
 create policy "plan_owner" on "store_plans"
@@ -1734,12 +2209,19 @@ create policy "company_read" on "stores"
   to public
   using ((company_id = auth_company_id()));
 
+drop policy if exists "store_update" on "stores";
+create policy "store_update" on "stores"
+  for update
+  to public
+  using (((company_id = auth_company_id()) AND (auth_role() = 'owner'::user_role)))
+  with check (((company_id = auth_company_id()) AND (auth_role() = 'owner'::user_role)));
+
 drop policy if exists "invoice_rw" on "supplier_invoices";
 create policy "invoice_rw" on "supplier_invoices"
   for all
   to public
-  using (((company_id = auth_company_id()) AND (auth_role() = ANY (ARRAY['owner'::user_role, 'manager'::user_role]))))
-  with check (((company_id = auth_company_id()) AND (auth_role() = ANY (ARRAY['owner'::user_role, 'manager'::user_role]))));
+  using (((company_id = auth_company_id()) AND has_perm('finance.suppliers'::text)))
+  with check (((company_id = auth_company_id()) AND has_perm('finance.suppliers'::text)));
 
 drop policy if exists "invoice_pay_rw" on "supplier_payments";
 create policy "invoice_pay_rw" on "supplier_payments"
@@ -1762,20 +2244,20 @@ drop policy if exists "supplier_write" on "suppliers";
 create policy "supplier_write" on "suppliers"
   for all
   to public
-  using (((company_id = auth_company_id()) AND (auth_role() = ANY (ARRAY['owner'::user_role, 'manager'::user_role]))))
-  with check (((company_id = auth_company_id()) AND (auth_role() = ANY (ARRAY['owner'::user_role, 'manager'::user_role]))));
+  using (((company_id = auth_company_id()) AND has_perm('finance.suppliers'::text)))
+  with check (((company_id = auth_company_id()) AND has_perm('finance.suppliers'::text)));
 
 drop policy if exists "usd_rates_insert" on "usd_rates";
 create policy "usd_rates_insert" on "usd_rates"
   for insert
   to public
-  with check ((is_manager() AND (company_id = auth_company_id())));
+  with check (((company_id = auth_company_id()) AND has_perm('finance.rate'::text)));
 
 drop policy if exists "usd_rates_read" on "usd_rates";
 create policy "usd_rates_read" on "usd_rates"
   for select
   to public
-  using ((is_manager() AND (company_id = auth_company_id())));
+  using (((company_id = auth_company_id()) AND has_perm('finance.rate'::text)));
 
 drop policy if exists "warehouse_item_rw" on "warehouse_items";
 create policy "warehouse_item_rw" on "warehouse_items"
@@ -1792,8 +2274,8 @@ drop policy if exists "warehouse_rw" on "warehouse_operations";
 create policy "warehouse_rw" on "warehouse_operations"
   for all
   to public
-  using (((company_id = auth_company_id()) AND (auth_role() = ANY (ARRAY['owner'::user_role, 'manager'::user_role, 'storekeeper'::user_role]))))
-  with check (((company_id = auth_company_id()) AND (auth_role() = ANY (ARRAY['owner'::user_role, 'manager'::user_role, 'storekeeper'::user_role]))));
+  using (((company_id = auth_company_id()) AND has_perm('warehouse.operate'::text)))
+  with check (((company_id = auth_company_id()) AND has_perm('warehouse.operate'::text)));
 
 
 -- —— Tugadi ——

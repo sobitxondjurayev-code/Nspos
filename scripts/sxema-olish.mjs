@@ -290,7 +290,9 @@ let ketmaKet = [];
   b.push("");
 
   for (const p of pol) {
-    const roles = (p.roles || "{public}").replace(/[{}]/g, "");
+    // `pg` v8.23 `name[]` ni MASSIV qilib beradi (ilgari "{public}" satr edi) —
+    // ikkalasi ham qabul qilinadi (2026-09-03: `.replace is not a function`)
+    const roles = Array.isArray(p.roles) ? p.roles.join(", ") : String(p.roles || "{public}").replace(/[{}]/g, "");
     const parts = [`create policy "${q(p.policyname)}" on "${q(p.tablename)}"`];
     if (p.permissive === "RESTRICTIVE") parts.push("  as restrictive");
     parts.push(`  for ${p.cmd.toLowerCase()}`);
