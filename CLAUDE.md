@@ -78,6 +78,15 @@ quyidagi fidbek qoidalarini o'qing va so'ralmasdan qo'llang.
 - [2026-09-03] Billz summani kasr tiyin bilan beradi (188.035; "Jami qarz" 47 634.4218) — qarz ustunlari `numeric(14,4)`, `remainingOf` 4 xona, yig'indi OXIRIDA bir marta yaxlitlanadi. Har qatorni alohida yaxlitlash 387 qarzda 7 tiyin, 125 mijozda 3 tiyin farq berdi.
 - [2026-09-03] `chiqar.sh` `nspos-api` ni ham qayta ishga tushiradi — u `lib/` ni o'z jarayonida yuklaydi, aks holda eski formulalar bilan javob beraveradi (`jami_qarzdorlik` maydoni shu sabab ko'rinmagan).
 
+- [2026-09-03] Xodim yozuvi JIM yo'qolmasin: `lib/db.js` `remove()` o'chirilgan qatorni so'raydi (nol = xato), `silent=true` faqat AVTOMAT yozuvga (kurs); rad bo'lsa `lib/sync.js` xotirani baza tasdiqlagan holatga qaytaradi (`tasdiq`), localStorage faqat tasdiqdan keyin. Bola qatorlar `bolaQatorlar` bilan: avval insert, keyin delete.
+- [2026-09-03] **RLS = `lib/auth.js` PERMISSIONS.** Siyosatdagi rol ro'yxati kalitdagi bilan bir xil; o'zgartirilsa ikkalasi birga va `npm run huquq` (matritsa sinovi, serverda rollback bilan). Interfeys tugmani RLS ko'zgusi bilan chiqaradi (`canTouchExpense`, `ownerOnly` bo'limlar) — tugma bor-u baza rad etadigan holat bo'lmasin.
+- [2026-09-03] Snapshot ustun sarlavhasida "hozir" belgisi bo'lsin (Qarzdorlik: "Hozirgi qarzi · hozir"); davr faqat oqim ustunlariga. `DataTable` ustuniga `hint` — nima va qanday hisoblangani.
+- [2026-09-03] Manfiy raqam sababi bilan: `components/ui/Manfiy.jsx` + `format.MANFIY_SABAB` (bir sabab — bitta matn). Ko'rsatish uchun `−` (xarajat, chiqim) ma'lumot musbat — u sabab emas.
+- [2026-09-03] Tovar O'CHIRILMAYDI — arxivlanadi (`archived_at` NSPOS'niki, `is_active` Billz'niki). `listProducts()` faol; id bo'yicha qidiruv `allProducts()`.
+- [2026-09-03] Xarajat turlari `expense_categories` jadvalida (Sozlamalar). `EXPENSE_CATEGORIES` obyekti JONLI — o'rni almashtirilmaydi, ichi jadvaldan to'ldiriladi.
+- [2026-09-03] Billz `/v2/transfer` — sarlavha bor, tovar qatorlari yo'q (DAFTAR 18.4). Ko'zgu `stock_transfers`, bosqich `transfers`.
+- [2026-09-03] Ish papkasi — repo: Desktop yopilib qolsa klon (`git clone … master`) dan `chiqar.sh`/`sql.mjs` ishlayveradi (`~/.ssh/nspos`); oxirida Desktop `git pull`.
+
 ## Loyiha haqida
 
 NSPOS — NScamera uchun boshqaruv platformasi. Billz bermaydigan narsalar

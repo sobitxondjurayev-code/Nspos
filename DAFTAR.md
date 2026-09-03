@@ -2292,3 +2292,136 @@ balansidan / noma'lum to'lov kassaga kirmaydi — hozir 0.00, audit
 | Chiqarish 4 (qoldiq) | tugagan 17 (+26), yo'qotish 69.64 $/kun, muddat bazadan |
 | `tekshir` (server, ishchi nusxa) | yangi 6 tekshiruv ✓; bitta ✗ — hamyon minusda (16.5 dagi holat, kassa masalasi) |
 | Billz 500 | 01:07 da `/v1/debt` va `/v2/products` bir marta "server error" — keyingi yurishda o'tdi; jurnalga tushdi |
+
+---
+
+## 18. 2026-09-03 — Rahbarning 7 bandi: xodim saqlashi, qarz davri, qoldiq, arxiv, xarajat turlari, minus
+
+Rahbar yetti band berdi: (1) Qarzdorlikda davr bo'yicha hamma ustun;
+(2) Qoldiq salomatligi ustunlari tushunarsiz, skladdan transfer
+ko'rinmaydi, "Barcha filiallar"da yig'indi; (3) eski tovarni o'chirish;
+(4) xarajat turini qo'shish/o'chirish; (5) "−" ishorali sonlar nega;
+(6) rahbar hisobida hamma narsa sozlanadigan bo'lsin; (7) xodim
+hisobida bir nechta joyda saqlash ishlamaydi. Reja
+`~/.claude/plans/1-qarzdorlik-…md` da; ijro 6 chiqarishda.
+
+### 18.1. Muhit: Desktop yopilib qoldi, ish klondan ketdi
+
+Sessiya o'rtasida macOS `~/Desktop` ga o'qish ruxsatini qaytarib oldi
+(`ls ~/Desktop` → Operation not permitted; Documents/Downloads ochiq).
+Repo GitHub'dan (`master` = Desktop nusxasi, `6fad52b`) scratchpad'ga
+klon qilindi va hamma ish o'sha yerdan: `chiqar.sh`, `sql.mjs`,
+`tekshir-uzoq.sh` — uchalasi ham `~/.ssh/nspos` orqali serverga boradi,
+`.env` yuborilmaydi. **Desktop nusxasi `git pull` bilan tenglashtiriladi.**
+
+> Qoida: ish papkasi bitta emas — repo. Lokal `.env.local` faqat
+> `npm run billz` va `tekshir` (lokal) uchun; serverda `.env.production`.
+
+### 18.2. Xodim hisobida "saqlash ishlamayapti" — 14 jim nosozlik
+
+O'lchov (agent, RLS matritsasi + yozuv yo'llari):
+
+| Sabab | Qayerda |
+|---|---|
+| `remove()` `.select()` siz → RLS rad etgan o'chirish 204, `ok:true` | tovar, menejerning kechagi/doimiy xarajati, NPS, approved kassa yozuvi — ekrandan yo'qolib F5 da qaytardi |
+| `silent=true` + localStorage | KPI kun/reja/tur, NPS, kompaniya sozlamasi — rad bo'lsa ham "saqlangan" |
+| Siyosat YO'Q | `customers` insert/update (rahbar ham!), `stock` insert |
+| `cash_operations.store_id = null` → `can_see_store(NULL)` false | qarz to'lovi, balans, ta'minotchi to'lovi — do'koni bor xodimga rad |
+| Bola jadval `delete` keyin `insert`, xato tekshirilmaydi | xizmat ishlari, ombor qatorlari, partiya — rad bo'lsa eski qatorlar YO'QOLADI |
+| Vaqtinchalik id bilan bola qatorlar | yangi buyurtma/partiya qatorlari uuid emas → jim rad |
+| Menejer `store_id=NULL` | xarajat siyosati `kassa = auth_store_id()` — hech narsa yozolmaydi |
+| Usta o'z buyurtma holatini o'zgartira olmasdi | `service_write` faqat owner/manager |
+| `perms.sections` rolni KENGAYTIRARDI | owner-only bo'lim menejerga ochilsa sahifa ochiladi, yozuv rad |
+| Token modul yuklanganda bir marta | sessiya yangilansa eski token bilan (13.4 qoldig'i) |
+
+Yechim (kommitlar `bd3cb4f`, `fb60d80`):
+- `lib/db.js`: `remove()` `.select("id")`, nol qator = xato; xato matni
+  xodim tiliga (`xatoMatni`); token har so'rovda; `onXotira` —
+  orqaga qaytganda ekran qayta chiziladi.
+- `lib/sync.js`: baza tasdiqlagan holat (`tasdiq`) — rad bo'lsa xotira
+  o'shanga qaytadi; `bolaQatorlar` — avval insert, keyin delete.
+- KPI/NPS/kompaniya: `silent` yo'q, localStorage faqat tasdiqdan keyin.
+- `scripts/sql/huquq-2026-09.sql`: customers/stock/products with check/
+  nps (kassir ham)/debt_payments va cash_operations rol bilan/
+  `service_status_set()` RPC.
+- **`npm run huquq`** (`scripts/huquq-sinov.mjs`): har rol uchun serverda
+  `app.user_id` + `set local role nspos_app` bilan 27 amal, rollback;
+  natija `lib/auth.js` PERMISSIONS bilan solishtiriladi. Migratsiyadan
+  oldin 10 farq (customers/stock YOPIQ, cash/debt ustaga OCHIQ), keyin 0.
+
+> Qoida: RLS = PERMISSIONS. Siyosat o'zgarsa `npm run huquq`. Bazada
+> `cashier`/`storekeeper` rolida xodim yo'q — matritsa ularni sinamaydi
+> (ochiq ish: sinov uchun vaqtinchalik profil).
+
+### 18.3. Qarzdorlik — davr va snapshot bir jadvalda
+
+"Jami qarzdorlik" Billz "Jami qarz" (17-bo'lim) — hozirgi holat, davr
+unga tegmaydi. Shuning uchun jadvalda ikki tur ustun ALOHIDA
+nomlanadi: oqim (Davrda berilgan / to'langan / ochilgan / yopilgan) va
+snapshot ("Hozirgi qarzi · hozir", "Eng eski"). `debtsData.debtorRowsDavr`,
+`paymentsInRange` — `debtCollections` bilan bitta filtr. `moslik`
+`qarz-jadval`: jadval jamisi (xom yig'indi) = kartochka. Menyu:
+"Qarz to'lovlari" → "Qarzdorlik". Hisobotlar → Qarzdorlar ham davr.
+
+### 18.4. Qoldiq salomatligi va Billz transferlari
+
+- "Barcha do'konlar" allaqachon yig'indi edi (`totalQty`, Sklad ham) —
+  ko'rinmasdi. Endi katak ostida bo'linma (Optim 3 · Namangan 0 · Sklad 12).
+- Filial tanlanganda "Skladda" ustuni; tugagan-u Skladda bor tovar —
+  "ko'chirish N (+ buyurtma M)"; kartochka "Skladdan ko'chirish kerak".
+- Har ustunda ⓘ izoh (`DataTable` `hint`).
+- **Billz transfer API:** `--probe --transfer` (12 nomzod): `/v2/transfer`
+  BOR (2 063 yozuv), sarlavha: kimdan-kimga, dona (yuborilgan/qabul),
+  tannarx/sotuv summasi, kim, qachon. Sana filtri yo'q (`start_date`
+  400), `/v2/transfer/{id}` sarlavhani qaytaradi, `transfer_items` doim
+  null; `transfer-item`, `/items`, `/products` — 404. Yangi
+  `stock_transfers` jadvali, `billzSync.syncTransfers` (inkremental:
+  sahifa eskicha bo'lsa to'xtaydi), hisobotda "Transferlar — oxirgi 30
+  kun" yo'nalish bo'yicha.
+
+### 18.5. Tovar arxivi — o'chirish emas
+
+`products.archived_at/archived_by` (NSPOS'niki) va `is_active`
+(Billz'niki: to'liq katalogda Billz ro'yxatida yo'q tovar `false`,
+qo'riqchi — kelgan soni bazadagining yarmidan kam bo'lsa tegilmaydi).
+`listProducts()` faqat faol, `allProducts()` id bo'yicha qidiruv (chek
+qatori, balans qoldiq qiymati — arxivlangan tovarning puli yotibdi).
+`removeProduct` olib tashlandi. Tovarlar → "Arxiv" tabi.
+
+### 18.6. Xarajat turlari jadvaldan
+
+`expense_categories` (seed = kodda turgan 20 + 2 eskirgan). RLS: yozish
+rahbar, o'chirish faqat ishlatilmagan tur. `EXPENSE_CATEGORIES` obyekti
+JONLI — o'rni almashmaydi, jadval kelganda ichi to'ldiriladi
+(`demoCategories` naqshi), 6 iste'molchi o'zgarmadi. `db.js` CRITICAL.
+Sozlamalar → "Xarajat turlari".
+
+### 18.7. "−" ishora — javob
+
+Minus haqiqiy holatni bildiradi: kassa hamyoni minusda (16.5: Optim
+naqd −3 509 $, Namangan −5 257 $, servis −3 803 $ — xarajat kun
+yopilgandan keyin kiritilgan, kassa yuritish masalasi), KPI qoldiq
+(avans), sof foyda (zarar), pul oqimi, reja qoldig'i, tovar foydasi
+(zarar bilan sotilgan/qaytarish), xizmat qoldig'i, inventarizatsiya
+kamomadi. Endi manfiy katak sababi bilan (`ui/Manfiy`, matnlar
+`format.MANFIY_SABAB` da — bir sabab, bitta matn). Nomuvofiqliklar:
+ombor operatsiyasida ASCII "-" (→ `foiz/son`), Balans strukturasida
+`Math.abs` (manfiy aktiv musbat chiqardi), Qoldiq salomatligi Excelida
+−1 (`value ?? -1`).
+
+### 18.8. Ijro (03.09, 15:00–17:30)
+
+| Guruh | Kommit | Natija |
+|---|---|---|
+| 1 Xodim saqlash (db/sync/silent/store_id) | `bd3cb4f` | 24 sahifa toza; `tekshir:server` — faqat avvalgi hamyon ✗ |
+| 2 RLS + `npm run huquq` | `fb60d80` | migratsiya serverda; matritsa 0 farq |
+| 3 Qarz davr + minus | `9376012` | `qarz-jadval` ✓ |
+| 4 Arxiv + xizmat holati | `f437b63` | `products-arxiv.sql` serverda |
+| 5 Qoldiq + transferlar | `147c11c` | `stock-transfers.sql` serverda; probe 12 nomzod |
+| 6 Xarajat turlari | `b0369d9` | `expense-categories.sql` serverda; huquq ✓ |
+
+Qolgan (6-band, alohida): `companies.sozlamalar` (biznes raqamlari),
+do'kon/kassa sozlamasi (`stores.code/kind/billz_names`), huquq
+matritsasi UI (`role_permissions` + `has_perm()`), KPI bonus
+pog'onalari (reja qatorlariga muhrlangan). `01-sxema.sql` ko'zgusi
+`sxema-olish.mjs` bilan yangilanishi kerak (serverda yurgiziladi).
