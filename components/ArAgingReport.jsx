@@ -6,7 +6,7 @@ import { t, tt } from "@/lib/i18n";
 import { pul, son, foiz } from "@/lib/format";
 import { useTheme } from "@/components/ThemeProvider";
 import { useLive } from "@/components/DataProvider";
-import { arAging, AR_BUCKETS, storeOptions } from "@/lib/analytics";
+import { arAging, arBuckets, storeOptions } from "@/lib/analytics";
 import DataTable from "@/components/ui/DataTable";
 import ChartCard from "@/components/ui/ChartCard";
 import { SERIES } from "@/lib/chartColors";
@@ -145,7 +145,7 @@ export default function ArAgingReport() {
             tickLine={false} axisLine={false} />
           <Tooltip cursor={{ fill: "transparent" }} content={<Ipuchi jami={d.open} />} />
           <Bar dataKey="pul" radius={[0, 4, 4, 0]} maxBarSize={26}
-               onClick={(_, i) => setTanlangan(AR_BUCKETS[i]?.id ?? null)}
+               onClick={(_, i) => setTanlangan(arBuckets()[i]?.id ?? null)}
                className="cursor-pointer"
                label={{ position: "right", fill: chart.tick, fontSize: 11, fontWeight: 700,
                         formatter: (v) => pul(v) }}>

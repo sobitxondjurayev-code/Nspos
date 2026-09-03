@@ -3,7 +3,7 @@ import { t, tt } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import { Wallet, Clock, TriangleAlert, PieChart } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
-import { listDebts, jamiQarz, ochiqQoldiq, muddatiOtganmi, debtorRowsDavr, debtCollections } from "@/lib/debtsData";
+import { listDebts, jamiQarz, ochiqQoldiq, muddatiOtganmi, debtorRowsDavr, debtCollections, debtCuts } from "@/lib/debtsData";
 import { listCustomers } from "@/lib/customersData";
 import { billzVaqtMatni } from "@/lib/billzLogData";
 import { ymd } from "@/lib/dates";
@@ -37,7 +37,8 @@ const overdueDays = (due, today) => Math.floor((new Date(today) - new Date(due))
 export default function DebtorsReport() {
   const [q, setQ] = useState("");
   // Uchta chegara — foydalanuvchi o'zgartiradi
-  const [cuts, setCuts] = useState([15, 20, 30]);
+  // Boshlang'ich chegaralar — Sozlamalar → Biznes qoidalari (`debts.buckets`)
+  const [cuts, setCuts] = useState(() => debtCuts());
   const live = useLive();
   const today = ymd(new Date());
 

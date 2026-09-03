@@ -17,6 +17,7 @@ import Manfiy from "@/components/ui/Manfiy";
 import { useLive } from "@/components/DataProvider";
 import { useAuth } from "@/components/AuthProvider";
 import { sana } from "@/lib/format";
+import { sozlama } from "@/lib/companyData";
 
 export default function Products() {
   const [tick, setTick] = useState(0);
@@ -31,6 +32,8 @@ export default function Products() {
   // darrov ko'rinsin (ilgari `useState(listProducts)` bilan sahifa
   // yuklanish paytidagi ro'yxatda qotib qolardi)
   const items = useMemo(() => listProducts(), [tick, live]);
+  // "Kam qoldiq" chegarasi — Sozlamalar → Biznes qoidalari (standart 3)
+  const kamQoldiq = sozlama("stock.lowThreshold", 3);
   const arxiv = useMemo(() => listArchived(), [tick, live]);
   const refresh = () => setTick((v) => v + 1);
 
@@ -51,7 +54,7 @@ export default function Products() {
   // Qoldiq holati bo'yicha tablar — Billz'dagi kabi sanoq bilan
   const stockTabs = useMemo(() => {
     const zero = items.filter((p) => totalQty(p) <= 0).length;
-    const low = items.filter((p) => totalQty(p) > 0 && totalQty(p) <= 3).length;
+    const low = items.filter((p) => totalQty(p) > 0 && totalQty(p) <= kamQoldiq).length;
     return [
       { key: "all", label: "Barchasi", count: items.length },
       { key: "in", label: "Qoldiqda bor", count: items.length - zero },
@@ -61,14 +64,14 @@ export default function Products() {
       // (`is_active = false`). Ro'yxatda ko'rinmaydi, tarixda qoladi.
       { key: "arxiv", label: "Arxiv", count: arxiv.length },
     ];
-  }, [items, arxiv]);
+  }, [items, arxiv, kamQoldiq]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     let rows = tab === "arxiv" ? arxiv : items;
 
     if (tab === "in") rows = rows.filter((p) => totalQty(p) > 0);
-    else if (tab === "low") rows = rows.filter((p) => totalQty(p) > 0 && totalQty(p) <= 3);
+    else if (tab === "low") rows = rows.filter((p) => totalQty(p) > 0 && totalQty(p) <= kamQoldiq);
     else if (tab === "zero") rows = rows.filter((p) => totalQty(p) <= 0);
 
     // Do'kon filtri: shu do'konda qoldig'i bor tovarlar
@@ -82,7 +85,7 @@ export default function Products() {
       !s || p.name.toLowerCase().includes(s) ||
       p.sku?.toLowerCase().includes(s) || p.barcode?.includes(s)
     );
-  }, [items, arxiv, q, tab, filters, FIELDS]);
+  }, [items, arxiv, q, tab, filters, FIELDS, kamQoldiq]);
 
   // Billz'dagi kabi: nomlar soni, dona, tannarx va sotuv narxidagi qiymat
   const stats = useMemo(() => {

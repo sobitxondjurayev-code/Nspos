@@ -25,7 +25,7 @@ import { useLive, useToliq } from "@/components/DataProvider";
 import { can } from "@/lib/auth";
 import {
   computeMonth, computeDay, listDays, saveDay, savePlan, saveRules,
-  monthKey, todayKey, isRevisionDay, isPayDay, isPayAnyDayMonth, PAY_DAYS, KPI_TYPES, MANAGER_TYPES, typeOf,
+  monthKey, todayKey, isRevisionDay, isPayDay, isPayAnyDayMonth, payDays, KPI_TYPES, MANAGER_TYPES, typeOf,
   getType, setType, hasType, setInstallerRate, setInstallerNps, installerRange,
   BILLZ_COLS,
 } from "@/lib/kpiData";
@@ -742,10 +742,10 @@ function StaffDetail({ staffId, month, canEdit, canRules, canEditPast = false, s
           : t("Kulrang ustunlar o'zi hisoblanadi. Kelmagan kunlar yopiq.")}
         {m.type === "installer" && (
           <> {payAnyDay
-            ? tt("Pul odatda {d}-kunlari beriladi — rahbar sifatida siz istalgan kunga yoza olasiz.", { d: PAY_DAYS.join(", ") })
+            ? tt("Pul odatda {d}-kunlari beriladi — rahbar sifatida siz istalgan kunga yoza olasiz.", { d: payDays().join(", ") })
             : isPayAnyDayMonth(month)
-              ? tt("Pul odatda {d}-kunlari beriladi — shu oyga cheklov vaqtincha ochilgan, istalgan kunga yozaverasiz.", { d: PAY_DAYS.join(", ") })
-              : tt("Pul faqat {d}-kunlari beriladi. Boshqa kunga rahbar yozadi.", { d: PAY_DAYS.join(", ") })}</>
+              ? tt("Pul odatda {d}-kunlari beriladi — shu oyga cheklov vaqtincha ochilgan, istalgan kunga yozaverasiz.", { d: payDays().join(", ") })
+              : tt("Pul faqat {d}-kunlari beriladi. Boshqa kunga rahbar yozadi.", { d: payDays().join(", ") })}</>
         )}
       </p>
       <DailyTable m={m} rows={rows} month={month} onEdit={edit} canEdit={canEdit}

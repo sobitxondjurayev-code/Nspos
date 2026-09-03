@@ -21,7 +21,8 @@ import { sessiyaOl } from "@/lib/sessiya";
 import { setInstallerRate, getPlan, monthKey } from "@/lib/kpiData";
 import { saveRate } from "@/lib/ratesData";
 import { getUsdRate, isRateAuto, setRateAuto, refreshUsdRate, getRateDate,
-  getServiceNames, setServiceNames, getLedgerStart, setLedgerStart } from "@/lib/companyData";
+  getServiceNames, setServiceNames, getLedgerStart, setLedgerStart,
+  sozlama, setSozlama, sonlarRoyxati, getReorderDays, setReorderDays } from "@/lib/companyData";
 import NumberField from "@/components/NumberField";
 import StaffModal from "@/components/StaffModal";
 import {
@@ -486,6 +487,134 @@ function ServiceNamesCard() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// BIZNES QOIDALARI (2026-09-03)
+// ══════════════════════════════════════════════════════════════
+// Rahbar: "hamma narsa sozlanadigan bo'lsin". Kodda qotgan raqamlar
+// `companies.sozlamalar` (jsonb) da; kodda turgani standart. Har
+// maydon "Saqlash" bilan yoziladi va natija ko'rinadi (jim emas:
+// `companyData.save` rad bo'lsa qaytaradi va toast beradi).
+const QOIDA_STANDART = {
+  "kpi.payDays": [1, 5, 10, 15, 20, 25],
+  "stock.lowThreshold": 3,
+  "stock.windowDays": 30,
+  "debts.buckets": [15, 20, 30],
+  "ar.buckets": [30, 60, 90],
+};
+function BusinessRulesCard() {
+  const live = useLive();
+  const [holat, setHolat] = useState({});     // kalit → "saqlandi" | "xato"
+  const oy = monthKey(new Date());
+  const q = (k) => sozlama(k, QOIDA_STANDART[k]);
+  const [payDaysMatn, setPayDaysMatn] = useState(q("kpi.payDays").join(", "));
+  const [low, setLow] = useState(q("stock.lowThreshold"));
+  const [oyna, setOyna] = useState(q("stock.windowDays"));
+  const [qarz, setQarz] = useState(q("debts.buckets"));
+  const [ar, setAr] = useState(q("ar.buckets"));
+  const muddat = getReorderDays();
+  const [lead, setLead] = useState(muddat.lead);
+  const [cover, setCover] = useState(muddat.cover);
+  const shuOyOchiq = sozlama("kpi.payAnyDayMonths", ["2026-08"]).includes(oy);
+
+  async function saqla(k, qiymat) {
+    const r = await setSozlama(k, qiymat);
+    setHolat((h) => ({ ...h, [k]: r?.ok === false ? "xato" : "saqlandi" }));
+  }
+  const belgi = (k) => holat[k] === "saqlandi"
+    ? <span className="font-semibold text-ok text-sm">{t("Saqlandi")}</span>
+    : holat[k] === "xato" ? <span className="font-semibold text-danger text-sm">{t("Saqlanmadi")}</span> : null;
+  const uchta = (arr, set) => (i, v) => { const n = [...arr]; n[i] = v; set(n); };
+  const tartibli = (arr) => [...arr].map((x) => Math.max(1, Math.round(Number(x) || 0))).sort((a, b) => a - b);
+
+  async function standart() {
+    if (!confirm(t("Biznes qoidalari standartga qaytarilsinmi? (Yetkazish/zaxira muddati tegilmaydi)"))) return;
+    for (const k of Object.keys(QOIDA_STANDART)) await setSozlama(k, null);
+    await setSozlama("kpi.payAnyDayMonths", null);
+    setPayDaysMatn(QOIDA_STANDART["kpi.payDays"].join(", ")); setLow(3); setOyna(30);
+    setQarz(QOIDA_STANDART["debts.buckets"]); setAr(QOIDA_STANDART["ar.buckets"]);
+    setHolat({});
+  }
+
+  const Qator = ({ label, izoh, children, kalit }) => (
+    <div className="grid grid-cols-1 sm:grid-cols-[14rem_1fr] gap-2 sm:gap-6 py-4 border-b border-line last:border-0">
+      <div>
+        <p className="font-bold">{t(label)}</p>
+        {izoh && <p className="text-sm text-muted font-semibold">{t(izoh)}</p>}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">{children}{kalit && belgi(kalit)}</div>
+    </div>
+  );
+  const Tugma = ({ onClick }) => (
+    <button onClick={onClick} className="rounded-xl bg-brand hover:bg-brand-dark text-white font-bold px-5 py-2.5">
+      {t("Saqlash")}
+    </button>
+  );
+
+  return (
+    <div className="card p-7 mb-6">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-3">
+          <span className="w-9 h-9 rounded-xl bg-brand-soft text-brand flex items-center justify-center">
+            <Shield size={18} />
+          </span>
+          <h2 className="text-xl font-extrabold">{t("Biznes qoidalari")}</h2>
+        </div>
+        <button onClick={standart} className="text-sm font-bold text-muted hover:text-danger">{t("Standartga qaytarish")}</button>
+      </div>
+      <p className="text-sm text-muted font-semibold mb-3">
+        {t("Ilgari kodda qotib turgan raqamlar. O'zgartirsangiz ekran, tekshiruv, API va Telegram boti bir xil qiymat bilan ishlaydi.")}
+      </p>
+
+      <Qator label="Ustaga pul beriladigan kunlar" kalit="kpi.payDays"
+        izoh="Menejer faqat shu kunlarga usta olgan pulini yozadi; rahbar — istalgan kunga.">
+        <input value={payDaysMatn} onChange={(e) => setPayDaysMatn(e.target.value)} className="inp w-56" placeholder="1, 5, 10, 15, 20, 25" />
+        <Tugma onClick={() => { const v = sonlarRoyxati(payDaysMatn, QOIDA_STANDART["kpi.payDays"]); setPayDaysMatn(v.join(", ")); saqla("kpi.payDays", v); }} />
+      </Qator>
+      <Qator label="Shu oyga cheklovni ochish" kalit="kpi.payAnyDayMonths"
+        izoh="Belgilansa shu oyda menejer usta puliga istalgan kunni yozadi. Keyingi oyda qoida o'zi qaytadi.">
+        <label className="flex items-center gap-2 font-semibold">
+          <input type="checkbox" checked={shuOyOchiq}
+            onChange={(e) => {
+              const list = sozlama("kpi.payAnyDayMonths", ["2026-08"]).filter((m) => m !== oy);
+              saqla("kpi.payAnyDayMonths", e.target.checked ? [...list, oy] : list);
+            }} className="w-4 h-4 accent-brand" />
+          {tt("{m} oyi uchun ochiq", { m: oy })}
+        </label>
+      </Qator>
+      <Qator label="Kam qoldiq chegarasi (dona)" kalit="stock.lowThreshold"
+        izoh={'Tovarlar sahifasidagi "Kam qoldiq" tabi: qoldig\'i shu sondan kam yoki teng bo\'lganlar.'}>
+        <NumberField value={low} onChange={setLow} className="inp w-28" />
+        <Tugma onClick={() => saqla("stock.lowThreshold", Math.max(1, Math.round(Number(low) || 3)))} />
+      </Qator>
+      <Qator label="Sotuv tezligi oynasi (kun)" kalit="stock.windowDays"
+        izoh="Qoldiq salomatligi: kunlik o'rtacha shu oxirgi kunlardan hisoblanadi (zaxira oyna — 3 barobar).">
+        <NumberField value={oyna} onChange={setOyna} className="inp w-28" />
+        <Tugma onClick={() => saqla("stock.windowDays", Math.min(365, Math.max(7, Math.round(Number(oyna) || 30))))} />
+      </Qator>
+      <Qator label="Buyurtma muddati (kun)" kalit="reorder"
+        izoh="Yetkazish + zaxira: buyurtma miqdori = kunlik o'rtacha × (yetkazish + zaxira) − qoldiq.">
+        <label className="flex items-center gap-2 text-sm font-semibold">{t("Yetkazish")} <NumberField value={lead} onChange={setLead} className="inp w-24" /></label>
+        <label className="flex items-center gap-2 text-sm font-semibold">{t("Zaxira")} <NumberField value={cover} onChange={setCover} className="inp w-24" /></label>
+        <Tugma onClick={async () => { const r = await setReorderDays({ lead, cover }); setHolat((h) => ({ ...h, reorder: r?.ok === false ? "xato" : "saqlandi" })); }} />
+      </Qator>
+      <Qator label="Qarzdorlar guruhlari (kun)" kalit="debts.buckets"
+        izoh="Hisobotlar → Qarzdorlar: muddati o'tgan qarz shu chegaralar bo'yicha guruhlanadi.">
+        {qarz.map((v, i) => <NumberField key={i} value={v} onChange={(x) => uchta(qarz, setQarz)(i, x)} className="inp w-24" />)}
+        <Tugma onClick={() => { const v = tartibli(qarz); setQarz(v); saqla("debts.buckets", v); }} />
+      </Qator>
+      <Qator label="Qarz yosh guruhlari — AR (kun)" kalit="ar.buckets"
+        izoh="Hisobotlar → Qarz yoshi (AR aging): 0–30, 31–60, 61–90, 90+ chegaralari.">
+        {ar.map((v, i) => <NumberField key={i} value={v} onChange={(x) => uchta(ar, setAr)(i, x)} className="inp w-24" />)}
+        <Tugma onClick={() => { const v = tartibli(ar); setAr(v); saqla("ar.buckets", v); }} />
+      </Qator>
+      <p className="text-xs text-muted font-semibold mt-3">
+        {t("Xarajat turlari — alohida kartada (pastda). KPI bonus pog'onalari va keshbek darajalari hozircha kodda (reja qatorlariga muhrlangan) — alohida ish.")}
+        {live ? "" : ""}
+      </p>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
 // XARAJAT TURLARI (2026-09-03)
 // ══════════════════════════════════════════════════════════════
 // Rahbar: "xarajat turini qo'shish/o'chirish mumkin bo'lsin". Ro'yxat
@@ -921,6 +1050,7 @@ export default function Settings() {
       {isOwner && <UsdRateCard />}
       {isOwner && <LedgerStartCard />}
       {isOwner && <ServiceNamesCard />}
+      {isOwner && <BusinessRulesCard />}
       {isOwner && <ExpenseCategoriesCard />}
 
       {/* Parolni yangilash — har bir kirgan xodim o'ziniki uchun */}

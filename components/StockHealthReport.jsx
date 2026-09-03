@@ -155,7 +155,7 @@ export default function StockHealthReport() {
               {t("Kunlik o'rtacha — oxirgi 30 kun; 30 kunda sotuv bo'lmasa 90 kunlik oyna (jadvalda \"Oyna\" ustuni).")}
             </p>
             {rahbar ? (
-              <div className="grid grid-cols-2 gap-4 max-w-md">
+              <div className="flex flex-wrap items-end gap-4 max-w-xl">
                 <label className="block">
                   <span className="block text-sm font-bold mb-2">{t("Yetkazish (kun)")}</span>
                   <NumberField value={muddat.lead} onChange={(v) => muddatQoy({ lead: v })} />
@@ -164,6 +164,9 @@ export default function StockHealthReport() {
                   <span className="block text-sm font-bold mb-2">{t("Zaxira (kun)")}</span>
                   <NumberField value={muddat.cover} onChange={(v) => muddatQoy({ cover: v })} />
                 </label>
+                <p className="text-sm font-semibold text-muted pb-3">
+                  {t("Boshqa qoidalar (sotuv oynasi, kam qoldiq chegarasi) — Sozlamalar → Biznes qoidalari.")}
+                </p>
               </div>
             ) : (
               <p className="text-sm font-semibold text-muted">{t("Muddatni rahbar belgilaydi.")}</p>
