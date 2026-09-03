@@ -10,13 +10,15 @@ import DateRangePicker from "@/components/DateRangePicker";
 import { listCustomers } from "@/lib/customersData";
 import { getStaff } from "@/lib/staffData";
 import {
-  listOrders, addOrder, updateOrder, removeOrder, computeOrder,
+  listOrders, addOrder, updateOrder, removeOrder, computeOrder, setOrderStatus,
   ordersInRange, servicesSummary, installerStats,
   listServiceTypes, addServiceType, updateServiceType, removeServiceType,
   STATUSES,
 } from "@/lib/servicesData";
 import ServiceOrderModal from "@/components/ServiceOrderModal";
 import StatCard from "@/components/finance/StatCard";
+import { useAuth } from "@/components/AuthProvider";
+import { can } from "@/lib/auth";
 
 const tabs = ["Buyurtmalar", "Ustalar KPI", "Xizmat turlari"];
 
@@ -38,6 +40,10 @@ function OrdersTab({ range, tick, bump }) {
   const [modal, setModal] = useState(null);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
+  // Tahrir/o'chirish — `service.edit` (owner, manager); usta va kassir
+  // faqat ko'radi, usta o'z buyurtmasining holatini o'zgartiradi
+  const { user } = useAuth();
+  const canEdit = can("service.edit", user);
 
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -123,8 +129,8 @@ function OrdersTab({ range, tick, bump }) {
               const c = computeOrder(o);
               const st = STATUSES[o.status];
               return (
-                <tr key={o.id} onClick={() => setModal({ mode: "edit", order: o })}
-                  className="border-b border-line last:border-0 hover:bg-surface/70 cursor-pointer">
+                <tr key={o.id} onClick={canEdit ? () => setModal({ mode: "edit", order: o }) : undefined}
+                  className={`border-b border-line last:border-0 hover:bg-surface/70 ${canEdit ? "cursor-pointer" : ""}`}>
                   <td className="px-6 py-4">
                     <p className="font-bold">{o.no}</p>
                     <p className="text-sm text-muted">{fmtWhen(o.at)}</p>
@@ -140,18 +146,35 @@ function OrdersTab({ range, tick, bump }) {
                   </td>
                   <td className="px-4 py-4 text-right font-extrabold">{fmtUSD(c.total)}</td>
                   <td className="px-4 py-4 text-right font-semibold text-warn">{fmtUSD(c.installerShare)}</td>
-                  <td className="px-4 py-4">
-                    <span className={`text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap ${TONES[st.tone]}`}>
-                      {t(st.label)}
-                    </span>
+                  <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                    {/* Holatni rahbar/menejer va O'Z buyurtmasi bo'lsa usta
+                        o'zgartiradi (bazada `service_status_set`, 2026-09-03).
+                        Ilgari usta uchun hech qanday yo'l yo'q edi. */}
+                    {canEdit || o.installerId === user?.id ? (
+                      <select value={o.status}
+                        onChange={(e) => { setOrderStatus(o.id, e.target.value); bump(); }}
+                        className={`text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap border-0 outline-none cursor-pointer ${TONES[st.tone]}`}>
+                        {Object.entries(STATUSES).map(([k, v]) => (
+                          <option key={k} value={k}>{t(v.label)}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className={`text-sm font-bold px-3 py-1 rounded-lg whitespace-nowrap ${TONES[st.tone]}`}>
+                        {t(st.label)}
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex justify-end gap-1">
-                      <button onClick={() => setModal({ mode: "edit", order: o })}
-                        className="p-2 rounded-lg text-muted hover:bg-brand-soft hover:text-brand"><Pencil size={17} /></button>
-                      <button onClick={() => del(o)}
-                        className="p-2 rounded-lg text-muted hover:bg-danger-soft hover:text-danger"><Trash2 size={17} /></button>
-                    </div>
+                    {/* Tahrir/o'chirish faqat huquqi borga — aks holda tugma
+                        bosilib, baza rad etib, "ishlamayapti" bo'lardi */}
+                    {canEdit && (
+                      <div className="flex justify-end gap-1">
+                        <button onClick={() => setModal({ mode: "edit", order: o })}
+                          className="p-2 rounded-lg text-muted hover:bg-brand-soft hover:text-brand"><Pencil size={17} /></button>
+                        <button onClick={() => del(o)}
+                          className="p-2 rounded-lg text-muted hover:bg-danger-soft hover:text-danger"><Trash2 size={17} /></button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               );

@@ -29,7 +29,7 @@ if [ "$ok" -gt 0 ]; then
   # umuman ko'rinmasdi. Ya'ni do'koni tanilmagani uchun butun bir
   # do'konning savdosi yozilmay qolsa ham, jurnalda "OK" turardi
   # (DAFTAR 10.4: jurnal kam aytsa nosozlikni yashiradi).
-  qisqa=$(printf '%s' "$javob" | grep -oE '"(inserted|items|payments|noStore|farqSoni)":[0-9]+' | tr '\n' ' ')
+  qisqa=$(printf '%s' "$javob" | grep -oE '"(inserted|items|payments|noStore|farqSoni|deactivated)":[0-9]+' | tr '\n' ' ')
   chala=$(printf '%s' "$javob" | grep -c '"exhausted":false' || true)
   [ "$chala" -gt 0 ] && qisqa="$qisqa CHALA(yana qoldi)"
   # Ko'zgu Billz bilan mos emas — sinxron "OK" bo'lsa ham

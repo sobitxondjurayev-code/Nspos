@@ -2,10 +2,11 @@
 import { t, tt } from "@/lib/i18n";
 import BillzMuhr from "@/components/BillzMuhr";
 import { useMemo, useState } from "react";
-import { Plus, Search, Pencil, Trash2, Barcode, Package, Boxes, Wallet, TrendingUp } from "lucide-react";
+import { Plus, Search, Pencil, Archive, ArchiveRestore, Barcode, Package, Boxes, Wallet, TrendingUp } from "lucide-react";
 import { demoStores, fmtUSD } from "@/lib/demoData";
 import {
-  demoCategories, listProducts, addProduct, updateProduct, removeProduct, totalQty,
+  demoCategories, listProducts, listArchived, addProduct, updateProduct,
+  archiveProduct, restoreProduct, totalQty,
 } from "@/lib/productsData";
 import ProductModal from "@/components/ProductModal";
 import FilterBar, { applyFilters } from "@/components/FilterBar";
@@ -13,15 +14,25 @@ import StatsStrip from "@/components/StatsStrip";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
 import Manfiy from "@/components/ui/Manfiy";
+import { useLive } from "@/components/DataProvider";
+import { useAuth } from "@/components/AuthProvider";
+import { sana } from "@/lib/format";
 
 export default function Products() {
-  const [items, setItems] = useState(listProducts);
+  const [tick, setTick] = useState(0);
+  const live = useLive();
+  const { user } = useAuth();
   const [q, setQ] = useState("");
   const [tab, setTab] = useState("all");
   const [filters, setFilters] = useState({});
   const [modal, setModal] = useState(null); // null | {mode:'new'} | {mode:'edit', product}
 
-  const refresh = () => setItems(listProducts());
+  // `useLive` — bazadan kelgan yoki boshqa xodim o'zgartirgan tovar
+  // darrov ko'rinsin (ilgari `useState(listProducts)` bilan sahifa
+  // yuklanish paytidagi ro'yxatda qotib qolardi)
+  const items = useMemo(() => listProducts(), [tick, live]);
+  const arxiv = useMemo(() => listArchived(), [tick, live]);
+  const refresh = () => setTick((v) => v + 1);
 
   // Filtr maydonlari: `get` — yozuvdan solishtiriladigan qiymatni oladi
   const FIELDS = useMemo(() => [
@@ -46,12 +57,15 @@ export default function Products() {
       { key: "in", label: "Qoldiqda bor", count: items.length - zero },
       { key: "low", label: "Kam qoldiq", count: low },
       { key: "zero", label: "Qoldiq yo'q", count: zero },
+      // Arxiv: rahbar/menejer arxivlagan yoki Billz'da yo'q bo'lib qolgan
+      // (`is_active = false`). Ro'yxatda ko'rinmaydi, tarixda qoladi.
+      { key: "arxiv", label: "Arxiv", count: arxiv.length },
     ];
-  }, [items]);
+  }, [items, arxiv]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    let rows = items;
+    let rows = tab === "arxiv" ? arxiv : items;
 
     if (tab === "in") rows = rows.filter((p) => totalQty(p) > 0);
     else if (tab === "low") rows = rows.filter((p) => totalQty(p) > 0 && totalQty(p) <= 3);
@@ -68,7 +82,7 @@ export default function Products() {
       !s || p.name.toLowerCase().includes(s) ||
       p.sku?.toLowerCase().includes(s) || p.barcode?.includes(s)
     );
-  }, [items, q, tab, filters, FIELDS]);
+  }, [items, arxiv, q, tab, filters, FIELDS]);
 
   // Billz'dagi kabi: nomlar soni, dona, tannarx va sotuv narxidagi qiymat
   const stats = useMemo(() => {
@@ -98,9 +112,14 @@ export default function Products() {
     else addProduct(data);
     setModal(null); refresh();
   }
-  function del(p) {
-    if (confirm(`"${p.name}" o'chirilsinmi?`)) { removeProduct(p.id); refresh(); }
+  // O'chirish EMAS — arxiv (2026-09-03). Baza va sotuv tarixi qoladi,
+  // ro'yxatdan chiqadi, "Arxiv" tabidan qaytariladi.
+  function arxivla(p) {
+    if (confirm(tt("\"{n}\" arxivga olinsinmi? Ro'yxatdan chiqadi, tarixi qoladi; \"Arxiv\" tabidan qaytarish mumkin.", { n: p.name }))) {
+      archiveProduct(p.id, user?.id ?? null); refresh();
+    }
   }
+  function qaytar(p) { restoreProduct(p.id); refresh(); }
 
   const catName = (id) => demoCategories.find((c) => c.id === id)?.name ?? "—";
 
@@ -125,7 +144,8 @@ export default function Products() {
       />
 
       <p className="text-sm text-muted font-semibold mb-4">
-        {filtered.length} / {items.length} {t("tovar")}
+        {filtered.length} / {tab === "arxiv" ? arxiv.length : items.length} {t("tovar")}
+        {tab === "arxiv" && ` · ${t("Arxivdagi tovar sotuvda ko'rinmaydi, hisobotlarda o'tgan sotuvi qoladi. Billz'da yo'q bo'lib qolgani sinxronda o'zi shu yerga tushadi.")}`}
       </p>
 
       {/* Jadval */}
@@ -169,15 +189,32 @@ export default function Products() {
           { key: "jami", label: "Jami", right: true, value: (p) => totalQty(p),
             cell: (p) => <span className="font-extrabold">{totalQty(p)}</span>,
             total: (rs) => rs.reduce((a, p) => a + totalQty(p), 0).toLocaleString("ru-RU") },
+          ...(tab === "arxiv" ? [{
+            key: "arxivSabab", label: "Arxiv", value: (p) => (p.archivedAt ? sana(p.archivedAt) : "Billz'da yo'q"),
+            cell: (p) => (p.archivedAt
+              ? <span className="text-sm font-semibold text-muted">{tt("{d} da arxivlangan", { d: sana(p.archivedAt) })}</span>
+              : <span className="text-sm font-semibold text-warn">{t("Billz'da yo'q bo'lib qolgan")}</span>),
+          }] : []),
           {
             key: "harakat", label: "Harakat", harakat: true, right: true, width: "7rem",
             cell: (p) => (
               <span className="flex justify-end gap-1">
-                <Button olcham="kichik" korinish="yassi" icon={Pencil}
-                  onClick={() => setModal({ mode: "edit", product: p })}
-                  className="text-muted hover:text-brand" />
-                <Button olcham="kichik" korinish="yassi" icon={Trash2}
-                  onClick={() => del(p)} className="text-muted hover:text-danger" />
+                {tab === "arxiv" ? (
+                  p.archivedAt ? (
+                    <Button olcham="kichik" korinish="yassi" icon={ArchiveRestore}
+                      onClick={() => qaytar(p)} title={t("Ro'yxatga qaytarish")}
+                      className="text-muted hover:text-ok" />
+                  ) : null
+                ) : (
+                  <>
+                    <Button olcham="kichik" korinish="yassi" icon={Pencil}
+                      onClick={() => setModal({ mode: "edit", product: p })}
+                      className="text-muted hover:text-brand" />
+                    <Button olcham="kichik" korinish="yassi" icon={Archive}
+                      onClick={() => arxivla(p)} title={t("Arxivga olish")}
+                      className="text-muted hover:text-danger" />
+                  </>
+                )}
               </span>
             ),
           },

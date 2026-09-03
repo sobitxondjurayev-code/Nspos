@@ -3,7 +3,7 @@ import { t, tt } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import { Plus, Trash2, ArrowLeft, Package, CheckCircle2, Truck } from "lucide-react";
 import { demoStores, fmtUSD } from "@/lib/demoData";
-import { listProducts } from "@/lib/productsData";
+import { allProducts } from "@/lib/productsData";
 import {
   listShipments, getShipment, addShipment, updateShipment, removeShipment,
   computeLanded, applyShipment, COST_TYPES,
@@ -24,7 +24,7 @@ function ShipmentEditor({ id, onBack, onChanged }) {
   const [tick, setTick] = useState(0);
   const shipment = useMemo(() => getShipment(id), [id, tick]);
   const calc = useMemo(() => (shipment ? computeLanded(shipment) : null), [shipment, tick]);
-  const catalog = listProducts();
+  const catalog = allProducts();
 
   if (!shipment) return null;
   const locked = shipment.status === "applied";

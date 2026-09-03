@@ -132,3 +132,6 @@ $$;
 grant execute on function public.service_status_set(uuid, text) to nspos_app;
 
 commit;
+
+-- Yangi funksiya (`service_status_set`) PostgREST'da ko'rinsin
+notify pgrst, 'reload schema';
