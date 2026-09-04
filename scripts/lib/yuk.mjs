@@ -247,12 +247,16 @@ async function fkColumn(child, parent) {
 }
 
 async function attachEmbeds(parent, rows, embeds) {
+  // Har ichma-ich jadvalda bazada NECHTA qator borligi qaytariladi —
+  // "birortasida ham yo'q" tekshiruvi shunga qaraydi (pastda).
+  const soni = {};
   for (const e of embeds) {
     const fk = await fkColumn(e.table, parent);
-    if (!fk) { for (const r of rows) r[e.table] = []; continue; }
+    if (!fk) { for (const r of rows) r[e.table] = []; soni[e.table] = 0; continue; }
     const want = e.cols.includes("*") || !e.cols.length
       ? "*" : [...new Set([fk, ...e.cols])].join(", ");
     const kids = await sql(`select ${want} from ${e.table}`);
+    soni[e.table] = kids.length;
     const byParent = new Map();
     for (const k of kids) {
       const id = k[fk];
@@ -261,6 +265,7 @@ async function attachEmbeds(parent, rows, embeds) {
     }
     for (const r of rows) r[e.table] = byParent.get(r.id) ?? [];
   }
+  return soni;
 }
 
 // —— Modullarni to'ldirish ————————————————————————
@@ -274,7 +279,7 @@ export async function loadApp() {
     "kassaData", "payoutsData", "payrollData", "datasets", "debtsData",
     "customersData", "salesData", "productsData", "categoriesData", "servicesData",
     "warehouseData", "suppliersData", "financeData", "ratesData", "npsData",
-    "transfersData",
+    "transfersData", "oyMuhri",
   ].map((m) => import(`../../lib/${m}.js`)));
 
   const mods = listModules();
@@ -292,15 +297,19 @@ export async function loadApp() {
       const { cols, embeds } = parseSelect(m.select);
       const rows = await sql(`select ${cols} from ${table}`);
       if (embeds.length) {
-        await attachEmbeds(table, rows, embeds);
+        const soni = await attachEmbeds(table, rows, embeds);
         // Ichma-ich jadval BO'SH chiqsa — bu deyarli har doim huquq
         // yoki bog'lanish muammosi, "haqiqatan bo'sh" emas. Jimgina
         // o'tkazib yuborilsa raqamlar noto'g'ri chiqadi va buni hech
         // narsa bildirmaydi (2026-08-22, `fkColumn` hodisasi).
+        // Lekin bola jadvalning O'ZI bo'sh bo'lsa (05.09: 1 ta Billz xarid
+        // hujjati, `supplier_payments` 0 qator) — bu haqiqatan bo'sh,
+        // huquq emas: bola jadvalda qator BOR-u hech biriga yopishmasa —
+        // xato.
         for (const e of embeds) {
           if (!rows.length) break;
           const bor = rows.some((r) => (r[e.table] ?? []).length);
-          if (!bor) throw new Error(`${e.table}: ${rows.length} qatorning birortasida ham yo'q — huquq yoki bog'lanish muammosi`);
+          if (!bor && (soni[e.table] ?? 0) > 0) throw new Error(`${e.table}: ${rows.length} qatorning birortasida ham yo'q — huquq yoki bog'lanish muammosi`);
         }
       }
       m.restore(rows.map((r) => (m.fromRow ? m.fromRow(r) : r)));
