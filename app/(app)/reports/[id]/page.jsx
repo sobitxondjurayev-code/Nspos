@@ -116,6 +116,7 @@ export default function AnalysisPage() {
           : analysis.kind === "arAging" ? <ArAgingReport />
           : analysis.kind === "debtors" ? <DebtorsReport />
           : analysis.kind === "stock" ? <StockReport />
+          : analysis.kind === "reorder" ? <ReorderReport />
           : null}
       </div>
     );
@@ -197,9 +198,10 @@ export default function AnalysisPage() {
         <ImportsReport analysis={analysis} dataset={dataset} key={tick} />
       ) : analysis.kind === "writeoffs" ? (
         <WriteoffsReport analysis={analysis} dataset={dataset} key={tick} />
-      ) : analysis.kind === "reorder" ? (
-        <ReorderReport analysis={analysis} dataset={dataset} key={tick} />
-      ) : analysis.kind === "service" ? (
+      ) : /* `reorder` (Buyurtma taklifi) bu yerda YO'Q: u 2026-09-04 dan
+             bazadan ishlaydi va yuqoridagi `analysis.bazadan` shoxida
+             chiziladi. */
+        analysis.kind === "service" ? (
         <ServiceReport analysis={analysis} dataset={dataset} key={tick} />
       ) : (
         <DatasetDashboard dataset={dataset} preset={analysis.preset} key={tick} />

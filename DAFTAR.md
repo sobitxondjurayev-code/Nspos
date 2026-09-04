@@ -2666,3 +2666,24 @@ Tuzatilgandan keyingi holat: "Hech bir hamyon manfiy emas" da **Servis
 minusda yo'q** (avval −3 246.61 $), `usta-kamera` va `usta-puli` yashil,
 `stale-nps` esa haqiqiy narsani aytmoqda: "NPS baholari 35 kundan beri
 kiritilmagan, oxirgi yozuv 2026-07-31".
+
+### 19.6 "Buyurtma taklifi" alohida karta bo'ldi (rahbar qarori, 2026-09-04)
+
+19.2 da bu ATAYLAB qilinmagan edi: ro'yxat "Qoldiq salomatligi" ichida
+allaqachon bor edi va ikkinchi karta bir xil raqamni ikki joyda
+ko'rsatib, ular ertami-kechmi bir-biriga qarshi chiqishi mumkin edi.
+Rahbar qarori boshqacha: zakaz juma kuni beriladi, uni bo'lim ichidan
+qidirib o'tirmaslik kerak.
+
+Xavf boshqa yo'l bilan yopildi: ro'yxat NUSXALANMADI, balki
+`components/ReorderPanel.jsx` ga ajratildi. Endi ikkala joy ham AYNAN
+o'sha komponentni va `analytics.reorderList()` ni chaqiradi —
+"bir tushuncha, bitta funksiya" buzilmaydi, faqat KIRISH nuqtasi
+ikkita bo'ldi.
+
+Yo'l-yo'lakay: `StockHealthReport` da ajratishdan keyin `reorderList()`
+va `transferSummary()` chaqiruvlari qolib ketgan edi (endi ular
+`ReorderPanel` ichida ham bor) — ya'ni og'ir hisob sahifada IKKI marta
+yurardi. Ishlatilmay qolgan holat va importlar tozalandi. `npm run
+nomlar` bunday "ishlatilmayotgan, lekin aniqlangan" o'zgaruvchini
+ushlamaydi: u faqat aniqlanmagan nomni tekshiradi.
