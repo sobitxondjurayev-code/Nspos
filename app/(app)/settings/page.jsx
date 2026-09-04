@@ -505,6 +505,7 @@ const QOIDA_STANDART = {
   "debts.termDays": { standart: 30 },
   "soliq.foiz": 0,
   "kurs.oyQoidasi": "oxirgi",
+  "kapital.boshlangich": 0,
 };
 function BusinessRulesCard() {
   const live = useLive();
@@ -519,6 +520,7 @@ function BusinessRulesCard() {
   const [muddat, setMuddat] = useState(() => ({ ...q("debts.termDays") }));
   const [soliq, setSoliq] = useState(q("soliq.foiz"));
   const [oyKurs, setOyKurs] = useState(q("kurs.oyQoidasi"));
+  const [kapital, setKapital] = useState(q("kapital.boshlangich"));
   const buyurtma = getReorderDays();
   const [lead, setLead] = useState(buyurtma.lead);
   const [cover, setCover] = useState(buyurtma.cover);
@@ -540,7 +542,7 @@ function BusinessRulesCard() {
     await setSozlama("kpi.payAnyDayMonths", null);
     setPayDaysMatn(QOIDA_STANDART["kpi.payDays"].join(", ")); setLow(3); setOyna(30);
     setQarz(QOIDA_STANDART["debts.buckets"]); setAr(QOIDA_STANDART["ar.buckets"]);
-    setMuddat({ ...QOIDA_STANDART["debts.termDays"] }); setSoliq(0); setOyKurs("oxirgi");
+    setMuddat({ ...QOIDA_STANDART["debts.termDays"] }); setSoliq(0); setOyKurs("oxirgi"); setKapital(0);
     setHolat({});
   }
 
@@ -646,6 +648,11 @@ function BusinessRulesCard() {
           <option value="ortacha">{t("Oy o'rtachasi")}</option>
         </select>
         <Tugma onClick={() => saqla("kurs.oyQoidasi", oyKurs === "ortacha" ? "ortacha" : "oxirgi")} />
+      </Qator>
+      <Qator label="Boshlang'ich kapital ($)" kalit="kapital.boshlangich"
+        izoh="Hisob boshlangan kundagi (Sozlamalar → Hisob boshi) o'z mablag'i: kassa + tovar + qarz − majburiyat. Balansda kapital = shu + yig'ilgan foyda − NS.">
+        <NumberField value={kapital} onChange={setKapital} className="inp w-36" />
+        <Tugma onClick={() => saqla("kapital.boshlangich", +(Number(kapital) || 0).toFixed(2))} />
       </Qator>
       <p className="text-xs text-muted font-semibold mt-3">
         {t("Xarajat turlari — alohida kartada (pastda). KPI bonus pog'onalari va keshbek darajalari hozircha kodda (reja qatorlariga muhrlangan) — alohida ish.")}

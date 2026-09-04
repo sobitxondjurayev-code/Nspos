@@ -83,6 +83,15 @@ if (jq.top10) console.log(`   top-10 ulushi ${jq.top10.ulush} % · DSO ${jq.dso 
 const b = balanceSheet(new Date());
 console.log(`\n── Balans (hozir) — balanceSheet()`);
 q("Aktiv", b.totalAssets); q("Passiv", b.totalLiabilities); q("Kapital", b.equity);
+if (b.kapitalTafsilot) { const k = b.kapitalTafsilot; q("  boshlang'ich", k.boshlangich); q("  yig'ilgan foyda (P&L)", k.yigilganFoyda); q("  NS", -k.ns); }
+if (b.izohlanmagan != null) q("  IZOHLANMAGAN (A − P − K)", b.izohlanmagan);
+if (b.inventory?.nomalum?.n) console.log(`   ombor tannarxsiz: ${b.inventory.nomalum.n} tovar, ${b.inventory.nomalum.units} dona`);
+try {
+  const { listMuhrlar, muhrFarqi } = await import("../lib/oyMuhri.js");
+  const ms = listMuhrlar();
+  console.log(`\n── Oy muhri — ${ms.length} ta`);
+  for (const m of ms.slice(0, 6)) { const f = muhrFarqi(m); console.log(`   ${m.oy}: foyda ${usd(m.sofFoyda)} · qarz ${usd(m.qarz)} · kassa ${usd(m.kassa)} · kapital ${usd(m.kapital)}${f.bor ? ` · FARQ foyda ${usd(f.sofFoyda)} qarz ${usd(f.qarz)} kassa ${usd(f.kassa)}` : " · mos"}`); }
+} catch (e) { console.log(`   oy muhri o'qilmadi: ${e.message}`); }
 if (b.kapital) for (const [k, v] of Object.entries(b.kapital)) if (typeof v === "number") q(`  ${k}`, v);
 for (const a of b.assets ?? []) q(`  aktiv: ${a.label ?? a.key}`, a.amount);
 for (const l of b.liabilities ?? []) q(`  passiv: ${l.label ?? l.key}`, l.amount);

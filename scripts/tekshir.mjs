@@ -133,6 +133,8 @@ const KINDS = {
   "billz-price-som": "Katalog narxi dollarda",
   "billz-cost-zero": "Qoldig'i bor yoki sotilgan tovarning tannarxi bor",
   "tannarxsiz-sotuv": "Shu oyda sotilgan qatorlarning tannarxi ma'lum",
+  "oy-yopilmagan": "O'tgan oy yopilgan (muhr)",
+  "oy-muhri": "Yopilgan oy hisobi muhr bilan mos",
   "savdo-narx-som": "Chekdagi narx dollarda",
   // Sinxronizatsiya NIMANI TASHLAB KETGANI (2026-08-24 auditi).
   // Uchalasi ham "so'rov muvaffaqiyatli, ma'lumot kam" turidagi

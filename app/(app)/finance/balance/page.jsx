@@ -9,6 +9,9 @@ import { fmtUSD, demoStores } from "@/lib/demoData";
 import { fmtDate } from "@/lib/dates";
 import StatCard from "@/components/finance/StatCard";
 import { balanceSheet, ledgerStartDate } from "@/lib/balanceData";
+import { listMuhrlar, muhr, otganOy, oyniYop, muhrFarqi } from "@/lib/oyMuhri";
+import { can } from "@/lib/auth";
+import { useLive } from "@/components/DataProvider";
 import BalanceStructure from "@/components/finance/BalanceStructure";
 import Manfiy from "@/components/ui/Manfiy";
 import useUploadRows from "@/components/useUploadRows";
@@ -18,7 +21,16 @@ export default function FinanceBalance() {
   // Debitor qarzdorlik Billz'ning "Долги клиентов" yuklamasidan keladi.
   // Qarz endi faqat bazadan (Billz ko'zgusi) — Excel yuklamasi yo'q.
   const rows = useUploadRows(["efficiency"]);
-  const b = useMemo(() => balanceSheet(asOf), [asOf, rows]);
+  const live = useLive();
+  const [tick, setTick] = useState(0);
+  const b = useMemo(() => balanceSheet(asOf), [asOf, rows, live]);
+  // Oy muhri (DAFTAR 20 K): yopilgan oylar va ularning hozirgi hisob
+  // bilan farqi. Muhr ekrandagi raqamni almashtirmaydi — taqqoslaydi.
+  const muhrlar = useMemo(() => listMuhrlar().map((m) => ({ ...m, farq: muhrFarqi(m) })), [live, tick, rows]);
+  const yopiladigan = otganOy(asOf);
+  const yopishMumkin = can("finance.balance") && !muhr(yopiladigan);
+  const k = b.kapitalTafsilot;
+  const izohKatta = Math.abs(b.izohlanmagan ?? 0) > Math.max(100, b.totalAssets * 0.01);
 
   const bar = (amount, total) => (total > 0 ? (amount / total) * 100 : 0);
 
@@ -99,26 +111,43 @@ export default function FinanceBalance() {
                 </div>
               </div>
             ))}
+            {/* Kapital — tiqin emas, o'z harakati (DAFTAR 20 K):
+                boshlang'ich + yig'ilgan foyda − NS. Tenglama farqi
+                "izohlanmagan" — YASHIRILMAYDI. */}
             <div>
               <div className="flex items-end justify-between mb-1.5">
                 <span className="font-bold">
                   {t("O'z kapitali")}
                   <span className="block text-sm font-semibold text-muted">
-                    {t("Aktiv minus majburiyat")}
+                    {tt("boshlang'ich {a} + yig'ilgan foyda {b} − NS {c}", {
+                      a: fmtUSD(k?.boshlangich ?? 0), b: fmtUSD(k?.yigilganFoyda ?? 0), c: fmtUSD(k?.ns ?? 0) })}
                   </span>
                 </span>
                 <span className="font-extrabold whitespace-nowrap text-ok">{fmtUSD(b.equity)}</span>
               </div>
               <div className="h-2 rounded-full bg-track overflow-hidden">
                 <div className="h-full rounded-full bg-ok"
-                  style={{ width: bar(b.equity, b.totalAssets) + "%" }} />
+                  style={{ width: bar(Math.max(0, b.equity), b.totalAssets) + "%" }} />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-end justify-between mb-1.5">
+                <span className="font-bold">
+                  {t("Izohlanmagan farq")}
+                  <span className="block text-sm font-semibold text-muted">
+                    {t("aktiv − majburiyat − kapital: yozilmagan xarid, ta'minotchi qarzi yoki kiritilmagan boshlang'ich kapital")}
+                  </span>
+                </span>
+                <span className={`font-extrabold whitespace-nowrap ${izohKatta ? "text-danger" : "text-warn"}`}>
+                  {fmtUSD(b.izohlanmagan ?? 0)}
+                </span>
               </div>
             </div>
           </div>
           <div className="flex items-center justify-between border-t border-line mt-6 pt-5">
             <span className="text-lg font-extrabold">{t("Jami passiv")}</span>
             <span className="text-2xl font-extrabold">
-              {fmtUSD(+(b.totalLiabilities + b.equity).toFixed(2))}
+              {fmtUSD(+(b.totalLiabilities + b.equity + (b.izohlanmagan ?? 0)).toFixed(2))}
             </span>
           </div>
         </div>
@@ -158,6 +187,12 @@ export default function FinanceBalance() {
           </table>
           <p className="text-sm text-muted font-semibold mt-4">
             {tt("Aktivning {n}% i omborda turibdi", { n: b.inventoryShare })}
+            {b.inventory.nomalum?.n > 0 && (
+              <span className="block text-warn">
+                {tt("{n} tovar ({u} dona, sotuv narxida {r}) tannarxsiz — aktivga 0 deb emas, umuman kiritilmagan", {
+                  n: b.inventory.nomalum.n, u: b.inventory.nomalum.units, r: fmtUSD(b.inventory.nomalum.retail) })}
+              </span>
+            )}
           </p>
         </div>
 
@@ -186,6 +221,61 @@ export default function FinanceBalance() {
         </div>
       </div>
 
+      {/* Oy muhri — yopilgan oylar (DAFTAR 20 K) */}
+      <div className="card p-7 mb-7">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+          <h2 className="text-2xl font-extrabold">{t("Oy muhri")}</h2>
+          {yopishMumkin && (
+            <button onClick={() => {
+                if (!confirm(tt("{oy} oyi yopilsinmi? P&L, qarz, kassa, ombor va kapital raqamlari muhrlanadi va keyin o'zgarmaydi.", { oy: yopiladigan }))) return;
+                const r = oyniYop(yopiladigan);
+                if (r?.ok === false) alert(r.sabab);
+                setTick((v) => v + 1);
+              }}
+              className="rounded-xl bg-brand hover:bg-brand-dark text-white font-bold px-5 py-2.5">
+              {tt("{oy} oyini yopish", { oy: yopiladigan })}
+            </button>
+          )}
+        </div>
+        <p className="text-sm text-muted font-semibold mb-4">
+          {t("Yopilgan oyning raqami muhrda qoladi. Hisob keyin o'zgarsa (kech kiritilgan xarajat, Billz'da tuzatilgan chek, kurs) farq shu yerda va Tekshiruvda ko'rinadi — muhr yashirin o'zgarmaydi.")}
+        </p>
+        {muhrlar.length === 0 ? (
+          <p className="text-muted font-semibold">{t("Hali birorta oy yopilmagan.")}</p>
+        ) : (
+          <div className="overflow-auto">
+            <table className="w-full text-[0.9375rem]">
+              <thead className="text-sm text-muted">
+                <tr className="text-left">
+                  <th className="py-2">{t("Oy")}</th><th className="text-right">{t("Sof savdo")}</th>
+                  <th className="text-right">{t("Sof foyda")}</th><th className="text-right">{t("Qarz")}</th>
+                  <th className="text-right">{t("Kassa")}</th><th className="text-right">{t("Kapital")}</th>
+                  <th className="text-right">{t("Kurs")}</th><th className="text-right">{t("Hozirgi hisob bilan farq")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {muhrlar.map((m) => (
+                  <tr key={m.oy} className="border-t border-line tabular-nums">
+                    <td className="py-2.5 font-bold">{m.oy}</td>
+                    <td className="text-right font-semibold">{fmtUSD(m.savdo)}</td>
+                    <td className="text-right font-extrabold">{fmtUSD(m.sofFoyda)}</td>
+                    <td className="text-right font-semibold">{fmtUSD(m.qarz)}</td>
+                    <td className="text-right font-semibold">{fmtUSD(m.kassa)}</td>
+                    <td className="text-right font-semibold">{fmtUSD(m.kapital)}</td>
+                    <td className="text-right text-muted">{m.kurs ?? "—"}</td>
+                    <td className={`text-right font-semibold ${m.farq.bor ? "text-warn" : "text-ok"}`}>
+                      {m.farq.bor
+                        ? tt("foyda {a} · qarz {b} · kassa {c}", { a: fmtUSD(m.farq.sofFoyda), b: fmtUSD(m.farq.qarz), c: fmtUSD(m.farq.kassa) })
+                        : t("mos ✓")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Ogohlantirish */}
       <div className="card p-6 border-warn/40">
         <div className="flex gap-4">
@@ -197,7 +287,8 @@ export default function FinanceBalance() {
             <ul className="text-[0.9375rem] text-muted font-semibold space-y-1.5">
               <li>{t("Kassa qoldig'i 01.01.2026 dan boshlab sotuv va kassa operatsiyalaridan yig'iladi — boshlang'ich qoldiq nolga teng deb olingan.")}</li>
               <li>{t("Ombor tannarxda baholanadi, manfiy qoldiqlar (masalan montaj xizmati) aktivga kiritilmaydi.")}</li>
-              <li>{t("O'z kapitali balanslovchi qism sifatida chiqariladi: ta'sischi qo'ygan boshlang'ich mablag' alohida yuritilmagan.")}</li>
+              <li>{t("O'z kapitali = boshlang'ich kapital (Sozlamalar → Biznes qoidalari) + yig'ilgan foyda − NS. Aktiv − majburiyat − kapital farqi \"izohlanmagan\" deb ochiq turadi.")}</li>
+              <li>{t("Tovar xaridi (Billz «Приход») hali tizimga kelmaydi — ta'minotchi qarzi 0 turadi va izohlanmagan farq shu sabab katta bo'lishi mumkin.")}</li>
               <li>{t("Asosiy vositalar (bino, mashina, jihoz) hali kiritilmagan — ularni bersangiz aktivga qo'shiladi.")}</li>
             </ul>
           </div>
