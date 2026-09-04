@@ -80,7 +80,20 @@ function PnlView({ range, rows }) {
       <div className="card p-8 max-w-3xl">
         <h2 className="text-xl font-extrabold mb-4">{t("Foyda va zarar hisoboti")}</h2>
 
-        <Row label={t("Tovar sotuvi")} value={p.revenue.goods} />
+        {/* Yalpi savdo → (−) qaytarish → sof savdo. DAFTAR 20 (D):
+            qaytarish avgustda 10.6 % (Optim 14.6 %) — u izoh qatori
+            emas, bosh qator: rahbar foizni ko'rishi shart. */}
+        <Row label={t("Yalpi savdo")} value={p.revenue.gross ?? p.revenue.goods}
+          hint={tt("{n} ta sotuv", { n: p.revenue.salesCount })} />
+        {p.revenue.returns > 0 && (
+          <Row label={t("Qaytarilgan")} value={p.revenue.returns} tone="text-danger" negative
+            hint={p.revenue.returnsPct ? tt("{n}% yalpi savdodan", { n: p.revenue.returnsPct }) : undefined} />
+        )}
+        {p.revenue.discounts > 0 && (
+          <Row label={t("shundan chegirma berilgan")} value={p.revenue.discounts}
+            indent tone="text-muted" negative />
+        )}
+        <Row label={t("Tovar sotuvi (sof)")} value={p.revenue.goods} bold />
         {p.revenue.services > 0 && (
           <Row label={t("Xizmat daromadi")} value={p.revenue.services}
             hint={tt("{n} buyurtma", { n: p.revenue.serviceCount })} />
@@ -88,21 +101,14 @@ function PnlView({ range, rows }) {
         <Divider />
         <Row label={t("Jami tushum")} value={p.revenue.total} bold />
 
-        {(p.revenue.returns > 0 || p.revenue.discounts > 0) && (
-          <div className="mt-1 mb-1">
-            {p.revenue.returns > 0 && (
-              <Row label={t("shundan qaytarilgan")} value={p.revenue.returns}
-                indent tone="text-muted" negative />
-            )}
-            {p.revenue.discounts > 0 && (
-              <Row label={t("shundan chegirma berilgan")} value={p.revenue.discounts}
-                indent tone="text-muted" negative />
-            )}
-          </div>
-        )}
-
         <Divider />
-        <Row label={t("Sotilgan tovar tannarxi")} value={p.cogs.goods} tone="text-danger" negative />
+        <Row label={t("Sotilgan tovar tannarxi")} value={p.cogs.goods} tone="text-danger" negative
+          hint={t("montaj qatori tannarxsiz — usta puli ish haqida")} />
+        {p.cogs.tannarxsiz?.qatorlar > 0 && (
+          <Row label={tt("Tannarxsiz sotuv ({n} qator)", { n: p.cogs.tannarxsiz.qatorlar })}
+            value={p.cogs.tannarxsiz.summa} indent tone="text-warn"
+            hint={t("tannarxga kirmagan — foydasi noma'lum, 0 emas")} />
+        )}
         {p.cogs.serviceMaterials > 0 && (
           <Row label={t("Xizmatdagi material tannarxi")} value={p.cogs.serviceMaterials}
             tone="text-danger" negative />

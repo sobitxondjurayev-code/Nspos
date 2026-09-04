@@ -20,7 +20,15 @@
 # Baza roli — `nspos`: faqat SELECT, lekin BYPASSRLS (07-api.sh).
 # Ya'ni tekshiruv rahbar ko'radigan to'liq ma'lumotni ko'radi va
 # hech narsa yoza olmaydi.
+#
+# Birinchi argument — qaysi npm skripti (standart `tekshir`):
+#   bash scripts/server/tekshir-uzoq.sh olchov -- --oy=2026-08
+# `npm run olchov:server` shuni chaqiradi (DAFTAR 20).
 set -euo pipefail
+
+SKRIPT="${1:-tekshir}"
+shift || true
+QOSHIMCHA="$*"
 
 SERVER="${NSPOS_SERVER:-root@169.58.216.246}"
 KALIT="${NSPOS_KEY:-$HOME/.ssh/nspos}"
@@ -35,5 +43,5 @@ set -euo pipefail
 cd "$YOL"
 PG=\$(grep '^NSPOS_PG=' /opt/nspos/api.env | cut -d= -f2-)
 [ -n "\$PG" ] || { echo "NSPOS_PG topilmadi (/opt/nspos/api.env)"; exit 1; }
-sudo -u nspos env NSPOS_PG="\$PG" npm run --silent tekshir
+sudo -u nspos env NSPOS_PG="\$PG" npm run --silent $SKRIPT $QOSHIMCHA
 UZOQ
