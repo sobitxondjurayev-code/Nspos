@@ -8,8 +8,9 @@ import DateRangePicker from "@/components/DateRangePicker";
 import { ROLES } from "@/lib/staffData";
 import {
   payrollRows, payrollSummary, storePerformance, getStorePlans, setStorePlan,
-  payStaff, paidFor, listPayrollPayments,
+  payStaff, paidFor, listPayrollPayments, payrollCost,
 } from "@/lib/payrollData";
+import { berilganOylik } from "@/lib/balanceData";
 import { addOp, COMPANY } from "@/lib/kassaData";
 import { useAuth } from "@/components/AuthProvider";
 import StatCard from "@/components/finance/StatCard";
@@ -27,6 +28,10 @@ export default function FinancePayroll() {
   const rows = useMemo(() => payrollRows(range.from, range.to), [range, tick]);
   const sum = useMemo(() => payrollSummary(range.from, range.to), [range, tick]);
   const perf = useMemo(() => storePerformance(range.from, range.to), [range, tick]);
+  // Hisoblangan (P&L bilan bitta — `payrollCost`) va BERILGAN (xarajat
+  // "Oylik" + usta olgan pul + kassa_ops salary) — DAFTAR 20 H
+  const hisoblangan = useMemo(() => payrollCost(range.from, range.to), [range, tick]);
+  const berilgan = useMemo(() => berilganOylik(range.from, range.to), [range, tick]);
   const plans = useMemo(() => getStorePlans(), [tick]);
 
   function pay(r) {
@@ -115,6 +120,21 @@ export default function FinancePayroll() {
           </div>
         </div>
       )}
+
+      {/* Hisoblangan ↔ berilgan. Hisoblangani P&L "Ish haqi" bilan aynan
+          bir raqam (`payrollCost`, har oy o'z kursi bilan); berilgani —
+          pul qaysi yo'l bilan chiqqan bo'lsa ham (xarajat "Oylik", usta
+          olgan pul, Pul rejasi). Farq — hali berilmagan yoki avans. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-5 mb-7">
+        <StatCard icon={Wallet} label="Hisoblangan (P&L)" tone="red" value={fmtUSD(hisoblangan)}
+          hint={t("KPI bo'yicha, har oy o'z kursi bilan")} />
+        <StatCard icon={Check} label="Berilgan" tone="green" value={fmtUSD(berilgan.jami)}
+          hint={tt("xarajat {x} · usta {u} · kassa {k}", { x: fmtUSD(berilgan.xarajat), u: fmtUSD(berilgan.usta), k: fmtUSD(berilgan.kassa) })} />
+        <StatCard icon={Wallet} label="Qoldiq (hisoblangan − berilgan)"
+          tone={hisoblangan - berilgan.jami > 0.005 ? "amber" : "green"}
+          value={fmtUSD(+(hisoblangan - berilgan.jami).toFixed(2))}
+          hint={t("Musbat — hali berilmagan; manfiy — avans yoki kiritilmagan hisob")} />
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-5 mb-7">
         <StatCard icon={Wallet} label="Qat'iy maosh" value={fmtUSD(sum.fixed)} />

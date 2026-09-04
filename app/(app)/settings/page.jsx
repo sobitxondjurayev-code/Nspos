@@ -503,6 +503,8 @@ const QOIDA_STANDART = {
   "debts.buckets": [15, 20, 30],
   "ar.buckets": [30, 60, 90],
   "debts.termDays": { standart: 30 },
+  "soliq.foiz": 0,
+  "kurs.oyQoidasi": "oxirgi",
 };
 function BusinessRulesCard() {
   const live = useLive();
@@ -515,6 +517,8 @@ function BusinessRulesCard() {
   const [qarz, setQarz] = useState(q("debts.buckets"));
   const [ar, setAr] = useState(q("ar.buckets"));
   const [muddat, setMuddat] = useState(() => ({ ...q("debts.termDays") }));
+  const [soliq, setSoliq] = useState(q("soliq.foiz"));
+  const [oyKurs, setOyKurs] = useState(q("kurs.oyQoidasi"));
   const buyurtma = getReorderDays();
   const [lead, setLead] = useState(buyurtma.lead);
   const [cover, setCover] = useState(buyurtma.cover);
@@ -536,7 +540,7 @@ function BusinessRulesCard() {
     await setSozlama("kpi.payAnyDayMonths", null);
     setPayDaysMatn(QOIDA_STANDART["kpi.payDays"].join(", ")); setLow(3); setOyna(30);
     setQarz(QOIDA_STANDART["debts.buckets"]); setAr(QOIDA_STANDART["ar.buckets"]);
-    setMuddat({ ...QOIDA_STANDART["debts.termDays"] });
+    setMuddat({ ...QOIDA_STANDART["debts.termDays"] }); setSoliq(0); setOyKurs("oxirgi");
     setHolat({});
   }
 
@@ -628,6 +632,20 @@ function BusinessRulesCard() {
           for (const s of listStores()) { const n = Math.round(Number(muddat[s.id])); if (n > 0) v[s.id] = n; }
           setMuddat(v); saqla("debts.termDays", v);
         }} />
+      </Qator>
+      {/* DAFTAR 20 (O, G): soliq zaxirasi va oy kursi qoidasi */}
+      <Qator label="Soliq zaxirasi (%)" kalit="soliq.foiz"
+        izoh="P&L da sof foydadan shu foiz «Soliq zaxirasi» qatori bo'lib chegiriladi. 0 — qator ko'rinmaydi.">
+        <NumberField value={soliq} onChange={setSoliq} className="inp w-24" />
+        <Tugma onClick={() => saqla("soliq.foiz", Math.min(100, Math.max(0, Number(soliq) || 0)))} />
+      </Qator>
+      <Qator label="Oy kursi qoidasi" kalit="kurs.oyQoidasi"
+        izoh="So'mdagi oylik va usta puli qaysi kurs bilan dollarga o'giriladi: oyning oxirgi kursi yoki oy o'rtachasi. Yopilgan oy raqami bugungi kurs bilan suzmaydi.">
+        <select value={oyKurs} onChange={(e) => setOyKurs(e.target.value)} className="inp w-56">
+          <option value="oxirgi">{t("Oyning oxirgi kursi")}</option>
+          <option value="ortacha">{t("Oy o'rtachasi")}</option>
+        </select>
+        <Tugma onClick={() => saqla("kurs.oyQoidasi", oyKurs === "ortacha" ? "ortacha" : "oxirgi")} />
       </Qator>
       <p className="text-xs text-muted font-semibold mt-3">
         {t("Xarajat turlari — alohida kartada (pastda). KPI bonus pog'onalari va keshbek darajalari hozircha kodda (reja qatorlariga muhrlangan) — alohida ish.")}

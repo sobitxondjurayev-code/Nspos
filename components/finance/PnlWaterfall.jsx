@@ -32,7 +32,8 @@ export default function PnlWaterfall({ pnl }) {
   const yalpi = pnl.grossProfit;
   const opex = pnl.expenses.opex + pnl.expenses.operationsTotal;
   const oylik = pnl.expenses.payroll + pnl.expenses.installerShare;
-  const boshqa = pnl.expenses.writeoff + pnl.expenses.shrinkage;
+  const boshqa = pnl.expenses.writeoff + pnl.expenses.shrinkage + (pnl.expenses.boshqaChiqim ?? 0);
+  const soliq = pnl.soliq?.summa ?? 0;
   const sof = pnl.netProfit;
 
   // Har qadam: [nom, o'zgarish, yakuniy daraja, tur]
@@ -44,6 +45,9 @@ export default function PnlWaterfall({ pnl }) {
     { nom: "Ish haqi", delta: -oylik, yakun: yalpi - opex - oylik, tur: "kamayadi" },
     ...(Math.abs(boshqa) > 0.01
       ? [{ nom: "Yo'qotish", delta: -boshqa, yakun: yalpi - opex - oylik - boshqa, tur: "kamayadi" }]
+      : []),
+    ...(soliq > 0.01
+      ? [{ nom: "Soliq zaxirasi", delta: -soliq, yakun: yalpi - opex - oylik - boshqa - soliq, tur: "kamayadi" }]
       : []),
     { nom: "Sof foyda", delta: sof, yakun: sof, tur: "yakun" },
   ];

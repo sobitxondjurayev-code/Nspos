@@ -17,7 +17,7 @@ import { loadApp, manbaNomi } from "./lib/yuk.mjs";
 const arg = (nom) => process.argv.find((a) => a.startsWith(`--${nom}=`))?.split("=")[1];
 
 await loadApp();
-const { profitAndLoss, salesPnl, cashFlow } = await import("../lib/pnlData.js");
+const { profitAndLoss, salesPnl, cashFlow, foydaPulKoprigi } = await import("../lib/pnlData.js");
 const { jamiQarz } = await import("../lib/debtsData.js");
 const { balanceSheet } = await import("../lib/balanceData.js");
 const { kassaBalances, kassaIds, KASSAS, WALLET_IDS, WALLETS } = await import("../lib/kassaData.js");
@@ -51,7 +51,17 @@ q("Ish haqi (payroll)", -p.expenses.payroll);
 q("Usta ulushi", -p.expenses.installerShare);
 q("OPEX (oylikdan tashqari)", -p.expenses.opex);
 q("Jami xarajat", -(p.expenses.total + p.expenses.installerShare));
+if (p.expenses.boshqaChiqim) q("  shundan boshqa chiqim (kassa)", -p.expenses.boshqaChiqim);
+if (p.expenses.payrollKurslar) console.log(`   oylik kurslari: ${Object.entries(p.expenses.payrollKurslar).map(([m, k]) => `${m} ${k.rate} (${k.manba})`).join(" · ")}`);
+if (p.soliq?.summa) q(`Soliq zaxirasi (${p.soliq.foiz} %)`, -p.soliq.summa);
 q("SOF FOYDA", p.netProfit);
+
+const kp = foydaPulKoprigi(from, to);
+console.log(`\n── Foyda → Pul (${oy}) — foydaPulKoprigi()`);
+for (const r of kp.qatorlar) q(r.nom.slice(0, 34), r.summa);
+q("= Kutilgan kassa o'zgarishi", kp.kutilgan);
+q("Haqiqiy (kassa oxiri − boshi)", kp.haqiqiy);
+q("IZOHLANMAGAN", kp.izohlanmagan);
 
 const cf = cashFlow(from, to);
 console.log(`\n── Pul oqimi (${oy}) — cashFlow()`);

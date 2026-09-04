@@ -7,7 +7,7 @@ import {
 import { fmtUSD } from "@/lib/demoData";
 import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
 import DateRangePicker from "@/components/DateRangePicker";
-import { profitAndLoss, cashFlow, billzPnl, billzPnlTotals, billzCashflow } from "@/lib/pnlData";
+import { profitAndLoss, cashFlow, billzPnl, billzPnlTotals, billzCashflow, foydaPulKoprigi } from "@/lib/pnlData";
 import { useLive } from "@/components/DataProvider";
 import DataTable from "@/components/ui/DataTable";
 import PnlWaterfall from "@/components/finance/PnlWaterfall";
@@ -16,7 +16,7 @@ import { demoStores } from "@/lib/demoData";
 import StatCard from "@/components/finance/StatCard";
 import Manfiy from "@/components/ui/Manfiy";
 
-const tabs = ["Foyda va zarar", "Pul oqimi"];
+const tabs = ["Foyda va zarar", "Pul oqimi", "Foyda → Pul"];
 
 /* Hisobot qatori — chapda nom, o'ngda summa.
    `negative` — musbat summani chiqim sifatida ko'rsatadi (ishorasini teskari qiladi).
@@ -147,6 +147,14 @@ function PnlView({ range, rows }) {
         <Row label={t("Jami xarajatlar")} value={exp.total + exp.installerShare}
           tone="text-danger" negative />
 
+        {p.soliq?.summa > 0 && (
+          <>
+            <Row label={t("Foyda (soliqdan oldin)")} value={p.soliqdanOldin} bold sabab="sofFoyda"
+              tone={p.soliqdanOldin >= 0 ? "text-ok" : "text-danger"} />
+            <Row label={tt("Soliq zaxirasi ({n}%)", { n: p.soliq.foiz })} value={p.soliq.summa}
+              tone="text-danger" negative hint={t("Sozlamalar → Biznes qoidalari")} />
+          </>
+        )}
         <div className="border-t-2 border-line mt-4 pt-3">
           <Row label={t("SOF FOYDA")} value={p.netProfit} bold sabab="sofFoyda"
             tone={p.netProfit >= 0 ? "text-ok" : "text-danger"}
@@ -216,6 +224,16 @@ function CashFlowView({ range, rows }) {
           )}
           <Divider />
           <Row label={t("Jami chiqim")} value={c.out.total} bold tone="text-danger" negative />
+          {/* "Qayerga ketdi" — kompaniya balansidan (DAFTAR 20): tovar
+              uchun to'lov aktiv, NS foydani taqsimlash — ikkalasi P&L da
+              yo'q, shuning uchun aynan shu yerda ko'rinishi shart. */}
+          {(c.tovarUchun > 0 || c.ns > 0 || c.boshqaChiqim > 0) && (
+            <div className="mt-1">
+              {c.tovarUchun > 0 && <Row label={t("shundan tovar uchun to'lov")} value={c.tovarUchun} indent tone="text-muted" negative />}
+              {c.ns > 0 && <Row label={t("shundan NS — rahbar olgan pul")} value={c.ns} indent tone="text-muted" negative />}
+              {c.boshqaChiqim > 0 && <Row label={t("shundan boshqa chiqim (kassa)")} value={c.boshqaChiqim} indent tone="text-muted" negative />}
+            </div>
+          )}
 
           <div className="border-t-2 border-line mt-6 pt-3">
             <Row label={t("Sof pul oqimi")} value={c.net} bold sabab="pulOqimi"
@@ -383,6 +401,57 @@ function BillzCompare({ uploads }) {
   );
 }
 
+/* ——— Foyda → Pul ko'prigi ————————————————————————
+   "Foyda bor, pul yo'q" degan savolga javob (DAFTAR 20 R). Har qator
+   nima uchun foyda pulga aylanmaganini aytadi; "izohlanmagan" qator
+   YASHIRILMAYDI — u yozilmagan tovar xaridi, ta'minotchi qarzi yoki
+   kiritilmagan xarajat. */
+function KoprikView({ range, rows }) {
+  const k = useMemo(() => foydaPulKoprigi(range.from, range.to), [range, rows]);
+  const katta = Math.abs(k.izohlanmagan) > Math.max(500, Math.abs(k.kutilgan) * 0.1);
+  return (
+    <div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
+        <StatCard icon={Landmark} label="Sof foyda (P&L)" tone={k.qatorlar[0].summa >= 0 ? "green" : "red"}
+          value={fmtUSD(k.qatorlar[0].summa)} />
+        <StatCard icon={Banknote} label="Kutilgan kassa o'zgarishi" value={fmtUSD(k.kutilgan)}
+          hint={t("foyda − nasiya − tovar − NS ± oylik")} />
+        <StatCard icon={Banknote} label="Haqiqiy kassa o'zgarishi" tone={k.haqiqiy >= 0 ? "green" : "red"}
+          value={fmtUSD(k.haqiqiy)} hint={tt("{a} → {b}", { a: fmtUSD(k.kassaBoshi), b: fmtUSD(k.kassaOxiri) })} />
+        <StatCard icon={AlertTriangle} label="Izohlanmagan farq" tone={katta ? "red" : "amber"}
+          value={fmtUSD(k.izohlanmagan)} hint={t("yozilmagan xarid, ta'minotchi qarzi yoki xarajat")} />
+      </div>
+
+      <div className="card p-8 max-w-3xl">
+        <h2 className="text-xl font-extrabold mb-1">{t("Foyda qanday qilib pulga aylanadi")}</h2>
+        <p className="text-sm text-muted font-semibold mb-4">
+          {t("Har qator sof foyda bilan kassa orasidagi farqning bir sababi. Nasiya bilan sotilgan tovar foyda, lekin pul emas; tovar uchun to'lov pul, lekin xarajat emas.")}
+        </p>
+        {k.qatorlar.map((r, i) => (
+          <Row key={r.kalit} label={t(r.nom)} value={r.summa} bold={i === 0} hint={r.izoh}
+            tone={r.summa < 0 ? "text-danger" : r.summa > 0 && i > 0 ? "text-ok" : undefined} />
+        ))}
+        <Divider />
+        <Row label={t("Kutilgan kassa o'zgarishi")} value={k.kutilgan} bold />
+        <Row label={t("Haqiqiy kassa o'zgarishi")} value={k.haqiqiy} bold
+          tone={k.haqiqiy >= 0 ? "text-ok" : "text-danger"} />
+        <div className="border-t-2 border-line mt-4 pt-3">
+          <Row label={t("IZOHLANMAGAN FARQ")} value={k.izohlanmagan} bold
+            tone={katta ? "text-danger" : "text-warn"}
+            hint={t("haqiqiy − kutilgan")} />
+        </div>
+      </div>
+
+      <div className="card p-6 mt-6 max-w-3xl flex items-start gap-3 bg-warn-soft">
+        <AlertTriangle size={20} className="text-warn shrink-0 mt-0.5" />
+        <p className="font-semibold text-[0.9375rem]">
+          {t("Tovar xaridi (Billz «Приход») hali tizimga kelmaydi — tannarx ~96 000 $/oy, yozilgan to'lov ancha kam. Shu sabab «izohlanmagan» qator katta; u yashirilmaydi, Billz xarid oqimi ulangach kichrayadi.")}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function FinancePnl() {
   const [tab, setTab] = useState(tabs[0]);
   const [period, setPeriod] = useState("Oy");
@@ -429,6 +498,7 @@ export default function FinancePnl() {
 
       {tab === "Foyda va zarar" && <PnlView range={range} rows={rows} />}
       {tab === "Pul oqimi" && <CashFlowView range={range} rows={rows} />}
+      {tab === "Foyda → Pul" && <KoprikView range={range} rows={rows} />}
     </div>
   );
 }
