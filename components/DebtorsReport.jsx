@@ -3,7 +3,7 @@ import { t, tt } from "@/lib/i18n";
 import { useMemo, useState } from "react";
 import { Wallet, Clock, TriangleAlert, PieChart } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
-import { listDebts, jamiQarz, ochiqQoldiq, muddatiOtganmi, debtorRowsDavr, debtCollections, debtCuts } from "@/lib/debtsData";
+import { listDebts, jamiQarz, ochiqQoldiq, muddatiOtganmi, muddatdanOtganKun, debtorRowsDavr, debtCollections, debtCuts } from "@/lib/debtsData";
 import { listCustomers } from "@/lib/customersData";
 import { billzVaqtMatni } from "@/lib/billzLogData";
 import { ymd } from "@/lib/dates";
@@ -26,13 +26,13 @@ import PeriodPicker, { usePeriod } from "@/components/ui/PeriodPicker";
 // Farq bo'lsa sababi bitta — oxirgi sinxrondan keyingi harakat, va
 // o'sha vaqt kartochkada yozib turadi.
 //
-// Matritsa: har mijoz — bitta qator; ustunlar — to'lov muddatidan
-// (Billz `repayment_date`) necha kun O'TGANi bo'yicha guruhlar. Guruh
-// kunlarini foydalanuvchi o'zi o'zgartiradi (15/20/30 — uning qarori,
-// DAFTAR 7). "Muddati o'tgan" qoidasi kartochka bilan bitta:
-// `muddatiOtganmi` — Billz holati `overdue`.
-
-const overdueDays = (due, today) => Math.floor((new Date(today) - new Date(due)) / 86400000);
+// Matritsa: har mijoz — bitta qator; ustunlar — RAHBAR MUDDATIDAN
+// (Sozlamalar → Qarz muddati, `debts.termDays`) necha kun O'TGANi
+// bo'yicha guruhlar. Billz `repayment_date` ISHLATILMAYDI — u deyarli
+// har doim berilgan kun + 1 (DAFTAR 20 B), ya'ni "muddati o'tgan"
+// yorlig'i Billz'da ma'nosiz. Guruh kunlarini foydalanuvchi o'zi
+// o'zgartiradi (15/20/30 — uning qarori, DAFTAR 7). "Muddati o'tgan"
+// qoidasi kartochka bilan bitta: `muddatiOtganmi`.
 
 export default function DebtorsReport() {
   const [q, setQ] = useState("");
@@ -91,7 +91,7 @@ export default function DebtorsReport() {
         buckets: [0, 0, 0, 0], total: 0, maxOverdue: 0, notDue: 0,
       };
       if (muddatiOtganmi(d, today)) {
-        const od = Math.max(1, overdueDays(d.dueDate ?? ymd(d.createdAt), today));
+        const od = Math.max(1, muddatdanOtganKun(d, today));
         cur.buckets[bucketOf(od)] += qoldiq;
         cur.total += qoldiq;
         cur.maxOverdue = Math.max(cur.maxOverdue, od);
@@ -127,6 +127,8 @@ export default function DebtorsReport() {
           hint={tt("{n} ta qarz", { n: jami.muddatiKelmagan.soni })} />
         <Karta icon={PieChart} tone="warn" label="Qisman to'langan · hozir" value={fmtUSD(jami.qismanTolangan.summa)}
           hint={tt("{n} ta qarz", { n: jami.qismanTolangan.soni })} />
+        <Karta icon={TriangleAlert} tone="danger" label="Shubhali qarz · hozir" value={fmtUSD(jami.shubhali.summa)}
+          hint={tt("{n} ta qarz · {k} kundan eski", { n: jami.shubhali.soni, k: jami.shubhali.kun })} />
         <Karta icon={Wallet} tone="danger" label="Davrda berilgan" value={fmtUSD(davrBerilgan.summa)}
           hint={tt("{n} ta yangi qarz", { n: davrBerilgan.soni })} />
         <Karta icon={Clock} tone="ok" label="Davrda to'langan" value={fmtUSD(davrTolangan.total)}
@@ -137,6 +139,7 @@ export default function DebtorsReport() {
           qayerdan kelgani ko'rinib turishi kerak. */}
       <p className="text-sm text-muted font-semibold mb-6">
         {t("Billz \"Jami qarz\" bilan bir xil ta'rif: to'liq to'lanmagan qarzlar qoldig'i.")}{" "}
+        {tt("\"Muddati o'tgan\" — berilgan kundan {k} kun o'tgan qarz (Sozlamalar → Qarz muddati); Billz muddati (1 kun) ishlatilmaydi.", { k: jami.muddatKun })}{" "}
         {billz
           ? tt("Billz'dan oxirgi yangilanish: {v}. Farq bo'lsa — shundan keyingi harakat.", { v: billz })
           : t("Billz sinxroni haqida yozuv yo'q.")}
@@ -146,7 +149,7 @@ export default function DebtorsReport() {
       <div className="card p-6 mb-6">
         <p className="font-extrabold mb-1">{t("Muddat guruhlari (kun)")}</p>
         <p className="text-sm text-muted font-semibold mb-4">
-          {t("Qarzning to'lov muddatidan necha kun o'tgani bo'yicha")}
+          {t("Rahbar belgilagan qarz muddatidan necha kun o'tgani bo'yicha")}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {["Birinchi guruh", "Ikkinchi guruh", "Uchinchi guruh"].map((lbl, i) => (

@@ -2,10 +2,10 @@
 import { t, tt } from "@/lib/i18n";
 import BillzMuhr from "@/components/BillzMuhr";
 import { useMemo, useState } from "react";
-import { Search, Wallet, ArrowDownToLine, ArrowUpFromLine, CheckCircle2 } from "lucide-react";
+import { Search, Wallet, ArrowDownToLine, ArrowUpFromLine, CheckCircle2, AlertTriangle, Users, Clock } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
 import { listCustomers } from "@/lib/customersData";
-import { debtorRowsDavr, jamiQarz, debtCollections, jadvalHozirgiQarz } from "@/lib/debtsData";
+import { debtorRowsDavr, jamiQarz, debtCollections, jadvalHozirgiQarz, shuKuniYopilgan } from "@/lib/debtsData";
 import { billzVaqtMatni } from "@/lib/billzLogData";
 import { addOperation } from "@/lib/financeData";
 import DebtPaymentModal from "@/components/DebtPaymentModal";
@@ -56,7 +56,8 @@ export default function FinanceDebts() {
     soni: hamma.reduce((a, r) => a + r.berilganSoni, 0),
   }), [hamma]);
   const yopilgan = useMemo(() => hamma.reduce((a, r) => a + r.yopilganSoni, 0), [hamma]);
-  const overdue = hamma.filter((r) => r.oldestOpenDays > 30).length;
+  // Davrda berilganning qanchasi SHU KUNIYOQ yopilgan — haqiqiy nasiya emas
+  const shuKuni = useMemo(() => shuKuniYopilgan(davr.range.from, davr.range.to), [davr.range, tick, live]);
   const billz = billzVaqtMatni(jami.billzVaqti) ?? "—";
 
   function handlePaid({ amount, method, customerId }) {
@@ -78,18 +79,44 @@ export default function FinanceDebts() {
       <PeriodPicker {...davr} />
 
       {/* Snapshot kartochkalari "hozir" deb belgilanadi — davr almashganda
-          ular o'zgarmaydi, chunki Billz "Jami qarz" hozirgi holat */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-5 mb-6">
+          ular o'zgarmaydi, chunki Billz "Jami qarz" hozirgi holat.
+          "Muddati o'tgan" — RAHBAR muddati (Sozlamalar → Qarz muddati),
+          Billz yorlig'i emas: Billz muddati deyarli har doim 1 kun,
+          393/410 "overdue" chiqardi (DAFTAR 20 B). */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-5 mb-3">
         <StatCard icon={Wallet} label={hozir("Jami qarzdorlik")} tone="red" value={fmtUSD(jami.jami)}
-          hint={tt("{n} ta qarz · Billz: {v}", { n: jami.soni, v: billz })} />
-        <StatCard icon={Wallet} label={hozir("30 kundan oshgan")} tone="amber" value={tt("{n} ta", { n: overdue })}
-          hint={t("Muddati o'tgan qarzdorlar")} />
+          hint={tt("{n} ta qarz · {m} mijoz · Billz: {v}", { n: jami.soni, m: jami.mijozlar, v: billz })} />
+        <StatCard icon={AlertTriangle} label={hozir("Muddati o'tgan")} tone="amber" value={fmtUSD(jami.muddatiOtgan.summa)}
+          hint={tt("{n} ta qarz · {k} kundan oshgan", { n: jami.muddatiOtgan.soni, k: jami.muddatKun })} />
+        <StatCard icon={AlertTriangle} label={hozir("Shubhali qarz")} tone="red" value={fmtUSD(jami.shubhali.summa)}
+          hint={tt("{n} ta · {k} kundan eski — zaxira nomzodi", { n: jami.shubhali.soni, k: jami.shubhali.kun })} />
+        <StatCard icon={Users} label={hozir("Top-10 mijoz ulushi")} value={tt("{n}%", { n: jami.top10.ulush })}
+          hint={tt("{v} — 10 mijozda", { v: fmtUSD(jami.top10.summa) })} />
+        <StatCard icon={Clock} label={hozir("Aylanish (DSO)")} value={jami.dso == null ? "—" : tt("{n} kun", { n: jami.dso })}
+          hint={t("Ochiq qarz oxirgi 30 kunlik nasiya savdosining necha kuniga teng")} />
+      </div>
+
+      {/* Yosh guruhlari — berilgan kundan (Billz muddati emas). AR aging
+          hisoboti, API va bot AYNAN shu ro'yxatni ko'rsatadi. */}
+      <div className="card px-5 py-3 mb-5 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm font-semibold">
+        <span className="text-muted">{t("Yoshi (berilgan kundan)")}:</span>
+        {jami.yosh.map((g) => (
+          <span key={g.id} className={g.id === "d90p" ? "text-danger" : g.id === "d90" ? "text-warn" : ""}>
+            {t(g.label)} <b className="tabular-nums">{fmtUSD(g.summa)}</b> <span className="text-muted">({g.soni})</span>
+          </span>
+        ))}
+        <span className="text-muted ml-auto">{tt("Billz yorlig'i: overdue {n} ta", { n: jami.billzOverdue.soni })}</span>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
         <StatCard icon={ArrowUpFromLine} label="Davrda berilgan" tone="red" value={fmtUSD(berilgan.summa)}
-          hint={tt("{n} ta yangi qarz", { n: berilgan.soni })} />
+          hint={tt("{n} ta yangi qarz · shu kuniyoq yopilgan {k}", { n: berilgan.soni, k: fmtUSD(shuKuni.summa) })} />
         <StatCard icon={ArrowDownToLine} label="Davrda to'langan" tone="green" value={fmtUSD(tolangan.total)}
           hint={tt("{n} ta to'lov", { n: tolangan.count })} />
         <StatCard icon={CheckCircle2} label="Davrda yopilgan" tone="green" value={tt("{n} ta", { n: yopilgan })}
           hint={t("To'liq to'langan qarzlar")} />
+        <StatCard icon={Wallet} label="Haqiqiy nasiya (davr)" value={fmtUSD(shuKuni.haqiqiy)}
+          hint={t("Berilgan − shu kuni yopilgan: kassir \"keyin to'laydi\" uchun ham nasiya bosadi")} />
       </div>
 
       <div className="card flex items-center gap-3 px-4 mb-5">
@@ -135,10 +162,10 @@ export default function FinanceDebts() {
           },
           {
             key: "kun", label: "Eng eski", right: true,
-            hint: "Eng eski ochiq qarz necha kunlik — hozirga nisbatan",
+            hint: "Eng eski ochiq qarz necha kunlik — berilgan kundan, hozirga nisbatan (muddat: Sozlamalar → Qarz muddati)",
             value: (r) => r.oldestOpenDays,
             cell: (r) => (r.oldestOpenDays > 0
-              ? <span className={`font-bold ${r.oldestOpenDays > 30 ? "text-danger" : "text-warn"}`}>
+              ? <span className={`font-bold ${r.oldestOpenDays > jami.muddatKun ? "text-danger" : "text-warn"}`}>
                   {tt("{n} kun", { n: r.oldestOpenDays })}
                 </span>
               : <span className="text-faint">—</span>),
@@ -152,7 +179,7 @@ export default function FinanceDebts() {
           },
           {
             key: "tolangan", label: "Davrda to'langan", right: true,
-            hint: "Tanlangan davrda tushgan to'lovlar (tovar qaytarish sanalmaydi)",
+            hint: "Tanlangan davrda tushgan to'lovlar (tovar qaytarish sanalmaydi). Qaysi do'konda olingani Billz'da yo'q — qarz chiqargan do'konga yoziladi",
             value: (r) => r.tolangan,
             cell: (r) => (r.tolangan > 0 ? <span className="font-bold text-ok">{fmtUSD(r.tolangan)}</span> : <span className="text-faint">—</span>),
             total: (rs) => <span className="text-ok">{fmtUSD(rs.reduce((a, r) => a + r.tolangan, 0))}</span>,

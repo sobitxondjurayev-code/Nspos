@@ -143,9 +143,16 @@ const YOLLAR = {
     return {
       jami_qarzdorlik: j.jami,
       qarz_soni: j.soni,
+      mijoz_soni: j.mijozlar,
+      // Rahbar muddati bo'yicha (Sozlamalar → Qarz muddati), Billz yorlig'i emas
+      muddat_kun: j.muddatKun,
       muddati_otgan: j.muddatiOtgan,
       muddati_kelmagan: j.muddatiKelmagan,
       qisman_tolangan: j.qismanTolangan,
+      shubhali: j.shubhali,
+      top10: j.top10,
+      dso_kun: j.dso,
+      billz_overdue: j.billzOverdue,
       billz_sinxroni: j.billzVaqti,
       ochiq_qarz: d.open,
       qarzdor_soni: d.rows.length,

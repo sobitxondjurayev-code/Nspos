@@ -92,8 +92,11 @@ export function kassa(d) {
 export function qarz(d) {
   return [
     `QARZ — ochiq ${pul(d.ochiq_qarz)}, ${dona(d.qarzdor_soni)} qarzdor`,
+    d.muddat_kun ? `Muddati o'tgan (${d.muddat_kun} kundan): ${pul(d.muddati_otgan?.summa)} (${dona(d.muddati_otgan?.soni)} ta)` : "",
+    d.shubhali ? `Shubhali (${d.shubhali.kun}+ kun): ${pul(d.shubhali.summa)} (${dona(d.shubhali.soni)} ta)` : "",
+    d.top10 ? `Top-10 mijoz: ${pul(d.top10.summa)} — ${d.top10.ulush} %` + (d.dso_kun ? ` · DSO ${dona(d.dso_kun)} kun` : "") : "",
     "",
-    "Yosh guruhlari:",
+    "Yosh guruhlari (berilgan kundan):",
     royxat(d.yosh_guruhlari, (g) => `  ${g.guruh}: ${pul(g.summa)} (${dona(g.qarz_soni)} ta)`),
     "",
     "Birinchi qo'ng'iroq:",

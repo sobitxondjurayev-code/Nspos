@@ -502,6 +502,7 @@ const QOIDA_STANDART = {
   "stock.windowDays": 30,
   "debts.buckets": [15, 20, 30],
   "ar.buckets": [30, 60, 90],
+  "debts.termDays": { standart: 30 },
 };
 function BusinessRulesCard() {
   const live = useLive();
@@ -513,9 +514,10 @@ function BusinessRulesCard() {
   const [oyna, setOyna] = useState(q("stock.windowDays"));
   const [qarz, setQarz] = useState(q("debts.buckets"));
   const [ar, setAr] = useState(q("ar.buckets"));
-  const muddat = getReorderDays();
-  const [lead, setLead] = useState(muddat.lead);
-  const [cover, setCover] = useState(muddat.cover);
+  const [muddat, setMuddat] = useState(() => ({ ...q("debts.termDays") }));
+  const buyurtma = getReorderDays();
+  const [lead, setLead] = useState(buyurtma.lead);
+  const [cover, setCover] = useState(buyurtma.cover);
   const shuOyOchiq = sozlama("kpi.payAnyDayMonths", ["2026-08"]).includes(oy);
 
   async function saqla(k, qiymat) {
@@ -534,6 +536,7 @@ function BusinessRulesCard() {
     await setSozlama("kpi.payAnyDayMonths", null);
     setPayDaysMatn(QOIDA_STANDART["kpi.payDays"].join(", ")); setLow(3); setOyna(30);
     setQarz(QOIDA_STANDART["debts.buckets"]); setAr(QOIDA_STANDART["ar.buckets"]);
+    setMuddat({ ...QOIDA_STANDART["debts.termDays"] });
     setHolat({});
   }
 
@@ -605,9 +608,26 @@ function BusinessRulesCard() {
         <Tugma onClick={() => { const v = tartibli(qarz); setQarz(v); saqla("debts.buckets", v); }} />
       </Qator>
       <Qator label="Qarz yosh guruhlari — AR (kun)" kalit="ar.buckets"
-        izoh="Hisobotlar → Qarz yoshi (AR aging): 0–30, 31–60, 61–90, 90+ chegaralari.">
+        izoh="Qarzdorlik, Qarz yoshi (AR aging), API, bot: 0–30, 31–60, 61–90, 90+ chegaralari. Oxirgi guruh — shubhali qarz.">
         {ar.map((v, i) => <NumberField key={i} value={v} onChange={(x) => uchta(ar, setAr)(i, x)} className="inp w-24" />)}
         <Tugma onClick={() => { const v = tartibli(ar); setAr(v); saqla("ar.buckets", v); }} />
+      </Qator>
+      {/* DAFTAR 20 B: Billz qarz muddati deyarli har doim 1 kun — "muddati
+          o'tgan" yorlig'i ma'nosiz. Muddat RAHBARNIKI: standart va har
+          do'kon uchun alohida (optom 30, chakana 14 kabi). */}
+      <Qator label="Qarz muddati (kun)" kalit="debts.termDays"
+        izoh={"Berilgan kundan shuncha kun o'tsa qarz «muddati o'tgan» bo'ladi. Billz muddati (1 kun) ishlatilmaydi. Do'kon bo'sh bo'lsa — standart."}>
+        <label className="flex items-center gap-2 text-sm font-semibold">{t("Standart")}
+          <NumberField value={muddat.standart ?? 30} onChange={(x) => setMuddat({ ...muddat, standart: x })} className="inp w-24" /></label>
+        {listStores().filter((s) => s.kind !== "warehouse").map((s) => (
+          <label key={s.id} className="flex items-center gap-2 text-sm font-semibold">{s.name}
+            <NumberField value={muddat[s.id] ?? ""} onChange={(x) => setMuddat({ ...muddat, [s.id]: x })} className="inp w-24" /></label>
+        ))}
+        <Tugma onClick={() => {
+          const v = { standart: Math.max(1, Math.round(Number(muddat.standart) || 30)) };
+          for (const s of listStores()) { const n = Math.round(Number(muddat[s.id])); if (n > 0) v[s.id] = n; }
+          setMuddat(v); saqla("debts.termDays", v);
+        }} />
       </Qator>
       <p className="text-xs text-muted font-semibold mt-3">
         {t("Xarajat turlari — alohida kartada (pastda). KPI bonus pog'onalari va keshbek darajalari hozircha kodda (reja qatorlariga muhrlangan) — alohida ish.")}

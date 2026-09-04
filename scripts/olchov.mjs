@@ -67,6 +67,9 @@ for (const k of Object.keys(jq)) {
   else if (typeof v === "number") q(`  ${k}`, v);
 }
 
+if (jq.yosh) console.log(`   yosh: ${jq.yosh.map((g) => `${g.label} ${usd(g.summa)} (${g.soni})`).join(" · ")}`);
+if (jq.top10) console.log(`   top-10 ulushi ${jq.top10.ulush} % · DSO ${jq.dso ?? "—"} kun · muddat ${jq.muddatKun} kun`);
+
 const b = balanceSheet(new Date());
 console.log(`\n── Balans (hozir) — balanceSheet()`);
 q("Aktiv", b.totalAssets); q("Passiv", b.totalLiabilities); q("Kapital", b.equity);

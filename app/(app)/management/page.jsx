@@ -142,7 +142,7 @@ export default function Management() {
           hint={tt("Rentabellik {n}%", { n: k.netMargin })}
           trend={qator("netProfit")} delta={oz("netProfit")} yaxshi="yuqori" />
         <StatCard icon={Receipt} label="O'rtacha chek" value={fmtUSD(k.avgCheck)}
-          hint={tt("Qarzga {n}", { n: fmtUSD(k.onCredit) })} />
+          hint={tt("Qarzga {n} · kun ichida yopilgan {k}", { n: fmtUSD(k.onCredit), k: fmtUSD(k.shuKuniYopilgan ?? 0) })} />
       </div>
 
       {/* Kartochkalar BITTA davrni ko'rsatadi: "shu oyda 76 723".
