@@ -27,8 +27,13 @@ alter table supplier_invoices
 -- Billz hujjatida ta'minotchi bog'lanmagan bo'lishi mumkin — nom qoladi
 alter table supplier_invoices alter column supplier_id drop not null;
 
-create unique index if not exists supplier_invoices_billz_uq
-  on supplier_invoices (company_id, billz_id) where billz_id is not null;
+-- TO'LIQ unique cheklov (qisman indeks emas): `upsert ... on conflict
+-- (company_id, billz_id)` qisman indeksni ko'rmaydi — 05.09 da birinchi
+-- yurish "no unique or exclusion constraint" bilan yiqildi. NULL
+-- billz_id (NSPOS fakturasi) unique'da bir-biriga teng emas — bemalol.
+drop index if exists supplier_invoices_billz_uq;
+alter table supplier_invoices drop constraint if exists supplier_invoices_company_billz_key;
+alter table supplier_invoices add constraint supplier_invoices_company_billz_key unique (company_id, billz_id);
 
 -- Sinxron yozadi (RLS'ni chetlab), ilova o'qiydi; tekshiruv roli o'qiydi
 grant select, insert, update on supplier_invoices to nspos_sync;
