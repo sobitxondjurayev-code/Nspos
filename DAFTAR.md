@@ -2756,3 +2756,127 @@ panel/tab/ko'p tanlov sinalmasdi). Natija:
 - Kategoriya = Camera: Filtrlar 1, Tovar 201 = SQL 201; tablar 18+6+9+86+82 = 201.
 - Barcha do'konlar: JAMI 287 599 = 13 539 + 19 790 + 254 270.
 Konsol xatosi yo'q; `tekshir:server` → `ombor-dokon` ✓.
+
+---
+
+## 20. 2026-09-04/05 — Moliya auditi: "Billz'da boshqacha, tizimda boshqacha"
+
+Rahbar: "doimiy bir muammo — Billz'da boshqacha, tizimda boshqacha; bu safar
+dasturchi emas, auditor/moliyachi sifatida tahlil qil". Tahlil VPS bazasidan
+faqat o'qib olingan ~60 SQL o'lchovi (endi `scripts/sql/audit-olchov.sql`,
+`npm run audit:olchov`) va ekran raqamini ilovaning O'Z funksiyalari bilan
+o'lchaydigan `scripts/olchov.mjs` (`npm run olchov:server`) bilan qilindi.
+Reja: `~/.claude/plans/doimiy-bir-muammo-bo-lmoqda-velvet-torvalds.md`.
+
+### 20.1 Xulosa — sodda tilda
+
+Ko'zgu MOS edi (04.09 23:05: tovar 656=656, mijoz 5 021=5 021, qarz
+53 292.41 $ = Billz, 7 kun chek 356/356, do'kon×kun savdo farqi 0). Muammo
+"Billz'dan noto'g'ri olish" emas — **Billz raqamiga tizim qo'ygan ma'no**
+va **Billz'da umuman yo'q oqimlar**. Uch ildiz:
+
+1. Bitta tushuncha bir necha joyda bir necha xil hisoblanardi (savdo 8,
+   tannarx 3, qarz yoshi 2, servis puli 4 ta'rif).
+2. Billz'dagi ba'zi yorliqlar moliyaviy ma'nosiz, tizim ularni haqiqat deb
+   ko'rsatardi: qarz muddati deyarli har doim **1 kun** (1 621/1 643) →
+   "muddati o'tgan" 393/410; montaj tovarining tannarxi **5 $** — usta puli
+   emas, taxmin.
+3. Billz'da bo'lmagan oqimlar tizimda ham yo'q: tovar xaridi, spisanie,
+   inventarizatsiya, ta'minotchi qarzi, rahbar kapitali.
+
+**Falsafa (CLAUDE.md ga kirdi):** uch qatlam — KO'ZGU (Billz aynan),
+DAFTAR (faqat NSPOS'dagi pul harakati), HISOBOT (P&L, Pul oqimi, Balans,
+Qarz yoshi — har qatorda manba yorlig'i); har raqamning uch xossasi
+(manba, ta'rif, vaqt); Billz yorlig'i ≠ moliyaviy ma'no; oy yopish
+marosimi; foyda ≠ pul — ko'prik ko'rsatiladi, farq yashirilmaydi.
+
+### 20.2 Biznes profili — avgust 2026 (bazadan)
+
+| | Optim (B2B) | Namangan (B2C+montaj) | Jami |
+|---|---:|---:|---:|
+| Savdo | 88 071 $ | 59 018 $ | 147 089 $ |
+| Nasiya ulushi | **88.5 %** | 14.5 % | 58.8 % |
+| Qaytarish | −12 888 $ (**14.6 %**) | −2 712 $ (4.6 %) | −15 600 $ (10.6 %) |
+| Marja (tannarx to'g'rilangach) | 18.6 % | 46.6 % | 31.0 % |
+
+Pul tushumi 144 609 $; ochiq qarz 53 292 $ (124 mijoz, top‑10 = 43.6 %,
+DSO 18 kun); OPEX ≈ 14 400 $; tovar uchun to'lov 37 594 $ (tannarx ~91 000 $);
+ombor tannarxda 260 535 $; `service_orders`, `warehouse_operations`,
+`supplier_invoices`, `payroll_payments`, `cash_operations` — BO'SH edi.
+
+### 20.3 Topilmalar va nima qilindi (bosqichma-bosqich, har biri chiqarilgan va o'lchangan)
+
+| # | Topilma | Dalil | Qilindi |
+|---|---|---|---|
+| A | Montaj tannarxi IKKI marta chegirilar edi | Billz montaj `cost_price` 5 $ → avgust 1 013 × 5 = **5 065 $** COGS'da; usta puli (52.8 mln so'm) ish haqida yana | `salesData.qatorTannarx` — bitta qoida (xizmat 0, qator, katalog, noma'lum **null**); P&L, rahbariyat, tovar foydasi shundan. Sof foyda 22 178.57 → **27 243.57** (+5 065.00, aynan) |
+| B | "Muddati o'tgan" Billz'da ma'nosiz | muddat 1 kun; overdue 393 / unpaid 17 | Yosh **berilgan sanadan** (`qarzYoshiKun`), muddat rahbarniki (`debts.termDays`, standart + do'kon); `jamiQarz` → yosh guruhlari, shubhali (90+: 5 174 $/61), top‑10, DSO; Billz yorlig'i alohida. Natija: o'tgan 17 418 $ (158), kelmagan 35 874 $ (252) |
+| C | "Nasiya" ikki ma'noda | 545 qarzdan 72 tasi (12 272 $) shu kuni yopilgan | KPI ustuni "Savdo − tushum"; `shuKuniYopilgan`, "Haqiqiy nasiya" kartasi |
+| D | Qaytarish faqat izoh qatori | 10.6 % (Optim 14.6 %) | P&L: Yalpi savdo → Qaytarilgan (%) → Tovar sotuvi (sof) |
+| E | Tovar xaridi tizimda yo'q | COGS ~91 000 $/oy, yozilgan to'lov 37 594 $; AP = 0 | Probe (05.09): `/v2/supplier-order` OCHIQ — kompaniyada **1 hujjat** (14.10.2025, 21 $): modul ishlatilmaydi. Ko'zgu `syncSupplierOrders` → `supplier_invoices` (AP Billz'dan, hozir 21 $). Audit `xarid-yozilmagan` (30 kun: 91 051 ↔ 37 594) |
+| F | Spisanie/inventarizatsiya olinmaydi | `warehouse_operations` bo'sh | `/v2/write-off`, `/v1/order/cash-shifts` BOR, lekin API kalit roli huquqsiz (**403**) — Sozlamalar tashxisida ko'rinadi; inventarizatsiya/qayta narxlash endpointi topilmadi (45 nomzod, `scripts/billz-probe-xarid.mjs`) |
+| G | Oylik/usta puli bugungi kursda suzardi | `getUsdRate()` har render'da | `ratesData.oyKursi` (oy oxirgi/o'rtacha, `kurs.oyQoidasi`); `kpi_day.olganKurs` kiritishda muhrlanadi |
+| H | Ish haqi "yoki‑yoki"; berilgan bilan solishtirilmasdi | `kpiUsd > 0 ? kpiUsd : profil` | `payrollCost` — yig'indi; `berilganOylik` (xarajat + usta + kassa_ops); Ish haqi sahifasida Hisoblangan/Berilgan/Qoldiq; balans "to'lanmagan oylik" shundan |
+| I | Karta/Click puli hech qaysi hamyonga tushmasdi | `card` → kassa yo'q | `card` → bank hamyoni ("Payme / karta") |
+| K | Balans kapitali tiqin; NS hech qayerda | `equity = A − P` | `kapital` = boshlang'ich (`kapital.boshlangich`) + yig'ilgan foyda − NS; **izohlanmagan** qatori ochiq (hozir 386 096 $ — boshlang'ich kapital kiritilmagan); `oy_muhri` — oy yopish |
+| L | Tannarx 0 → 100 % foyda | `\|\| 0` | null → "tannarxsiz" alohida (P&L qatori, balans ombor) |
+| M | Ikki ta'rif | `v_open_debts`, `v_product_margin` eski formula | ilova ta'rifi bilan qayta yaratildi |
+| O | Soliq zaxirasi yo'q | — | `soliq.foiz` (standart 0) → P&L qatori |
+| R | "Foyda bor, pul yo'q" javobsiz | — | `foydaPulKoprigi`: avgust sof foyda 27 244 → nasiya −13 094 (qaytarish qarzdan ayrilgani hisobga olib) + tannarx 91 162 − tovar 37 594 − oylik farqi 910 = 92 996.05; haqiqiy 92 996.18; **izohlanmagan 0.13 $** |
+
+### 20.4 O'lchov — avgust 2026, oldin ↔ keyin (`olchov:server`)
+
+| | Oldin | Keyin |
+|---|---:|---:|
+| Tannarx | 96 227.21 | 91 162.21 |
+| Yalpi foyda (marja) | 35 630.62 (27 %) | 40 695.62 (30.9 %) |
+| Sof foyda | 22 178.57 | 27 243.57 |
+| Qarz: muddati o'tgan | 48 917.69 (393, Billz) | 17 418.42 (158, 30 kun) |
+| Balans passiv | 0 | 21 (Billz xarid) |
+| Kapital | 414 665 (tiqin) | 28 549 + izohlanmagan 386 096 |
+
+Tekshiruvlar: 30 moslik ✓, yangi 7 tasi (servis-tannarx, qarz-yosh,
+koprik, balans-kapital, sale-sign xom, tannarxsiz-sotuv, xarid-yozilmagan,
+oy-yopilmagan/oy-muhri) — birinchi yurishda haqiqiy narsa aytadi.
+
+### 20.5 Rahbar qiladigan ishlar (tizim tayyor, ma'lumot kutilmoqda)
+
+1. **Boshlang'ich kapital** — Sozlamalar → Biznes qoidalari → "Boshlang'ich
+   kapital ($)": 01.08.2026 dagi kassa + tovar + qarz − majburiyat.
+   Kiritilmaguncha balansda "izohlanmagan" ~386 000 $ turadi (bu xato emas,
+   kiritilmagan raqam).
+2. **Avgustni yopish** — Balans → "Oy muhri" → "2026-08 oyini yopish".
+   Keyin `audit` `oy-yopilmagan` o'chadi; hisob o'zgarsa `oy-muhri` aytadi.
+3. **Billz'da xaridni yuritish** — «Заказ поставщику / Приход». Ko'zgu
+   tayyor: hujjat kirgan zahoti balansda ta'minotchi qarzi va ombor kirimi
+   ko'rinadi. Ungacha `xarid-yozilmagan` sariq turadi.
+4. **Billz API kalitiga huquq** — Billz → Sozlamalar → Integratsiya → rolga
+   "Списания" va "Кассовые смены" o'qish. Keyin spisanie P&L'ga, qarz to'lovi
+   qaysi do'konda olingani kassaga (J) — alohida ish.
+5. **Qarz muddati** — standart 30 kun; Optim/Namangan uchun alohida
+   qo'yish mumkin (Sozlamalar).
+6. **Soliq zaxirasi foizi** — hohlasa; 0 bo'lsa ko'rinmaydi.
+
+### 20.6 Nima o'zgarmadi va nega
+
+- Sof savdo `131 857.83` (ilova) ↔ SQL `132 084.19`: farq 226.36 $ —
+  almashuv cheklarida Billz "discount" manfiy; ilova `ishorali` bilan
+  o'qiydi. Kichik, alohida (N).
+- Qarz to'lovi qaysi do'konda olingani (J) — Billz `debt.payments` matn
+  qatori, do'kon yo'q; `cash-shifts` 403. Yorliq bilan qoldi.
+- Ombor harakati tenglamasi (boshi + kirim − sotilgan − spisanie = oxiri) —
+  xarid va spisanie kelguncha imkonsiz.
+
+### 20.7 Yo'l-yo'lakay
+
+- `v_open_debts` ustun qo'shilgani uchun `create or replace` o'tmadi —
+  `drop view` + `create`.
+- `supplier_invoices` upsert `on conflict (company_id, billz_id)` qisman
+  unique indeksni ko'rmaydi — to'liq unique cheklov kerak (birinchi yurish
+  yiqildi, jurnalda ko'rindi).
+- `yuk.mjs` "ichma-ich jadval birortasida ham yo'q" tekshiruvi 1 ta xarid
+  hujjati + 0 to'lovda soxta qizardi — endi bola jadvalda qator BOR-u
+  yopishmasa xato. `oyMuhri` moduli skript yuklovchisiga qo'shildi (aks
+  holda `oy-yopilmagan` doim qizil turardi — 13.2 kasali).
+- Tekshiruvlar chiqarishdan keyin serverda yurgizildi (`tekshir:server`
+  joylashgan kodni yurgizadi) — har bosqich: kommit → push → chiqar →
+  tekshir → olchov.
