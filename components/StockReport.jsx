@@ -4,11 +4,12 @@ import { Boxes, PackageX, TriangleAlert, Snowflake } from "lucide-react";
 import { t, tt } from "@/lib/i18n";
 import { pul, son } from "@/lib/format";
 import { useLive } from "@/components/DataProvider";
-import { stockCoverage, coverageLevel, storeOptions } from "@/lib/analytics";
+import { stockCoverage, coverageLevel } from "@/lib/analytics";
 import { categoryName } from "@/lib/categoriesData";
-import { skladId } from "@/lib/storesData";
+import { listStores } from "@/lib/storesData";
 import { sozlama } from "@/lib/companyData";
 import DataTable from "@/components/ui/DataTable";
+import MultiSelect from "@/components/ui/MultiSelect";
 import FilterBar, { applyFilters } from "@/components/FilterBar";
 
 // ══════════════════════════════════════════════════════════════
@@ -28,6 +29,12 @@ import FilterBar, { applyFilters } from "@/components/FilterBar";
 //
 // Formula `stockCoverage` da, bu yerda QAYTA yozilmaydi
 // (CLAUDE.md: bir tushuncha — bitta funksiya).
+//
+// Filtrlar (2026-09-04): do'kon — HISOB PARAMETRI (qoldiq va sotuv
+// shu do'konlar bo'yicha yig'iladi), shuning uchun kartochkalar
+// tepasida turadi. Holat — sanoqli tablar (bir o'lchov — bitta
+// boshqaruv, panelda select yo'q). Qolgani — tayyor qatorlarni
+// saralaydigan FILTR, `FilterBar` panelida: har ustunning o'z filtri.
 
 const RANG = {
   out:      { matn: "Tugagan",   cls: "bg-danger-soft text-danger" },
@@ -50,42 +57,96 @@ function Kartochka({ label, value, hint, rang = "text-ink", icon: Icon }) {
   );
 }
 
+// Filtr variantlari — ro'yxatda HAQIQATDA uchragan qiymatlar, alifbo tartibida
+const variantlar = (rows, key) =>
+  [...new Set(rows.map((r) => r[key]).filter(Boolean))].sort()
+    .map((v) => ({ value: v, label: v }));
+
 export default function StockReport() {
-  const [storeId, setStoreId] = useState("all");
+  // `null` = barcha do'kon, aks holda id massivi (MultiSelect qoidasi)
+  const [storeIds, setStoreIds] = useState(null);
+  const [tab, setTab] = useState("all");
   const [q, setQ] = useState("");
   const [filters, setFilters] = useState({});
   const live = useLive();
 
-  const sklad = skladId();
-  const filial = storeId !== "all" && !!sklad && storeId !== sklad;
   // Qisqa oyna — `stockCoverage` bilan BIR XIL manbadan (sozlama).
   // Qotirib yozilsa sozlama o'zgargan kuni "zaxira oyna" belgisi
   // jimgina yolg'on ko'rsatardi.
   const oyna = sozlama("stock.windowDays", 30);
 
-  const barcha = useMemo(() => stockCoverage({ storeId }).map((r) => ({
+  const barcha = useMemo(() => stockCoverage({ storeIds }).map((r) => ({
     ...r,
     id: r.product.id,
     name: r.product.name,
     category: categoryName(r.product.categoryId) ?? "Kategoriyasiz",
+    // Bo'sh brend/ta'minotchi ham TANLANADIGAN variant — aks holda
+    // brendsiz 118 tovarni filtr bilan ajratib bo'lmasdi
+    brand: r.product.brand || "Brendsiz",
+    supplier: r.product.supplier || "Yetkazib beruvchisiz",
     daraja: coverageLevel(r.daysLeft, r),
-  })), [storeId, live]);
+  })), [storeIds, live]);
 
-  const FIELDS = useMemo(() => [
-    { key: "category", label: "Kategoriya", type: "select", get: (r) => r.category,
-      options: [...new Set(barcha.map((r) => r.category))].sort()
-        .map((c) => ({ value: c, label: c })) },
-    { key: "daraja", label: "Holat", type: "select", get: (r) => r.daraja,
-      options: Object.entries(RANG).map(([k, v]) => ({ value: k, label: v.matn })) },
-    { key: "stock", label: "Qoldiq (dona)", type: "range", get: (r) => r.stock },
-    { key: "daysLeft", label: "Necha kunga yetadi", type: "range", get: (r) => r.daysLeft ?? 0 },
-  ], [barcha]);
+  // "Skladda" ustuni — `stockCoverage` filial tanlanganda `skladda`ni
+  // beradi, aks holda null. Sklad qoidasi shu yerda TAKRORLANMAYDI:
+  // qatorlarning o'zidan bilinadi (bitta manba).
+  const filial = useMemo(() => barcha.some((r) => r.skladda != null), [barcha]);
 
-  const rows = useMemo(() => {
+  // `storeOptions` emas: u modul yuklanganda muzlatilgan nusxa, bazadan
+  // keyin kelgan do'kon unga tushmaydi
+  const doKonlar = useMemo(
+    () => listStores().map((s) => ({ value: s.id, label: s.name })), [live]);
+
+  const FIELDS = useMemo(() => {
+    const brend = variantlar(barcha, "brand");
+    const taminot = variantlar(barcha, "supplier");
+    return [
+      { key: "category", label: "Kategoriya", type: "multi", get: (r) => r.category,
+        options: variantlar(barcha, "category") },
+      // Bitta variantli filtr ma'nosiz — ko'rsatilmaydi
+      ...(brend.length > 1 ? [{ key: "brand", label: "Brend", type: "multi",
+        get: (r) => r.brand, options: brend }] : []),
+      ...(taminot.length > 1 ? [{ key: "supplier", label: "Yetkazib beruvchi", type: "select",
+        get: (r) => r.supplier, options: taminot }] : []),
+      { key: "stock", label: "Qoldiq (dona)", type: "range", get: (r) => r.stock },
+      { key: "daysLeft", label: "Necha kunga yetadi", type: "range", get: (r) => r.daysLeft ?? 0 },
+      // Hech sotilmagan tovar — eng o'lik qoldiq: "90 kundan ko'p" filtriga
+      // TUSHADI, "10 kungacha" ga tushmaydi (`Infinity` `|| 0` dan omon qoladi)
+      { key: "idleDays", label: "Qimirlamagan (kun)", type: "range",
+        get: (r) => r.idleDays ?? Infinity },
+      // Ustun bilan BIR XIL formula: tannarx katalog → chek → noma'lum.
+      // `stockCoverage.stockValue` (faqat katalog tannarxi) bu yerda ishlatilmaydi.
+      { key: "stockValue", label: "Qoldiq qiymati ($)", type: "range",
+        get: (r) => (r.tannarx == null ? 0 : r.stock * r.tannarx) },
+      { key: "tannarx", label: "Tannarx", type: "select",
+        get: (r) => (r.tannarx != null ? "bor" : "yoq"),
+        options: [{ value: "bor", label: "Tannarxi bor" }, { value: "yoq", label: "Tannarxi yo'q" }] },
+      // Sotuvsiz qatorda `oyna` uzun oyna bo'lib turadi — u "zaxira" EMAS,
+      // ikkala variantga ham tushmaydi (uning o'z "Sotuv yo'q" tabi bor)
+      { key: "oyna", label: "Oyna", type: "select",
+        get: (r) => (r.avgDaily <= 0 ? null : r.oyna !== oyna ? "zaxira" : "qisqa"),
+        options: [{ value: "qisqa", label: "Qisqa oyna" }, { value: "zaxira", label: "Zaxira oyna" }] },
+    ];
+  }, [barcha, oyna]);
+
+  // Qidiruv + panel filtrlari — TAB dan oldin: tab sanoqlari shu ro'yxatdan,
+  // ya'ni har tab sanog'i o'sha tab bosilganda ko'rinadigan songa teng
+  const filtrlangan = useMemo(() => {
     const s = q.trim().toLowerCase();
     const byName = s ? barcha.filter((r) => r.name.toLowerCase().includes(s)) : barcha;
     return applyFilters(byName, FIELDS, filters);
   }, [barcha, q, filters, FIELDS]);
+
+  const tabs = useMemo(() => [
+    { key: "all", label: "Barchasi", count: filtrlangan.length },
+    ...Object.entries(RANG).map(([k, v]) => ({
+      key: k, label: v.matn, count: filtrlangan.filter((r) => r.daraja === k).length,
+    })),
+  ], [filtrlangan]);
+
+  const rows = useMemo(
+    () => (tab === "all" ? filtrlangan : filtrlangan.filter((r) => r.daraja === tab)),
+    [filtrlangan, tab]);
 
   // Kartochkalar. Pul yig'indisiga TANNARXI NOMA'LUM qator kirmaydi —
   // 0 yozilsa "qoldiqda pul yo'q" degan yolg'on bo'lardi
@@ -106,7 +167,7 @@ export default function StockReport() {
     { key: "category", label: "Kategoriya",
       cell: (r) => <span className="font-semibold text-muted">{r.category}</span> },
     { key: "stock", label: "Qoldiq", right: true,
-      hint: "Tanlangan do'kondagi dona. \"Barcha\" tanlansa — hamma do'kon yig'indisi.",
+      hint: "Tanlangan do'konlardagi dona yig'indisi. Hech biri tanlanmasa — hamma do'kon.",
       cell: (r) => <span className="font-semibold">{son(r.stock)}</span>,
       total: (rs) => son(rs.reduce((a, r) => a + r.stock, 0)) },
     ...(filial ? [{ key: "skladda", label: "Skladda", right: true,
@@ -139,7 +200,7 @@ export default function StockReport() {
         return <span className={`text-sm font-bold px-3 py-1 rounded-lg ${g.cls}`}>{t(g.matn)}</span>;
       } },
     { key: "idleDays", label: "Qimirlamagan (kun)", right: true,
-      hint: "Oxirgi sotuvdan beri o'tgan kun. Hech sotilmagan bo'lsa — \"—\".",
+      hint: "Oxirgi sotuvdan beri o'tgan kun. Hech sotilmagan bo'lsa — \"—\" (filtrda u \"cheksiz\" hisoblanadi: \"90 dan\" ichiga tushadi).",
       value: (r) => r.idleDays ?? -1,
       cell: (r) => <span className="font-semibold text-muted">{r.idleDays == null ? "—" : son(r.idleDays)}</span> },
     { key: "stockValue", label: "Qoldiq qiymati", right: true,
@@ -155,10 +216,9 @@ export default function StockReport() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
-        <select value={storeId} onChange={(e) => setStoreId(e.target.value)}
-          className="card px-4 py-3 font-bold bg-panel">
-          {storeOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
+        {/* `.inp` `w-full` — flex qatorda eni cheklanmasa butun qatorni oladi */}
+        <MultiSelect className="w-full sm:w-72" options={doKonlar} value={storeIds}
+          onChange={setStoreIds} allLabel="Barcha do'konlar" />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -175,6 +235,7 @@ export default function StockReport() {
       </div>
 
       <FilterBar
+        tabs={tabs} activeTab={tab} onTab={setTab}
         search={{ value: q, onChange: setQ, placeholder: "Tovar nomi bo'yicha qidirish..." }}
         fields={FIELDS} filters={filters} onChange={setFilters} />
 

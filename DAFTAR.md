@@ -2687,3 +2687,60 @@ va `transferSummary()` chaqiruvlari qolib ketgan edi (endi ular
 yurardi. Ishlatilmay qolgan holat va importlar tozalandi. `npm run
 nomlar` bunday "ishlatilmayotgan, lekin aniqlangan" o'zgaruvchini
 ushlamaydi: u faqat aniqlanmagan nomni tekshiradi.
+
+### 19.7 Ombor qoplamasi filtrlari (2026-09-04)
+
+Foydalanuvchi so'rovi: "Ombor qoplamasiga filtr qo'shish". Panel
+allaqachon bor edi (Kategoriya, Holat, Qoldiq, Necha kunga yetadi) —
+to'rt yo'nalishda kengaytirildi. Bazada o'lchandi: 656 faol tovardan
+538 tasida brend (34 xil), 114 tasida ta'minotchi (2 xil).
+
+**Ikki xil narsa ikki joyda.** Do'kon — HISOB PARAMETRI: qoldiq va
+sotuv shu do'konlar bo'yicha yig'iladi (`stockCoverage`). U kartochkalar
+tepasida turadi, endi bir nechta tanlanadi (`MultiSelect`, `storeIds`).
+Panel ichidagilar — tayyor qatorlarni saralaydigan FILTR. Holat esa
+sanoqli tab bo'ldi va paneldagi "Holat" select OLINDI: bir o'lchov uchun
+ikki boshqaruv bo'lsa, biri "Kritik", ikkinchisi "Kam" turib jadval bo'sh
+qoladi va sababi ko'rinmaydi.
+
+**`stockCoverage({ storeIds })`** — `storeId` bilan yonma-yon, orqaga
+mos: `tanlangan = storeIds ?? (storeId === "all" ? null : [storeId])`.
+`reorderList`, o'lik qoldiq, `managementData` o'z holicha. Qoldiq —
+tanlangan do'konlar yig'indisi; "Skladda" ustuni tanlovda Sklad
+BO'LMAGANDAGINA (bo'lsa u allaqachon yig'indida). Komponentdagi
+`filial` bayrog'i endi qatorlardan (`skladda != null`) — Sklad qoidasi
+ikki joyda takrorlanmaydi.
+
+**`FilterBar` `type: "multi"`** — umumiy: `MultiSelect` `<label>`
+O'RAMASIZ chiziladi (aks holda sarlavha bosilganda popover ochiladi va
+checkbox label'lari ichma-ich bo'ladi). `applyFilters` `v.some(...)`.
+CLAUDE.md 2026-09-02 qoidasi ("yo'qolgan tanlov o'zi tozalanadi")
+Xarajatlar sahifasidagi lokal `useEffect` dan `FilterBar` ichiga
+ko'chdi — `select` va `multi` uchun, `String()` bilan solishtirib
+(boshqa hisobotlarda variant qiymati aralash turda). O'zgarish bo'lsa
+`setDraft` + `onChange` BIRGA: `draft` faqat panel ochilganda
+sinxronlanadi, busiz ochiq panel eskisini ko'rsatib turardi. Hech narsa
+o'zgarmasa `onChange` chaqirilmaydi — halqa yo'q. Ombor qoplamasida bu
+effekt asosan arxivlash uchun: variantlar `listProducts()` dan, do'konga
+bog'liq emas.
+
+**Ma'no qarorlari.** `idleDays` filtri: hech sotilmagan tovar
+`Infinity` — "90 dan" ichiga TUSHADI (u eng o'lik qoldiq), "10 gacha"
+ga tushmaydi. `oyna` filtri: sotuvsiz qatorda `oyna` uzun oyna bo'lib
+turadi (analytics), u "zaxira" EMAS — `null` qaytariladi, ikkala
+variantga ham tushmaydi. "Qoldiq qiymati" filtri USTUN formulasida
+(tannarx: katalog → chek → noma'lum), `stockCoverage.stockValue` (faqat
+katalog) emas — aks holda filtr bir raqamni, ustun boshqasini ko'rsatardi.
+Bo'sh brend/ta'minotchi "Brendsiz" / "Yetkazib beruvchisiz" variant —
+aks holda 118 brendsiz tovarni ajratib bo'lmasdi. Tab sanoqlari qidiruv
++ panel filtridan KEYIN (tab o'lchovidan tashqari) — har sanoq o'sha tab
+bosilganda ko'rinadigan songa teng, kartochka va Jami bilan mos.
+
+**Tekshiruv kodda:** `lib/moslik.js` → `ombor-dokon` — hamma do'kon
+tanlanganda yig'indi har do'konning alohida raqamiga va "Barchasi"ga
+teng; ikki filial tanlanganda "Skladda" = Sklad qoldig'i, Sklad
+tanlovda bo'lsa ustun yo'q. Ilovaning o'z `stockCoverage` funksiyasi
+bilan (formula qayta yozilmaydi), `npm run tekshir:server` da va
+"Tekshirib ko'ring" kartochkasida. Kompyuterda baza yo'q — shuning
+uchun sinov chiqarishdan KEYIN serverda yurdi, brauzer sinovi
+`npm run xodim -- --rol=owner --faqat-sahifa` bilan.

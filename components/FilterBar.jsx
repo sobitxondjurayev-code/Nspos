@@ -1,7 +1,8 @@
 "use client";
 import { t } from "@/lib/i18n";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, SlidersHorizontal, X, ChevronUp } from "lucide-react";
+import MultiSelect from "@/components/ui/MultiSelect";
 
 // ══════════════════════════════════════════════════════════════
 // UMUMIY FILTR PANELI
@@ -33,6 +34,19 @@ function Field({ field, value, onChange }) {
           ))}
         </select>
       </label>
+    );
+  }
+
+  // Bir nechta qiymat: `null` = barchasi, aks holda kalitlar massivi
+  // (CLAUDE.md 2026-09-02). `<label>` O'RAMASIZ — aks holda sarlavha
+  // bosilganda popover ochiladi va ichidagi checkbox label'lari ichma-ich
+  // bo'ladi; sarlavhani MultiSelect o'zi chizadi.
+  if (field.type === "multi") {
+    return (
+      <div>
+        <MultiSelect label={field.label} options={field.options} value={value ?? null}
+          onChange={set} allLabel={field.anyLabel ?? "Barchasi"} />
+      </div>
     );
   }
 
@@ -96,6 +110,7 @@ export function applyFilters(rows, fields, filters) {
       const cell = f.get ? f.get(row) : row[f.key];
 
       if (f.type === "select") return String(cell) === String(v);
+      if (f.type === "multi") return Array.isArray(v) && v.some((x) => String(x) === String(cell));
       if (f.type === "range") {
         const n = Number(cell) || 0;
         if (v.min !== "" && v.min != null && n < Number(v.min)) return false;
@@ -129,6 +144,31 @@ export default function FilterBar({
   // har o'zgarish shu zahoti kuchga kiradi (Meta/Google reklamadagidek).
   const [draft, setDraft] = useState(filters);
   const n = useMemo(() => activeCount(filters) + extraCount, [filters, extraCount]);
+
+  // Ro'yxatdan yo'qolgan tanlov (arxivlangan tovar, boshqa davr, boshqa
+  // do'kon) O'ZI tozalanadi — aks holda jadval jimgina bo'sh qolardi
+  // (CLAUDE.md 2026-09-02). Bitta joyda, hamma sahifa uchun: sahifaga
+  // alohida `useEffect` yozilmaydi. Hech narsa o'zgarmasa `onChange`
+  // chaqirilmaydi (halqa bo'lmasin); o'zgarsa `draft` ham birga — u faqat
+  // panel ochilganda sinxronlanadi, busiz ochiq panel eskisini ko'rsatardi.
+  useEffect(() => {
+    let next = null;
+    for (const f of fields) {
+      if (!f.options || (f.type !== "select" && f.type !== "multi")) continue;
+      const v = filters?.[f.key];
+      if (!isSet(v)) continue;
+      const bor = new Set(f.options.map((o) => String(o.value)));
+      if (f.type === "multi") {
+        if (!Array.isArray(v)) continue;
+        const qoldi = v.filter((x) => bor.has(String(x)));
+        if (qoldi.length === v.length) continue;
+        (next ??= { ...filters })[f.key] = qoldi.length ? qoldi : null;
+      } else if (!bor.has(String(v))) {
+        (next ??= { ...filters })[f.key] = "all";
+      }
+    }
+    if (next) { setDraft(next); onChange?.(next); }
+  }, [fields, filters, onChange]);
 
   const openPanel = () => { setDraft(filters); setOpen((v) => !v); };
   const change = (k, v) => {
