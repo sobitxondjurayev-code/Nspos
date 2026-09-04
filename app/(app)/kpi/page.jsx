@@ -20,6 +20,10 @@ import { listStaff } from "@/lib/staffData";
 import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
 import DateRangePicker from "@/components/DateRangePicker";
 import { listNps, npsForInstaller, npsDayCounts, productAvg, addNps, updateNps, removeNps } from "@/lib/npsData";
+// Reyting kamera va NPS'ni ALOHIDA ko'rinishdan o'qiydi: `kpi_day` va
+// `nps_records` RLS ustaga faqat O'Z qatorini beradi, ya'ni boshqa
+// ustaning kamerasi 0 bo'lib ko'rinardi (2026-09-03 fidbegi).
+import { boardCameras, boardNps, monthBounds } from "@/lib/installerBoard";
 import { useAuth } from "@/components/AuthProvider";
 import { useLive } from "@/components/DataProvider";
 import { can } from "@/lib/auth";
@@ -822,7 +826,12 @@ function AdminOverview({ staff, month, tick, onOpen, bump }) {
 // ══════════════════════════════════════════════════════════════
 const MEDAL = ["text-[#F5B301]", "text-[#9AA4B2]", "text-[#CD7F32]"];
 
-function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen = true, canEditRate, canEditNps, showSalary = false, highlightId, bump }) {
+// `showAttendance` — Kech va Dam ustunlari. Rahbar fidbegi
+// (2026-09-03) va Sobitxon aka tasdig'i: usta ekranida "faqat shtuk
+// va NPS" tursin, davomat ham, pul ham ko'rinmasin. Shuning uchun
+// `showSalary` dan ALOHIDA bayroq: ikkalasi ikki xil ma'no, birini
+// ikkinchisiga yopishtirib qo'ysak keyingi safar ajratib bo'lmaydi.
+function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen = true, canEditRate, canEditNps, showSalary = false, showAttendance = false, highlightId, bump }) {
   const live = useLive();
   // Saralash uchun tekis maydonlar — SortTh shular bo'yicha ishlaydi
   const { sort, toggle, sortRows } = useSort("cameras", "desc");
@@ -832,13 +841,15 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
   const FIELDS = useMemo(() => [
     { key: "cameras", label: "Kamera (dona)", type: "range", get: (r) => r.cameras },
     { key: "nps", label: "NPS bahosi", type: "range", get: (r) => r.nps ?? 0 },
-    { key: "late", label: "Kech qolgan kun", type: "range", get: (r) => r.late },
-    { key: "off", label: "Dam olgan kun", type: "range", get: (r) => r.off },
+    ...(showAttendance ? [
+      { key: "late", label: "Kech qolgan kun", type: "range", get: (r) => r.late },
+      { key: "off", label: "Dam olgan kun", type: "range", get: (r) => r.off },
+    ] : []),
     ...(showSalary ? [
       { key: "total", label: "Ishlab topgan (so'm)", type: "range", get: (r) => r.total },
       { key: "qoldiq", label: "Balans (so'm)", type: "range", get: (r) => r.qoldiq },
     ] : []),
-  ], [showSalary]);
+  ], [showSalary, showAttendance]);
   // Tanlangan davr oyni to'liq qoplaydimi. Qoplasa — oylik hisob
   // (davomat bonuslari va o'tgan oy qoldig'i bilan). Qoplamasa —
   // HAMMA ustun tanlangan kunlar bo'yicha sanaladi: aks holda "0 kamera,
@@ -854,9 +865,19 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
   }, [range?.from, range?.to, month]);
 
   const rowsAll = useMemo(() => {
+    // Kamera va NPS — ALOHIDA ko'rinishdan (`installerBoard`). Ular
+    // hamma uchun bitta manbadan o'qiladi: rahbarga bir, ustaga
+    // boshqa yo'l bo'lsa ikki xil raqam paydo bo'lardi. Pul ustunlari
+    // avvalgidek `computeMonth`/`installerRange` dan — ular faqat
+    // rahbar/menejerga ko'rinadi va u `kpi_day` ni to'liq o'qiydi.
+    // Ikki manba tengligini `moslik.js` → "usta-kamera" tekshiradi.
+    const oy = monthBounds(month);
+    const boardRange = range
+      ? { from: range.from, to: range.to }
+      : { from: oy.from, to: oy.to };
     const base = installers.map((s) => {
       const m = computeMonth(s.id, month, "installer");
-      const nps = npsForInstaller(s.id, month);
+      const nps = boardNps(s.id, month);
       const rg = range ? installerRange(s.id, range.from, range.to) : null;
       // Davr bo'yicha "ishlab topgan" — shu kunlardagi kamera puli.
       // Davomat bonuslari oylik va oy oxirida aniqlanadi, shuning uchun
@@ -864,9 +885,9 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
       const earned = fullMonth ? m.total : rg.camMoney;
       const taken = fullMonth ? (m.olgan || 0) : rg.olgan;
       return { s, m, name: s.name,
-        cameras: rg ? rg.cameras : m.cameras,
+        cameras: boardCameras(s.id, boardRange.from, boardRange.to),
         rate: Number(m.plan.rate) || 0,
-        nps: nps.avg,
+        nps: nps.avg, npsCount: nps.count,
         late: rg ? rg.lateDays : m.lateDays,
         off: rg ? rg.offDays : m.offDays,
         total: earned, olgan: taken,
@@ -922,8 +943,10 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
             { label: "Kamera (dona)", get: (r) => r.cameras },
             ...(showSalary ? [{ label: "Narx (so'm/dona)", get: (r) => r.rate }] : []),
             { label: "NPS", get: (r) => (r.nps == null ? "" : +r.nps.toFixed(1)) },
-            { label: "Kech (kun)", get: (r) => r.late },
-            { label: "Dam (kun)", get: (r) => r.off },
+            ...(showAttendance ? [
+              { label: "Kech (kun)", get: (r) => r.late },
+              { label: "Dam (kun)", get: (r) => r.off },
+            ] : []),
             ...(showSalary ? [
               { label: "Ishlab topgan (so'm)", get: (r) => Math.round(r.total) },
               { label: "Olgan (so'm)", get: (r) => Math.round(r.olgan) },
@@ -941,8 +964,10 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
                 <SortTh label="Kamera (dona)" sortKey="cameras" sort={sort} onSort={toggle} align="right" />
                 {showSalary && <SortTh label="Narx (so'm/dona)" sortKey="rate" sort={sort} onSort={toggle} align="right" />}
                 <SortTh label="NPS" sortKey="nps" sort={sort} onSort={toggle} align="right" />
-                <SortTh label="Kech" sortKey="late" sort={sort} onSort={toggle} align="center" />
-                <SortTh label="Dam" sortKey="off" sort={sort} onSort={toggle} align="center" />
+                {showAttendance && (<>
+                  <SortTh label="Kech" sortKey="late" sort={sort} onSort={toggle} align="center" />
+                  <SortTh label="Dam" sortKey="off" sort={sort} onSort={toggle} align="center" />
+                </>)}
                 {showSalary && (<>
                   <SortTh label="Ishlab topgan" sortKey="total" sort={sort} onSort={toggle} align="right" />
                   <SortTh label="Olgan" sortKey="olgan" sort={sort} onSort={toggle} align="right" />
@@ -951,20 +976,26 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
                 <th className="px-3 py-4"></th>
               </tr>
               {/* Jami tepada — rahbarga ustalarga jami qancha pul ketishi
-                  kerakligi darrov ko'rinsin. Fon shaffofmas bo'lsin. */}
-              {showSalary && rows.length > 0 && (
+                  kerakligi darrov ko'rinsin. Fon shaffofmas bo'lsin.
+                  Usta ekranida ham turadi (CLAUDE.md 2026-08-06: har
+                  jadvalda Jami bo'ladi) — unda faqat kamera jamisi. */}
+              {rows.length > 0 && (
                 <tr className="border-b-2 border-line font-extrabold bg-panel">
                   <th className="px-5 py-4 text-left" colSpan={2}>{t("Jami")}</th>
                   <th className="px-3 py-4 text-right text-lg">{totalCam}</th>
+                  {showSalary && <th className="px-3 py-4"></th>}
                   <th className="px-3 py-4"></th>
-                  <th className="px-3 py-4"></th>
-                  <th className="px-3 py-4 text-center">{rows.reduce((a, r) => a + r.late, 0)}</th>
-                  <th className="px-3 py-4 text-center">{rows.reduce((a, r) => a + r.off, 0)}</th>
-                  <th className="px-3 py-4 text-right text-brand">{som(totalFund)}</th>
-                  <th className="px-3 py-4 text-right text-muted">{som(totalOlgan)}</th>
-                  <th className={`px-3 py-4 text-right ${totalQoldiq < 0 ? "text-danger" : ""}`}>
-                    <Manfiy v={totalQoldiq} sabab="kpiQoldiq">{som(totalQoldiq)}</Manfiy>
-                  </th>
+                  {showAttendance && (<>
+                    <th className="px-3 py-4 text-center">{rows.reduce((a, r) => a + r.late, 0)}</th>
+                    <th className="px-3 py-4 text-center">{rows.reduce((a, r) => a + r.off, 0)}</th>
+                  </>)}
+                  {showSalary && (<>
+                    <th className="px-3 py-4 text-right text-brand">{som(totalFund)}</th>
+                    <th className="px-3 py-4 text-right text-muted">{som(totalOlgan)}</th>
+                    <th className={`px-3 py-4 text-right ${totalQoldiq < 0 ? "text-danger" : ""}`}>
+                      <Manfiy v={totalQoldiq} sabab="kpiQoldiq">{som(totalQoldiq)}</Manfiy>
+                    </th>
+                  </>)}
                   <th className="px-3 py-4"></th>
                 </tr>
               )}
@@ -989,23 +1020,25 @@ function InstallerBoard({ installers, month, range = null, tick, onOpen, canOpen
                       )}
                     </td>
                   )}
-                  {/* NPS: retention menejer qo'ygan 1–10 baholarning o'rtachasi */}
+                  {/* NPS: retention menejer qo'ygan 1–10 baholarning
+                      o'rtachasi. Qiymat `rowsAll` da bir marta olinadi —
+                      ilgari shu yerda IKKINCHI marta hisoblanardi, ya'ni
+                      saralash bir raqamni, katak boshqasini ko'rsatishi
+                      mumkin edi. */}
                   <td className="px-3 py-3 text-right">
-                    {(() => {
-                      const { avg, count } = npsForInstaller(s.id, month);
-                      if (avg == null) return <span className="text-muted">—</span>;
-                      return (
-                        <span className="font-bold">
-                          <span className={avg >= 8 ? "text-ok" : avg >= 6 ? "text-warn" : "text-danger"}>
-                            {avg.toFixed(1)}
-                          </span>
-                          <span className="text-xs text-muted font-semibold"> ({count})</span>
+                    {r0.nps == null ? <span className="text-muted">—</span> : (
+                      <span className="font-bold">
+                        <span className={r0.nps >= 8 ? "text-ok" : r0.nps >= 6 ? "text-warn" : "text-danger"}>
+                          {r0.nps.toFixed(1)}
                         </span>
-                      );
-                    })()}
+                        <span className="text-xs text-muted font-semibold"> ({r0.npsCount})</span>
+                      </span>
+                    )}
                   </td>
-                  <td className="px-3 py-3 text-center font-bold">{r0.late}</td>
-                  <td className="px-3 py-3 text-center font-bold">{r0.off}</td>
+                  {showAttendance && (<>
+                    <td className="px-3 py-3 text-center font-bold">{r0.late}</td>
+                    <td className="px-3 py-3 text-center font-bold">{r0.off}</td>
+                  </>)}
                   {showSalary && (<>
                     <td className="px-3 py-3 text-right font-extrabold text-brand">{som(r0.total)}</td>
                     <td className="px-3 py-3 text-right font-semibold text-muted">{som(r0.olgan)}</td>
@@ -1314,6 +1347,7 @@ export default function Kpi() {
             <InstallerBoard installers={installers} month={month} range={insRange} tick={tick}
               onOpen={canManageInstaller ? setOpenId : () => {}} canOpen={canManageInstaller}
               canEditRate={canManageInstaller} canEditNps={false} showSalary={canManageInstaller}
+              showAttendance={canManageInstaller}
               highlightId={isInstaller ? own?.id : null} bump={bump} />
           </>
         )

@@ -28,6 +28,10 @@ import "@/lib/invitesData";
 import "@/lib/companyData";
 import "@/lib/kpiData";
 import "@/lib/npsData";
+// Ustalar reytingi — `kpi_day`/`nps_records` RLS usta uchun faqat
+// O'Z qatorini beradi, shuning uchun reyting alohida ko'rinishdan
+// o'qiydi (scripts/sql/usta-reyting.sql)
+import "@/lib/installerBoard";
 import "@/lib/kassaData";
 import "@/lib/payoutsData";
 import "@/lib/ratesData";

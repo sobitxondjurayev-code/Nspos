@@ -123,6 +123,7 @@ const KINDS = {
   "stale-expenses": "Xarajat kiritilib turibdi",
   "stale-kassa": "Kassa yuritilib turibdi",
   "stale-kpi": "KPI kunligi to'ldirilib turibdi",
+  "stale-nps": "NPS baholari kiritilib turibdi",
   "stale-rate": "Dollar kursi yangilanib turibdi",
   "stale-uploads": "Billz hisobotlari yangi",
   // Billz tekshiruvlari — ilgari nomsiz bo'lib "Boshqa
@@ -142,7 +143,7 @@ const KINDS = {
   "billz-chala": "Billz'dan tortish to'liq tugagan",
   "qarz-nomalum-usul": "Qarz to'lovi usuli tanilgan",
   "qarz-manba": "Har Billz qarzi 'billz' yorlig'i bilan",
-  "billz-farq": "Ko'zgu Billz bilan mos (tovar, mijoz, qarz, chek)",
+  "billz-farq": "Ko'zgu Billz bilan mos (tovar, mijoz, qarz, chek, do'kon×kun savdo)",
   "kirim-hamyonsiz": "Har to'lov kassa hamyoniga tushgan",
   "b2b-belgilanmagan": "Optom (B2B) do'kon belgilangan",
 };

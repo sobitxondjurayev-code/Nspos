@@ -115,6 +115,7 @@ export default function AnalysisPage() {
           : analysis.kind === "rfm" ? <RfmReport />
           : analysis.kind === "arAging" ? <ArAgingReport />
           : analysis.kind === "debtors" ? <DebtorsReport />
+          : analysis.kind === "stock" ? <StockReport />
           : null}
       </div>
     );
@@ -186,9 +187,11 @@ export default function AnalysisPage() {
         </div>
       ) : analysis.kind === "abc" ? (
         <AbcReport analysis={analysis} dataset={dataset} key={tick} />
-      ) : analysis.kind === "stock" ? (
-        <StockReport analysis={analysis} dataset={dataset} key={tick} />
       ) : analysis.kind === "stockValue" ? (
+        /* `stock` (Ombor qoplamasi) bu yerda YO'Q: u 2026-09-03 dan
+           bazadan ishlaydi va yuqoridagi `analysis.bazadan` shoxida
+           chiziladi. Excel yo'li olib tashlandi — aks holda bitta
+           tahlil ikki xil manbadan ikki xil raqam berardi. */
         <StockValueReport analysis={analysis} dataset={dataset} key={tick} />
       ) : analysis.kind === "imports" ? (
         <ImportsReport analysis={analysis} dataset={dataset} key={tick} />

@@ -133,7 +133,10 @@ if (!FAQAT_SAHIFA) {
 
 // ── 1-qism: sahifalar Chrome'da ──
 const YOLLAR = process.env.NSPOS_YOLLAR ? process.env.NSPOS_YOLLAR.split(",") : ROL === "installer"
-  ? ["/kpi", "/services", "/settings"]
+  // `/installers` — ustaning ASOSIY sahifasi (o'zi va boshqalarning
+  // kamerasi + NPS). 2026-09-04 gacha ro'yxatda yo'q edi, ya'ni
+  // "usta boshqa ustani ko'rmaydi" nosozligi sinovdan o'tib ketardi.
+  ? ["/kpi", "/installers", "/services", "/settings"]
   : ["/dashboard", "/kpi", "/installers", "/nps", "/finance", "/finance/kassa", "/finance/expenses",
      "/finance/debts", "/products", "/clients", "/services", "/reports", "/reports/stock_health", "/settings"];
 console.log(`── Sahifalar (${ROL}) ──`);

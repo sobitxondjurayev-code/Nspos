@@ -2496,3 +2496,173 @@ Kutilgan, xato emas: menejer Abduvahid `/products`, `/clients`,
 ko'rmaydi (`service.view` yo'q, o'z ishini KPI'da ko'radi); Sozlamalardagi
 "Standartga qaytarish" faqat ko'rinish (tema) — biznes sozlamasi emas.
 
+
+## 19. 2026-09-03/04 — `feedbacklar/` papkasi: to'rt masala, to'rttasi ham jim
+
+Rahbar Desktop'ga `feedbacklar/` papkasini tashladi: 7 skrinshot va
+7 ovozli xabar. Ovozli xabarlar o'zbekcha, transkripsiya Whisper
+large-v3 bilan qilindi (sifat past — 74 soniyalik xabar birinchi
+urinishda butunlay takrorlanish halqasiga tushdi: `Қазыр, Қазыр…`.
+`condition_on_previous_text=False` + `repetition_penalty` + 15
+soniyalik bo'laklar bilan o'qildi. **Fayl jim emas edi** — u hatto
+yaxshi o'qilganidan balandroq: −17.8 dB ↔ −28.4 dB. Ya'ni "eshitilmadi"
+degan xulosa noto'g'ri bo'lardi.)
+
+Papkada **bitta emas, to'rtta** alohida masala chiqdi. Umumiy ip:
+**hech biri xato bermaydi.**
+
+### 19.1 Usta boshqa ustaning kamerasini ko'rmaydi
+
+Fidbek (Mirjalol, 16:38): "ustlar bir-birlarini nechta dona
+o'rnatganini ko'rishi kerak / va nps ko'rinishi kerak / qolgan davomat
+va oyliklar ko'rinmasin". Sobitxon aka (18:21): "Faqat shu
+ko'rsatgichlar korinsin shtuk va NPS".
+
+Sabab siyosatda: `kpi_day_rw` → `has_perm('kpi.manage') OR staff_id =
+auth.uid()`, `installer` da `kpi.manage = false`. PostgREST ruxsat
+yo'qligini xato bilan emas **bo'sh ro'yxat** bilan bildiradi, ya'ni
+ekranda ishonarli **0** turadi.
+
+O'lchandi (usta Abbosxon hisobi bilan, `set local role nspos_app`):
+
+| So'rov | Usta | Kamera |
+|---|---|---|
+| xom `kpi_day` (RLS orqali) | 1 | 12 |
+| yangi `installer_cameras` | 9 | 88 |
+
+**Nega siyosat kengaytirilmadi:** RLS USTUNNI yashira olmaydi. `kpi_day`
+qatori ochilsa `data.olgan` (usta olgan pul) ham ochiladi, `nps_records`
+ochilsa mijoz ismi va telefoni ochiladi. Shuning uchun `staff_directory`
+naqshi takrorlandi — `security definer` ko'rinish RLS ni chetlab
+o'tadi, lekin o'zi kompaniya bo'yicha filtrlaydi va ortiqcha ustunni
+umuman bermaydi (`scripts/sql/usta-reyting.sql`). **Ya'ni "faqat shtuk
+va NPS" cheklovi interfeysda emas, bazada:** usta brauzer konsolidan
+so'rov yozsa ham oylikni ko'rmaydi.
+
+Interfeysda `showAttendance` — `showSalary` dan ALOHIDA bayroq. Davomat
+va pul ikki xil ma'no; birini ikkinchisiga yopishtirsak keyingi safar
+ajratib bo'lmasdi.
+
+Yon topilma: NPS ustuni **rahbarda ham** "—" turardi. Kod xatosi emas —
+butun bazada 1 ta baho bor edi, u ham iyulniki. `audit.js` → `MANBALAR`
+ga `nps` qo'shildi (ODAM kiritmagani, `bloklamaydi: true`).
+
+### 19.2 "Ombor analizi" Hisobotlardan yo'qolgan
+
+Fidbek: "Ombor analizi degan bo'lim bor edi-ku, ko'rolmadim… o'rniga
+Qoldiq salomatligi chiqib qopti… iloji bo'lsa bugun-ertaga ishlab
+bering" (zakaz juma kuni berilishi kerak edi).
+
+`reports/page.jsx` faqat `bazadan: true` ni chizadi. `lib/analyses.js`
+da 15 ta tahlil, `bazadan` esa 5 tasida — qolgani 24.08 da Excel
+yuklash bilan birga oqimdan chiqib ketgan. **Hisoblagichning O'ZI esa
+o'sha kundan beri bazadan ishlaydi** (`analytics.stockCoverage`, 43-qator).
+Ya'ni ma'lumot bor edi, unga eshik yo'q edi.
+
+`stock_coverage` → `bazadan: true`, `components/StockReport.jsx` Excel
+tahlilidan `stockCoverage()` ga o'tkazildi (`DataTable` ustida: sarlavha
+pin, chap ustun pin, Jami, Ustunlar, Excel — hammasi o'zi).
+
+`reorder` ("Buyurtma taklifi") ATAYLAB alohida karta qilinmadi: uning
+ro'yxati "Qoldiq salomatligi" ichida allaqachon bor (`StockHealthReport`
+→ `reorderList`). Ikkinchi karta bir xil raqamni ikki joyda ko'rsatib,
+ular ertami-kechmi bir-biriga qarshi chiqardi.
+
+### 19.3 Billz ↔ NSPOS savdo farqi — sinxron kechikishi
+
+Fidbek: "Namanganda 2 099.64 turibdi, bunda 2 067 turibdi, bu ham
+noto'g'ri" va naqd 675 ↔ Billz 665.
+
+Skrinshot 03.09 soat 09:27–09:28 da olingan. O'lchandi:
+
+| Namangan cheklari | birinchi yozilgan | oxirgi yangilangan |
+|---|---|---|
+| 01.09 sotilgan | 01.09 11:30 | 02.09 11:30 |
+| 02.09 sotilgan | 02.09 11:30 | **03.09 10:00** |
+
+Ya'ni skrinshot olingan payt 02.09 ma'lumoti hali yangilanmagan edi.
+Sabab: inkremental sinxron `lastCursor` dan boshlanadi
+(`billzSync.js:1245`), ya'ni **Billz'da keyin tuzatilgan eski chek
+qayta o'qilmaydi** — u faqat to'liq yurishda tuzatiladi.
+
+Buni o'lchaydigan tekshiruv YO'Q edi: `moslikTekshir` tovar sonini,
+mijoz sonini, ochiq qarzni va oxirgi 7 kun cheklarini **id bo'yicha
+(bor/yo'q)** solishtirardi. Chek bazada bor-u noto'g'ri summa bilan
+yozilgan bo'lsa — jim o'tardi.
+
+Qo'shildi: **do'kon × kun kesimida savdo summasi** (oxirgi 7 kun,
+chegara 0.02 $, o'sha aylanishning ichida — Billz sekundiga 2 so'rov
+beradi). Har farqli kun `billz-farq` auditiga alohida qator bo'lib
+tushadi. Sinxron oynasini kengaytirish TASHXISDAN KEYIN — avval
+tekshiruv qanchalik tez-tez qizarishini o'lchasin.
+
+### 19.4 Usta puli noto'g'ri kassadan chiqardi — xarajat bloklangan
+
+74 soniyalik xabar (mazmuni rahbar bilan tasdiqlangan): ustalarga
+berilgan pul Ustalar reytingida yoziladi, xarajatga tushmaydi. Tizim
+uni do'kon kassasidan hisoblaydi. Aslida u kompaniya balansidagi servis
+kassasidan chiqishi kerak. **Servis kassada pul qolmaydi — har kuni nol
+qilib topshiriladi. Nol kassadan xarajat qilinsa minusga tushadi va
+tizim "kassa minusda" deb yangi xarajatni umuman rad etadi.**
+
+Skrinshot tasdiqladi: Namangan kassasi −5 735.63 $, shundan Servis
+−3 387.29 $, va 6 kun "Servis … minusda".
+
+Kodda: `expensesData.installerPayouts()` → `kassa: st.storeId ||
+svcStore || "company"`. Ustaning `store_id` i NULL (11 tasida ham),
+shuning uchun `serviceStore()` — servis kirimi bor do'kon — olinardi.
+
+O'lchandi (01.08 dan):
+
+| | $ |
+|---|---|
+| Servis kirimi (Namangan) | 10 165.50 |
+| Kompaniyaga topshirilgani (approved transfer) | 7 082.76 |
+| Usta puli (63 551 500 so'm ÷ 11 840) | 5 367.53 |
+
+Do'kon hamyoni −2 284.79 → **+3 082.74**, kompaniya +7 082.76 →
+**+1 715.23**. Ikkalasi ham musbat: minus boshqa kassaga KO'CHMAYDI.
+Buni oldindan o'lchamasdan o'zgartirish xavfli edi.
+
+**FAQAT HAMYON o'zgardi.** `storeId` o'z joyida qoldi, ya'ni do'kon
+kesimi (`expensesByStore`) va "Oylik maoshlar" ustuni (18-bo'lim, DAFTAR
+68: `category === "salary" && method === "service"` → `r.salary`)
+avvalgidek. Qiymat `companies.sozlamalar` orqali
+(`sozlama("kpi.ustaKassa", "company")`) — kodda qotirilmagan.
+
+### Qo'shilgan tekshiruvlar
+
+| id | nima |
+|---|---|
+| `usta-puli` (moslik) | usta puli bitta hamyondan chiqadimi va "Oylik maoshlar"ga tengmi |
+| `usta-kamera` (moslik) | `installer_cameras` ko'rinishi = `computeMonth().cameras` |
+| `stale-nps` (audit) | NPS baholari kiritilib turibdimi (7/14 kun) |
+| `billz-farq` (audit) | endi do'kon × kun savdo summasini ham qamraydi |
+
+### 19.5 Yangi tekshiruvlarning birinchi yurishi — ikkalasi ham o'zini tuzatdi
+
+Tekshiruvlar chiqarilgandan keyingi BIRINCHI yurishda ikkitasi qizardi.
+Ikkalasi ham kod xatosi emas, **tekshiruvning o'zidagi xato** edi —
+shuning uchun ular shu yerda yozib qo'yiladi:
+
+1. **`usta-puli`:** "yozuvlarda 5 367.54 $, Oylik maoshlar ustunida
+   5 880.20 $". Farq 512.66 $ — bu qo'lda kiritilgan **14 ta servis
+   oyligi** (`expenses`, `category='salary'`, `method='service'`,
+   Namangan kassasi). `kassaData` ustunga `category === "salary" &&
+   method === "service"` shartidagi HAR yozuvni qo'shadi, faqat usta
+   pulini emas. Tekshiruv shu shartga tenglashtirildi.
+
+2. **`billz-farq` → savdo:** "27.08: Billz 3 256.18, bu yerda 0" (ikkala
+   do'kon uchun ham). 27.08 — 7 kunlik oynaning CHEGARA kuni: Billz KUN
+   bo'yicha filtrlaydi (`fmtBillzDay`), baza esa aniq VAQT bo'yicha
+   (`gte sold_at`). Bir tomonda kun to'liq, ikkinchisida yarim. Chegara
+   bir kun ichkariga surildi.
+
+**Qoida:** yangi tekshiruv qo'yishdan oldin uning HAQIQIY bazada nechta
+qator ustida qizarishini o'lchang (CLAUDE.md 2026-08-24) — bu safar
+o'lchov chiqarishdan keyin bo'ldi va ikkala qizarish ham soxta chiqdi.
+
+Tuzatilgandan keyingi holat: "Hech bir hamyon manfiy emas" da **Servis
+minusda yo'q** (avval −3 246.61 $), `usta-kamera` va `usta-puli` yashil,
+`stale-nps` esa haqiqiy narsani aytmoqda: "NPS baholari 35 kundan beri
+kiritilmagan, oxirgi yozuv 2026-07-31".
