@@ -25,7 +25,11 @@
 // `[db] yuklandi` konsoli), NSPOS_UI_KPI=1 (/kpi da bugungi "Dam"
 // katakchasini bosib → F5 → turibdimi → qaytarish: haqiqiy UI yozuv yo'li),
 // NSPOS_MATN="regex;;regex" (sahifa matnidan bo'lak), NSPOS_QAYTA=1
-// (20 s dan keyin va "Yangilash" bosib qayta o'lchash).
+// (20 s dan keyin va "Yangilash" bosib qayta o'lchash), NSPOS_BOS=
+// "Filtrlar;;Tugagan;;NScamera Optim" (matni shu bilan boshlanadigan
+// tugma/yorliqni ketma-ket bosadi, so'ng NSPOS_MATN o'lchanadi —
+// filtr paneli, tab, ko'p tanlovli ro'yxat kabi interfeys yo'llari;
+// bosish paytidagi konsol xatosi ham sahifa xatosiga kiradi).
 //
 // 2026-09-03 natija: menejer 28/28 ✓, usta 17/17 ✓; topilgani — Kassa
 // sahifasi yuklanish paytida "Optim naqd minusda −61 367 $" (yolg'on,
@@ -169,6 +173,16 @@ for (const yol of YOLLAR) {
   hodisalar.length = 0;
   await yubor("Page.navigate", { url: MANZIL + yol }, sessionId);
   await kut(Number(process.env.NSPOS_KUT ?? 9000));
+  if (process.env.NSPOS_BOS) {
+    for (const matn of process.env.NSPOS_BOS.split(";;")) {
+      const r = await yubor("Runtime.evaluate", { expression: `(() => {
+        const hamma = [...document.querySelectorAll('button, label, a, [role=tab]')].map((el) => [el, el.innerText.trim()]);
+        const el = (hamma.find(([, t]) => t === ${JSON.stringify(matn)}) ?? hamma.find(([, t]) => t.startsWith(${JSON.stringify(matn)})))?.[0];
+        if (!el) return false; el.click(); return true; })()`, returnByValue: true }, sessionId);
+      console.log(`      BOS: ${matn} → ${r.result.value ? "bosildi" : "TOPILMADI"}`);
+      await kut(1500);
+    }
+  }
   const sorovlar = [...new Set(hodisalar.filter((h) => h.method === "Network.responseReceived" && h.params?.response?.status >= 400)
     .map((h) => `${h.params.response.status} ${h.params.response.url.replace(MANZIL, "").slice(0, 90)}`))];
   const muammolar = hodisalar.filter((h) => h.method === "Runtime.exceptionThrown" || (h.method === "Log.entryAdded" && h.params?.entry?.level === "error"))

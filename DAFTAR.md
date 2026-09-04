@@ -2744,3 +2744,15 @@ bilan (formula qayta yozilmaydi), `npm run tekshir:server` da va
 "Tekshirib ko'ring" kartochkasida. Kompyuterda baza yo'q — shuning
 uchun sinov chiqarishdan KEYIN serverda yurdi, brauzer sinovi
 `npm run xodim -- --rol=owner --faqat-sahifa` bilan.
+
+**O'lchov (2026-09-04, saytda, rahbar hisobi):** `xodim-sinov` ga
+`NSPOS_BOS="Filtrlar;;Tugagan;;NScamera Optim"` nuqtasi qo'shildi —
+matni shu bilan boshlanadigan tugma/yorliqni ketma-ket bosadi, so'ng
+`NSPOS_MATN` o'lchanadi (ilgari faqat ochilgan sahifa o'lchanardi,
+panel/tab/ko'p tanlov sinalmasdi). Natija:
+- Optim + Namangan: JAMI 33 329 = 13 539 + 19 790 (SQL `stock`), "Skladda"
+  ustuni chiqdi, jamisi 254 270 = Sklad qoldig'i; tablar 47+17+52+244+295 = 655.
+- "Tugagan" tabi: kartochka 45 = tab 45 = JAMI 45 ta.
+- Kategoriya = Camera: Filtrlar 1, Tovar 201 = SQL 201; tablar 18+6+9+86+82 = 201.
+- Barcha do'konlar: JAMI 287 599 = 13 539 + 19 790 + 254 270.
+Konsol xatosi yo'q; `tekshir:server` → `ombor-dokon` ✓.
