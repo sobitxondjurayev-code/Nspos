@@ -18,14 +18,77 @@ echo "── Ilova sozlamalari"
 ASOS="${DOMEN:+https://$DOMEN}"
 ASOS="${ASOS:-http://$(hostname -I | awk '{print $1}')}"
 
-cat > /opt/nspos/app/.env.production <<ENV
-NEXT_PUBLIC_SUPABASE_URL=${ASOS}
-DATABASE_URL=postgres://nspos_app@localhost:5432/nspos
-JWT_SECRET=${JWT_SECRET}
-NODE_ENV=production
-ENV
-chown nspos:nspos /opt/nspos/app/.env.production
-chmod 600 /opt/nspos/app/.env.production
+PROD=/opt/nspos/app/.env.production
+
+# ══════════════════════════════════════════════════════════════
+# ESKI SIRLAR SAQLANADI — FAYL USTIDAN YOZILMAYDI
+# ══════════════════════════════════════════════════════════════
+# Ilgari bu yer `.env.production` ni shunchaki USTIDAN yozardi va
+# ichida atigi to'rtta qator qolardi. Ishlayotgan serverda esa
+# to'qqizta bor:
+#
+#   SUPABASE_SERVICE_ROLE_KEY  — qo'lda yasalgan JWT, hech qayerda
+#                                saqlanmagan; yo'qolsa sayt bazani
+#                                umuman o'qiy olmaydi
+#   BILLZ_SECRET_TOKEN         — Billz integratsiya kaliti
+#   CRON_SECRET                — cron shu bilan kiradi
+#   NSPOS_REST_INTERNAL        — 10-ichki.sh qo'yadi
+#   BILLZ_API_URL              — qo'lda
+#
+# Ya'ni shu qadamni IKKINCHI marta yurgizish Billz sinxronizatsiyasini
+# va cron'ni JIMGINA o'ldirardi: `npm ci`, `next build`, sayt ochiladi,
+# hamma sahifa 200 — faqat raqam yangilanmay qotib qoladi. Ekranda
+# hech qanday belgi yo'q; xato faqat `/opt/nspos/zaxira/billz.log`
+# ichida ko'rinadi (2026-09-06 da topildi, DAFTAR 23.3).
+#
+# Endi FAQAT o'zimiz boshqaradigan to'rt qator yoziladi, qolgan hamma
+# qator eski fayldan ko'chiriladi. Saqlanadiganlar ro'yxati NOMMA-NOM
+# EMAS — aks holda ertaga qo'shilgan yangi kalit o'sha ro'yxatga
+# tushmay yana jimgina yo'qolardi.
+BIZNIKI='^(NEXT_PUBLIC_SUPABASE_URL|DATABASE_URL|JWT_SECRET|NODE_ENV)='
+QOLGANI=""
+if [ -f "$PROD" ]; then
+  # Faqat haqiqiy sozlama qatorlari (izoh va bo'sh qator tashlanadi)
+  QOLGANI=$(grep -E '^[A-Z0-9_]+=' "$PROD" | grep -Ev "$BIZNIKI" || true)
+fi
+
+# Cron siri bo'lmasa — yasaymiz (07-api.sh dagi kabi, bir marta).
+# Bo'lmasa `/api/billz/sync` cron chaqirig'iga 401 beradi va
+# sinxronizatsiya butunlay to'xtaydi.
+NL=$'\n'
+if ! grep -q '^CRON_SECRET=' <<<"$QOLGANI"; then
+  QOLGANI="${QOLGANI}${QOLGANI:+$NL}CRON_SECRET=$(openssl rand -hex 24)"
+fi
+
+# Eski nusxa — qaytarish kerak bo'lsa. `/etc/nspos` da turadi:
+# ilova papkasida qolsa `chiqar.sh` dagi rsync uni bir kun tashlab
+# yuborishi mumkin, u yerda esa faqat root ko'radi.
+if [ -f "$PROD" ]; then
+  cp -p "$PROD" /etc/nspos/env.production.oldingi
+  chmod 600 /etc/nspos/env.production.oldingi
+fi
+
+{
+  echo "NEXT_PUBLIC_SUPABASE_URL=${ASOS}"
+  echo "DATABASE_URL=postgres://nspos_app@localhost:5432/nspos"
+  echo "JWT_SECRET=${JWT_SECRET}"
+  echo "NODE_ENV=production"
+  if [ -n "$QOLGANI" ]; then printf '%s\n' "$QOLGANI"; fi
+} > "$PROD"
+chown nspos:nspos "$PROD"
+chmod 600 "$PROD"
+
+# ── Yetishmayotgani AYTILADI ────────────────────────────────
+# Birinchi o'rnatishda bu ikkisi hali yo'q — bu xato emas. Lekin
+# jim ham qolmasin: ularsiz sayt (service kalit) yoki Billz
+# sinxronizatsiyasi ishlamaydi va sababi ko'rinmaydi.
+for sir in SUPABASE_SERVICE_ROLE_KEY BILLZ_SECRET_TOKEN; do
+  grep -q "^$sir=" "$PROD" || {
+    echo "   ⚠ $sir YO'Q — qo'shilmaguncha ishlamaydi:"
+    echo "       echo '$sir=<qiymat>' >> $PROD && systemctl restart nspos"
+  }
+done
+echo "   ✓ sozlama: $(grep -cE '^[A-Z0-9_]+=' "$PROD") ta qator ($PROD)"
 
 echo "── Yig'ilmoqda"
 cd /opt/nspos/app

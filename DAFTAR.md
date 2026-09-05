@@ -3191,12 +3191,53 @@ o'qish huquqi. `/v1/user` bu huquqni ko'rsatmaydi (API xodimlarida
 Ko'ndalang tekshiruv: serverdagi `GET /api/billz/sync?probe=1` javobi
 skript natijasi bilan belgima-belgi bir xil chiqdi.
 
-### 23.3 Yo'l-yo'lakay topilgan xavf: `04-ilova.sh` sirlarni o'chiradi
+### 23.3 Topilgan va o'sha kuni yopilgan xavf: `04-ilova.sh` sirlarni o'chirardi
 
-`scripts/server/04-ilova.sh` `.env.production` ni **ustidan yozadi**, ichida
-esa `BILLZ_SECRET_TOKEN` ham, `CRON_SECRET` ham yo'q — ular serverga qo'lda
-qo'yilgan (hozir joyida). O'sha qadam qayta yurgizilsa Billz sinxronizatsiyasi
-va cron jimgina o'ladi: `06-billz-cron.sh` sirni aynan shu fayldan o'qiydi,
-ilova esa "BILLZ_SECRET_TOKEN sozlanmagan" deb 500 qaytaradi va uni faqat
-jurnalga qaraganlar ko'radi. Tuzatilmadi — alohida ish (sirlar
-`/etc/nspos/sirlar.env` ga ko'chirilib, undan yozilishi kerak).
+`scripts/server/04-ilova.sh` `.env.production` ni **ustidan yozardi** va
+yozadigan qatorlari atigi to'rtta edi: `NEXT_PUBLIC_SUPABASE_URL`,
+`DATABASE_URL`, `JWT_SECRET`, `NODE_ENV`. Ishlayotgan serverda esa
+to'qqizta bor — qolgan beshtasi qo'lda qo'yilgan va hech qayerda
+saqlanmagan:
+
+| Kalit | Kim qo'ygan | Yo'qolsa |
+|---|---|---|
+| `SUPABASE_SERVICE_ROLE_KEY` | qo'lda yasalgan JWT | sayt bazani umuman o'qimaydi |
+| `BILLZ_SECRET_TOKEN` | qo'lda | Billz sinxronizatsiyasi 500 |
+| `CRON_SECRET` | qo'lda | cron 401 — 5 daqiqalik ko'zgu to'xtaydi |
+| `NSPOS_REST_INTERNAL` | `10-ichki.sh` | server o'ziga tashqi TLS orqali aylanadi |
+| `BILLZ_API_URL` | qo'lda | (standart qiymatga tushadi) |
+
+Ya'ni o'rnatishning shu qadamini **ikkinchi marta** yurgizish yetardi:
+`npm ci` o'tadi, `next build` o'tadi, sayt ochiladi, hamma sahifa 200
+qaytaradi — faqat raqam yangilanmay qotib qoladi. Aynan biz qochadigan
+jim nosozlik: ekranda hech qanday belgi yo'q, xato faqat
+`/opt/nspos/zaxira/billz.log` ichida ko'rinadi.
+
+**Tuzatildi (2026-09-06).** Endi skript faqat **o'zi boshqaradigan to'rt
+qatorni** yozadi, qolgan hamma qatorni eski fayldan ko'chiradi.
+Saqlanadiganlar ro'yxati **nomma-nom emas** ("bizniki emas — demak
+saqlanadi"): nomma-nom ro'yxat ertaga qo'shilgan kalitni o'tkazib
+yuborardi va xato aynan o'sha ko'rinishda qaytardi. Yana uchta narsa:
+
+- `CRON_SECRET` yo'q bo'lsa **yasaladi** (`openssl rand -hex 24`,
+  `07-api.sh` dagi kabi bir marta) — birinchi o'rnatishdan keyin cron
+  darrov ishlaydi;
+- eski fayl `/etc/nspos/env.production.oldingi` ga nusxalanadi (600,
+  ilova papkasida emas — u yerdan `chiqar.sh` rsync'i tashlab yuborishi
+  mumkin);
+- `SUPABASE_SERVICE_ROLE_KEY` yoki `BILLZ_SECRET_TOKEN` yo'q bo'lsa
+  ekranda **ogohlantirish va aniq buyruq** chiqadi (birinchi o'rnatishda
+  ular hali yo'q — bu xato emas, lekin jim ham qolmasligi kerak).
+
+O'lchov (blok ajratib olinib, uchta holatda yurgizildi):
+
+| Holat | Kirish | Natija |
+|---|---|---|
+| Ishlayotgan server | 9 kalit | 9 kalit — beshta sir joyida, to'rttasi yangilandi |
+| Birinchi o'rnatish | fayl yo'q | 4 + yasalgan `CRON_SECRET`, 2 ta ogohlantirish |
+| Sir yarim | `CRON_SECRET` yo'q | 8 kalit, `CRON_SECRET` yasaldi, `TELEGRAM_BOT_TOKEN` saqlandi |
+
+Serverda `04-ilova.sh` QAYTA YURGIZILMADI: u nginx sozlamasini ham
+qaytadan yozadi va domensiz chaqirilsa `09-domen.sh` qo'ygan sertifikat
+sozlamasi buziladi. Shuning uchun tekshiruv blokni ajratib olib, aynan
+serverdagi kalitlar ro'yxati ustida yurgizildi.
