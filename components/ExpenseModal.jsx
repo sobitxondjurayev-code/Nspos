@@ -3,7 +3,7 @@ import { t, tt } from "@/lib/i18n";
 import NumberField from "@/components/NumberField";
 import { useMemo, useState } from "react";
 import { X, Repeat, Calendar, Trash2 } from "lucide-react";
-import { EXPENSE_CATEGORIES, EXPENSE_METHODS, SERVICE_CATEGORIES, needsNote, STREET_INSTALLER } from "@/lib/expensesData";
+import { EXPENSE_CATEGORIES, EXPENSE_METHODS, SERVICE_CATEGORIES, tannarxgaMi, needsNote, STREET_INSTALLER } from "@/lib/expensesData";
 import { KASSAS, kassasOf, walletsOf, isB2bKassa, COMPANY } from "@/lib/kassaData";
 import { listStaff } from "@/lib/staffData";
 import { getUser, expenseCategoriesOf } from "@/lib/auth";
@@ -110,6 +110,11 @@ export default function ExpenseModal({ initial = null, onClose, onSave, onDelete
   const [staffId, setStaffId] = useState(
     initial?.staffId ?? (initial?.paidTo ? "street" : ""));
   const isService = SERVICE_CATEGORIES.includes(category);
+  // Tovar kelish xarajati (yo'lkira, dostavka) — hamyon QOTIRILMAYDI
+  // (istalgan puldan to'lanadi), lekin menejer bu turning boshqacha
+  // ekanini bilib turishi kerak: bu pul "xarajat" bo'lib emas,
+  // TANNARX bo'lib hisobga tushadi.
+  const isTannarx = tannarxgaMi(category);
 
   const [note, setNote] = useState(initial?.note ?? "");
   const [date, setDate] = useState(initial?.date ?? iso(new Date()));
@@ -340,6 +345,12 @@ export default function ExpenseModal({ initial = null, onClose, onSave, onDelete
               </p>
             )}
           </>
+        )}
+
+        {isTannarx && (
+          <p className="text-sm font-semibold text-muted bg-surface rounded-xl px-4 py-3 mb-6">
+            {t("Bu tur — tovarning o'z narxi: Xarajatlar ro'yxatida ko'rinadi, lekin P&L da \"Xarajat\" emas, TANNARX qatoriga tushadi. Sof foydaga ta'siri bir xil, yalpi marja esa haqiqiy bo'ladi.")}
+          </p>
         )}
 
         <label className="block text-sm font-bold mb-2">

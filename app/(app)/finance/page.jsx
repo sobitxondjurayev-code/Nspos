@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Wallet, ListChecks, Receipt, Users, Truck, Banknote, TrendingUp,
-  Scale, Package, Clock, ArrowDownLeft, ArrowUpRight, PiggyBank,
+  Scale, Clock, ArrowDownLeft, ArrowUpRight, PiggyBank,
   ChevronRight, SlidersHorizontal,
 } from "lucide-react";
 import { fmtUSD } from "@/lib/demoData";
@@ -143,10 +143,12 @@ export default function FinanceHome() {
       hint: "Aktiv va passiv",
       value: fmtUSD(sheet.totalAssets), tone: "brand", note: t("Jami aktiv"),
     },
-    {
-      href: "/finance/cost", icon: Package, label: "Import va tannarx", term: "Landed cost",
-      hint: "Keltirilgan tovar tannarxi",
-    },
+    /* "Import va tannarx" (`/finance/cost`) OLIB TASHLANDI (2026-09-05):
+       u `products.cost_price` va `stock` USTIGA yozardi — ikkalasi ham
+       Billz ko'zgusi maydonlari, ya'ni natija 5 daqiqada o'chib ketardi
+       ("qo'llandi" deb turadi-yu, raqam yo'qoladi). Tovar kelish
+       xarajati endi Xarajatlar → "Import yo'lkira" / "Dastavka" orqali
+       tannarxga qo'shiladi. Sahifa kodda qoldi (DAFTAR 22). */
   ].filter((s) => canOpen(s.href, user));
 
   // —— Tepadagi ko'rsatkichlar ————————————————————————

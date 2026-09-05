@@ -2961,3 +2961,140 @@ qaytarilgan summani foizi bilan ko'rsatadi.
 
 Kutilgan farq **0.00**: hech bir pul formulasi o'zgarmadi (UI muhri,
 o'lik kod, API'ga yangi maydon, o'lchov SQL'iga yangi ustun).
+
+## 22. 2026-09-05 — Menejerlar so'rovi: yo'lkira tannarxga, ko'cha ustasi servisga
+
+Rahbar orqali menejerlar ikki narsani so'rashdi:
+
+1. **"Tovar keldi — yo'lkira, dostavka"** Xarajatlarga qo'shilsin. Mantiq:
+   mahsulot 25 $ ga olinadi, Xitoydan kelishi bilan ~30 $ bo'ladi, shahar
+   atrofida yetkazib berish yana +3 $.
+2. **"Ko'cha ustasi — ustanovka"** qo'shilsin va **servisga** kirsin. Ikki
+   holat: mijoz montaj puli to'lagan yoki montaj bepul berilgan.
+
+Rahbar qarori: yo'lkira **tannarxga** qo'shilsin (oddiy xarajat qatori
+bo'lib qolmasin); Pul rejasidagi `import` puliga **tegilmasin**.
+
+### 22.1 Yechim: xarajat turining uchinchi xossasi
+
+Ilgari tur ikki narsani aytardi — `group` (doimiy/o'zgaruvchan) va `service`.
+Uchinchisi qo'shildi: **`cogs`** (`scripts/sql/expense-cogs.sql`).
+
+`cogs = true` bo'lgan tur P&L da **OPEX dan chiqadi va tannarx ostida
+alohida qator bo'ladi**. Sof foyda o'zgarmaydi — pul bir qatordan
+ikkinchisiga ko'chadi, xolos; yalpi marja esa haqiqiy bo'ladi.
+
+Nega tur darajasida, xarajat QATORI darajasida emas: tur allaqachon rahbar
+Sozlamalardan yuritadigan yagona manba. Qatorga qo'yilsa menejer har safar
+belgilashni unutadi va bir xil xarajat ikki xil joyga tushadi.
+
+`cogs` va `service` **bir vaqtda bo'la olmaydi**: servis turini
+`ServiceReport` xizmat tannarxiga, `cogs` ni P&L tovar tannarxiga qo'shadi —
+ikkalasi yoqilsa bir pul ikki marta sanalardi. Cheklov bazada
+(`expcat_cogs_service`), ikkinchi qulf `audit` → `kelish-service` (error),
+interfeysda checkbox'lar o'zaro o'chadi.
+
+**Turlar:** mavjud `delivery` → `cogs=true` (nomi "Dastavka — tovar
+kelishi (yo'lkira)"); yangi `import_freight` ("Import yo'lkira (chegara,
+Xitoy)"). `staff_travel` ATAYLAB tegilmadi — uning izohlari "uyiga yul
+kira", "ishka bordi", ya'ni xodim qatnovi; tannarxga qo'shilsa marja soxta
+pasayardi.
+
+### 22.2 O'lchov — avgust 2026, oldin ↔ keyin
+
+| | Oldin | Keyin |
+|---|---:|---:|
+| Sotilgan tovar tannarxi | 91 162.21 | 91 162.21 |
+| ↳ tovar kelish xarajati | — | **228.70** |
+| Yalpi foyda | 40 695.62 | **40 466.92** |
+| marja | 30.9 % | **30.7 %** |
+| OPEX | 6 092.67 | **5 863.97** |
+| Jami xarajat | 13 452.05 | **13 223.35** |
+| **SOF FOYDA** | 27 243.57 | **27 243.57 — ±0.00** |
+| Ko'prik "izohlanmagan" | 0.13 | **0.13** |
+
+Yangi ko'rsatkich: **kelish ulushi 0.25 %** — "25 $ tovar aslida 25.06 $".
+
+### 22.3 Eng nozik joy: Foyda → Pul ko'prigi
+
+`foydaPulKoprigi` dagi `const tannarx = p.cogs.total` **o'zgartirilishi
+shart edi**: o'sha qatorning ma'nosi — "bu tovar uchun pul AVVAL chiqqan",
+naqd tomoni pastdagi "Tovar uchun to'lov" (`kassa_ops goods/import`).
+Yo'lkira esa pulni SHU davrda, hamyondan oladi — ya'ni oddiy xarajat kabi
+o'zini o'zi yopadi. Qo'shilib qolganda `izohlanmagan` 0.13 $ dan
+−228.70 $ ga sakrardi. Endi `p.cogs.total − p.cogs.kelish`.
+
+### 22.4 Yo'l-yo'lakay topilgan: 6 318.62 $ hech qaysi hisobda yo'q edi
+
+Yangi audit `kelish-kassa-ops` birinchi yurishida aynan ikki qatorni topdi:
+
+| Sana | kassa_ops turi | Summa | Izoh |
+|---|---|---:|---|
+| 2026-08-13 | `goods` | 4 341.00 $ | "Kabel yolkirasi" |
+| 2026-08-31 | `import` | 1 977.62 $ | "Import yo'lkira · shundadan zapchastlar kelgan" |
+
+`goods`/`import` chiqimlari P&L ga **umuman kirmaydi** (ombor aktivi deb
+hisoblanadi) — ya'ni bu 6 318.62 $ na xarajatda, na tannarxda ko'rinardi.
+Bu **kod xatosi emas, joylashuv xatosi**: pulning to'g'ri joyi endi bor.
+Rahbar qaroriga ko'ra yozuvlar KO'CHIRILMADI — audit ularni ko'rsatib
+turadi, qaror rahbarniki (ko'chirilsa avgust sof foydasi 6 318.62 $ ga
+kamayadi va kelish ulushi 7.18 % bo'ladi).
+
+`kassa_ops` dagi "Import xarajati" yorlig'i **"Import to'lovi (tovar
+uchun)"** ga o'zgartirildi — eski nom menejerni aynan noto'g'ri joyga
+chorlardi. Kalit `import` o'zgarmadi.
+
+### 22.5 Ko'cha ustasi — ikki tur, kod o'zgarishisiz
+
+`svc_installer` ("mijoz to'lagan") va `svc_installer_free` ("bepul montaj"),
+ikkalasi `service=true`, izoh majburiy. Mexanizm allaqachon tayyor edi:
+`ExpenseModal` servis turida hamyonni servisga qotiradi, "Kimga → Ko'cha
+usta" (`STREET_INSTALLER`) bor, `ServiceReport` `SERVICE_CATEGORIES` ni
+yig'adi. Ikki tur — rahbar ajratgan ikki holat; yangi ustun kerak emas,
+hisobot ularni tur kesimida alohida ko'rsatadi.
+
+### 22.6 Lekin pul ko'rinmas joyga tushardi — "Servis foydasi" hisoboti
+
+Ish davomida aniqlandi: **"Servis foydasi" Hisobotlar ro'yxatida umuman
+ko'rinmasdi.** `lib/analyses.js` da unda `bazadan: true` yo'q edi,
+`reports/page.jsx` esa aynan shuni filtrlaydi. Ustiga u kirimni Billz'ning
+"Эффективность товаров" **Excel yuklamasidan** o'qirdi — holbuki jonli yo'l
+(`serviceIncome.servisKirim()`) allaqachon bor va kassa balansi shuni
+chaqiradi. Bu DAFTAR 19.2 dagi "Ombor qoplamasi" kasalining aynan o'zi.
+
+Ya'ni ko'cha ustasi xarajatini qo'shsak-u buni tuzatmasak — pul yozilardi,
+lekin hech kim ko'rmasdi. Tuzatildi: `bazadan: true`, Excel `source` olib
+tashlandi, `reports/[id]` da `service` shoxi `bazadan` blokiga ko'chdi
+(`stock`/`reorder` naqshi), `ServiceReport` kirimni `servisKirim()` dan
+oladi va standart davr tanlagichga o'tdi. `jonliServisKirim` ga `byName`
+qo'shildi — xizmat ta'rifi bitta joyda qoldi. Hisobotga "Servis xarajatlari
+— tur bo'yicha" bloki qo'shildi: "bepul montajga qancha ketdi" shundan
+ko'rinadi.
+
+### 22.7 "Import va tannarx" moduli uzildi
+
+`lib/shipmentsData.js` + `/finance/cost` partiya xarajatini tovarga
+taqsimlab `products.cost_price` va `stock` **USTIGA yozardi** — ikkalasi
+ham Billz ko'zgusi maydonlari. `billzMap.mergeProduct` eski qiymatni faqat
+Billz **0** qaytarganda saqlaydi; odatda Billz o'z tannarxini beradi, ya'ni
+qo'lda yozilgan landed cost keyingi sinxronda (har 5 daqiqa) o'chardi.
+Tugma "qo'llandi" deb turadi-yu, raqam bir necha daqiqada yo'qoladi.
+
+Bazada `shipments`/`shipment_items`/`shipment_costs` — **0 qator**, ya'ni
+modul hech qachon ishlatilmagan. Menyudan va Moliya bosh sahifasidan
+olindi, "Tannarxni qo'llash" tugmasi o'rniga sabab yozildi. Sahifa, kod va
+jadvallar **o'chirilmadi** (loyiha qoidasi). Tovar-bo'yicha landed cost
+kerak bo'lsa to'g'ri yo'l — Billz "Приход" (`supplier_invoices` ko'zgusi
+tayyor), NSPOS'ning parallel yozuvi emas.
+
+### 22.8 Qo'riqchilar
+
+- `moslik` → **`kelish-tannarx`**: (1) P&L kelishi = `kelishXarajati()`
+  (bitta ta'rif); (2) `OPEX + kelish = oyliksiz jami xarajat` (pul
+  yo'qolmagan); (3) sof foyda eski usul bilan ham o'sha (yo'lkira ikki
+  marta ayirilmagan — eng ehtimolli regressiya: `expensesPnl` `total` iga
+  `+ kelish` qo'shib qo'yish); (4) kelish turi xarajat qatorida ham
+  ko'rinmasin.
+- `audit` → **`kelish-service`** (error) va **`kelish-kassa-ops`** (warn,
+  bloklamaydi). Ikkalasi `scripts/tekshir.mjs` `KINDS` da — sog'lom holatda
+  "✓" bo'lib turadi.

@@ -44,6 +44,14 @@ q("Tovar sotuvi (sof, qaytarish ayrilgan)", p.revenue.goods);
 q("  shundan qaytarilgan", -p.revenue.returns);
 q("Sotilgan tovar tannarxi", -p.cogs.goods);
 if (sp.tannarxsiz) q(`  tannarxsiz qatorlar (${sp.tannarxsiz.qatorlar})`, sp.tannarxsiz.summa);
+// Tovar kelish xarajati (yo'lkira, dostavka) — OPEX dan tannarxga
+// ko'chgan qism. Oldin/keyin o'lchovda aynan shu qator ko'rinishi
+// kerak, aks holda "OPEX nega kamaydi" degan savol javobsiz qoladi.
+if (p.cogs.kelish) {
+  q("  tovar kelish xarajati (yo'lkira)", -p.cogs.kelish);
+  console.log(`   kelish ulushi ${p.cogs.kelishUlush} % — 25 $ tovar aslida ${(25 * (1 + p.cogs.kelishUlush / 100)).toFixed(2)} $`);
+  for (const c of p.cogs.kelishByCategory ?? []) q(`    ${c.label}`, -c.amount);
+}
 if (sp.servisQatorlar != null) console.log(`   xizmat qatorlari: ${sp.servisQatorlar} (tannarx 0)`);
 q("Yalpi foyda", p.grossProfit);
 console.log(`   marja ${p.grossMargin} %`);

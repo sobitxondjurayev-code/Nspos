@@ -71,7 +71,6 @@ const menu = [
       { href: "/finance/expenses", label: "Xarajatlar" },
       { href: "/finance/pnl", label: "Foyda va pul oqimi" },
       { href: "/finance/balance", label: "Balans" },
-      { href: "/finance/cost", label: "Import va tannarx" },
     ],
   },
   { href: "/management", label: "Rahbariyat", icon: Briefcase },

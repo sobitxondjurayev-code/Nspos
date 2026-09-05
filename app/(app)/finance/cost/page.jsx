@@ -6,9 +6,8 @@ import { demoStores, fmtUSD } from "@/lib/demoData";
 import { allProducts } from "@/lib/productsData";
 import {
   listShipments, getShipment, addShipment, updateShipment, removeShipment,
-  computeLanded, applyShipment, COST_TYPES,
+  computeLanded, COST_TYPES,
 } from "@/lib/shipmentsData";
-import { invoiceFromShipment } from "@/lib/suppliersData";
 import StatCard from "@/components/finance/StatCard";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
@@ -46,14 +45,10 @@ function ShipmentEditor({ id, onBack, onChanged }) {
     setField({ costs: shipment.costs.map((c, i) => (i === idx ? { ...c, ...patch } : c)) });
   const delCost = (idx) => setField({ costs: shipment.costs.filter((_, i) => i !== idx) });
 
-  function apply() {
-    if (!confirm(t("Tannarx katalogga yoziladi va qoldiq omborga kiritiladi. Davom etamizmi?"))) return;
-    applyShipment(id);
-    // Partiya summasi kreditor qarzga aylanadi: yetkazib beruvchiga
-    // 30 kunlik faktura ochiladi (Moliya → Yetkazib beruvchilar).
-    invoiceFromShipment(getShipment(id), calc.grandTotal);
-    bump();
-  }
+  // `apply()` OLIB TASHLANDI (2026-09-05) — sabab pastda, tugma
+  // o'rnidagi izohda. `applyShipment` va `invoiceFromShipment`
+  // `lib/shipmentsData.js` / `lib/suppliersData.js` da QOLDI: kod
+  // o'chirilmaydi, faqat chaqirilmaydi.
 
   return (
     <div>
@@ -246,10 +241,18 @@ function ShipmentEditor({ id, onBack, onChanged }) {
               </p>
             </div>
           ) : (
-            <button disabled={calc.rows.length === 0} onClick={apply}
-              className="w-full rounded-xl bg-brand hover:bg-brand-dark text-white font-bold py-4 disabled:opacity-50">
-              {t("Tannarxni qo'llash")}
-            </button>
+            /* "Tannarxni qo'llash" TO'SILDI (2026-09-05).
+               `applyShipment` `products.cost_price` va `stock` ustiga
+               yozadi — ikkalasi ham BILLZ KO'ZGUSI maydonlari.
+               `billzMap.mergeProduct` eski qiymatni faqat Billz 0
+               qaytarganda saqlaydi, odatda esa Billz o'z tannarxini
+               beradi va qo'lda yozilgani keyingi sinxronda (har 5
+               daqiqa) o'chadi. Ya'ni tugma "qo'llandi" deb turadi-yu,
+               raqam bir necha daqiqada yo'qoladi — jim yolg'on.
+               Sahifa va ma'lumot O'CHIRILMADI (loyiha qoidasi). */
+            <div className="rounded-xl bg-warn-soft text-warn px-5 py-4 text-sm font-semibold">
+              {t("Tannarx Billz ko'zgusidan keladi va bu yerdan yozilmaydi — yozilgani keyingi sinxronda o'chib ketardi. Tovar kelish xarajatini Xarajatlar bo'limiga \"Import yo'lkira\" yoki \"Dastavka — tovar kelishi\" turi bilan kiriting: u tannarxga qo'shiladi va P&L da ko'rinadi.")}
+            </div>
           )}
         </div>
       </div>

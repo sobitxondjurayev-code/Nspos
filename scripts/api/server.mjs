@@ -112,6 +112,15 @@ const YOLLAR = {
                 yalpi: p.revenue.gross, qaytarilgan: p.revenue.returns,
                 qaytarish_foiz: p.revenue.returnsPct, chegirma: p.revenue.discounts },
       tannarx: p.cogs.total,
+      // Tannarx endi uch qismdan: sotilgan tovar + xizmat materiali +
+      // tovar kelish xarajati (yo'lkira, dostavka — 2026-09-05).
+      // `kelish_ulush_foiz` — "25 $ tovar aslida qancha turadi".
+      tannarx_tafsilot: {
+        tovar: p.cogs.goods,
+        xizmat_material: p.cogs.serviceMaterials,
+        kelish: p.cogs.kelish,
+        kelish_ulush_foiz: p.cogs.kelishUlush,
+      },
       yalpi_foyda: p.grossProfit,
       yalpi_marja_foiz: p.grossMargin,
       xarajat: { jami: p.expenses.total, oylik: p.expenses.payroll,

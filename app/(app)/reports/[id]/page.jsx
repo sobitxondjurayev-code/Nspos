@@ -117,6 +117,7 @@ export default function AnalysisPage() {
           : analysis.kind === "debtors" ? <DebtorsReport />
           : analysis.kind === "stock" ? <StockReport />
           : analysis.kind === "reorder" ? <ReorderReport />
+          : analysis.kind === "service" ? <ServiceReport />
           : null}
       </div>
     );
@@ -198,12 +199,11 @@ export default function AnalysisPage() {
         <ImportsReport analysis={analysis} dataset={dataset} key={tick} />
       ) : analysis.kind === "writeoffs" ? (
         <WriteoffsReport analysis={analysis} dataset={dataset} key={tick} />
-      ) : /* `reorder` (Buyurtma taklifi) bu yerda YO'Q: u 2026-09-04 dan
-             bazadan ishlaydi va yuqoridagi `analysis.bazadan` shoxida
-             chiziladi. */
-        analysis.kind === "service" ? (
-        <ServiceReport analysis={analysis} dataset={dataset} key={tick} />
-      ) : (
+      ) : /* `reorder` (Buyurtma taklifi) va `service` (Servis foydasi)
+             bu yerda YO'Q: ikkalasi bazadan ishlaydi va yuqoridagi
+             `analysis.bazadan` shoxida chiziladi. Servis 2026-09-05 da
+             ko'chdi — Excel yo'li olib tashlandi, aks holda bitta
+             tahlil ikki xil manbadan ikki xil raqam berardi. */ (
         <DatasetDashboard dataset={dataset} preset={analysis.preset} key={tick} />
       )}
 

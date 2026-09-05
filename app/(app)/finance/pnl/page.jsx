@@ -112,6 +112,24 @@ function PnlView({ range, rows }) {
           <Row label={t("Xizmatdagi material tannarxi")} value={p.cogs.serviceMaterials}
             tone="text-danger" negative />
         )}
+        {/* Tovar kelish xarajati — menejerlar so'rovi (2026-09-05).
+            Yo'lkira va dostavka "ijara" kabi umumiy xarajat emas:
+            mahsulot 25 $ ga olinadi, kelib qo'yilganda qimmatroq
+            turadi. Shuning uchun u OPEX da emas, SHU YERDA turadi.
+            Qaysi turlar ekani Sozlamalar → Xarajat turlari → "Tannarxga". */}
+        {p.cogs.kelish > 0 && (
+          <>
+            <Row label={t("Tovar kelish xarajati (yo'lkira, dostavka)")} value={p.cogs.kelish}
+              tone="text-danger" negative
+              hint={tt("tovar tannarxining {n}%i — 25 $ tovar aslida {u} $", {
+                n: p.cogs.kelishUlush,
+                u: (25 * (1 + p.cogs.kelishUlush / 100)).toFixed(2),
+              })} />
+            {(p.cogs.kelishByCategory ?? []).map((c) => (
+              <Row key={c.key} label={t(c.label)} value={c.amount} indent tone="text-danger" negative />
+            ))}
+          </>
+        )}
         <Divider />
         <Row label={t("Yalpi foyda")} value={p.grossProfit} bold sabab="sofFoyda"
           tone={p.grossProfit >= 0 ? "text-ok" : "text-danger"}
@@ -144,7 +162,10 @@ function PnlView({ range, rows }) {
 
         <Divider />
         <Row label={t("Jami xarajatlar")} value={exp.total + exp.installerShare}
-          tone="text-danger" negative />
+          tone="text-danger" negative
+          hint={p.cogs.kelish > 0
+            ? t("yo'lkira va dostavka bu yerda emas — ular tannarxda")
+            : undefined} />
 
         {p.soliq?.summa > 0 && (
           <>

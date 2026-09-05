@@ -150,6 +150,11 @@ const KINDS = {
   "billz-farq": "Ko'zgu Billz bilan mos (tovar, mijoz, qarz, chek, do'kon×kun savdo)",
   "kirim-hamyonsiz": "Har to'lov kassa hamyoniga tushgan",
   "b2b-belgilanmagan": "Optom (B2B) do'kon belgilangan",
+  // Tovar kelish xarajati (2026-09-05). Ikkalasi ham sog'lom holatda
+  // "✓" bo'lib turadi — ro'yxatda turmagan tekshiruv faqat qizarganda
+  // ko'rinadi, ya'ni ishlayotganini bilib bo'lmaydi.
+  "kelish-service": "Xarajat turi \"Servis\" va \"Tannarxga\" aralashmagan",
+  "kelish-kassa-ops": "Yo'lkira Xarajatlarda yuritilmoqda (kassa chiqimida emas)",
 };
 
 // Eng UZUN mos kalit olinadi: `stale-rate` ni `rate` yutib

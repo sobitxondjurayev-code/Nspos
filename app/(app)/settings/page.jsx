@@ -977,15 +977,16 @@ function ExpenseCategoriesCard() {
   const [nom, setNom] = useState("");
   const [guruh, setGuruh] = useState("variable");
   const [servis, setServis] = useState(false);
+  const [tannarx, setTannarx] = useState(false);
   const [izoh, setIzoh] = useState(false);
   const [xabar, setXabar] = useState(null);
   const rows = useMemo(() => listExpenseCategories(), [live, tick]);
   const bump = () => setTick((v) => v + 1);
 
   function qosh() {
-    const c = addExpenseCategory({ label: nom, group: guruh, service: servis, noteRequired: izoh });
+    const c = addExpenseCategory({ label: nom, group: guruh, service: servis, cogs: tannarx, noteRequired: izoh });
     if (!c) return;
-    setNom(""); setServis(false); setIzoh(false); setGuruh("variable");
+    setNom(""); setServis(false); setTannarx(false); setIzoh(false); setGuruh("variable");
     setXabar(tt("\"{n}\" qo'shildi — Xarajat oynasida darrov tanlanadi", { n: c.label }));
     bump();
   }
@@ -1010,7 +1011,7 @@ function ExpenseCategoriesCard() {
         <h2 className="text-xl font-extrabold">{t("Xarajat turlari")}</h2>
       </div>
       <p className="text-sm text-muted font-semibold mb-5">
-        {t("Xarajat oynasida tanlanadigan turlar. \"Doimiy\" — savdo tushsa ham to'lanadi (ijara, internet), \"O'zgaruvchan\" — hajmga qarab. \"Servis\" — servis tannarxiga kiradi va faqat servis pulidan chiqadi. Ishlatilgan tur o'chmaydi — yashiriladi.")}
+        {t("Xarajat oynasida tanlanadigan turlar. \"Doimiy\" — savdo tushsa ham to'lanadi (ijara, internet), \"O'zgaruvchan\" — hajmga qarab. \"Servis\" — servis tannarxiga kiradi va faqat servis pulidan chiqadi. \"Tannarxga\" — tovar kelish xarajati (yo'lkira, dostavka): u OPEX emas, tovarning o'z narxi, shuning uchun P&L da tannarx ostida turadi (sof foydaga ta'siri o'zgarmaydi, yalpi marja haqiqiy bo'ladi). \"Servis\" va \"Tannarxga\" bir vaqtda bo'lmaydi. Ishlatilgan tur o'chmaydi — yashiriladi.")}
       </p>
 
       {/* Yangi tur */}
@@ -1028,8 +1029,20 @@ function ExpenseCategoriesCard() {
           </select>
         </label>
         <label className="flex items-center gap-2 font-semibold text-sm pb-3">
-          <input type="checkbox" checked={servis} onChange={(e) => setServis(e.target.checked)} className="w-4 h-4 accent-brand" />
+          <input type="checkbox" checked={servis}
+            onChange={(e) => { setServis(e.target.checked); if (e.target.checked) setTannarx(false); }}
+            className="w-4 h-4 accent-brand" />
           {t("Servis")}
+        </label>
+        {/* "Servis" va "Tannarxga" O'ZARO ISTISNO: servis turi "Servis
+            foydasi"da tannarxga qo'shiladi, `cogs` esa P&L tannarxiga —
+            ikkalasi yoqilsa bir pul ikki marta sanalardi. Baza cheklovi
+            ham shuni aytadi (`expcat_cogs_service`). */}
+        <label className="flex items-center gap-2 font-semibold text-sm pb-3">
+          <input type="checkbox" checked={tannarx}
+            onChange={(e) => { setTannarx(e.target.checked); if (e.target.checked) setServis(false); }}
+            className="w-4 h-4 accent-brand" />
+          {t("Tannarxga")}
         </label>
         <label className="flex items-center gap-2 font-semibold text-sm pb-3">
           <input type="checkbox" checked={izoh} onChange={(e) => setIzoh(e.target.checked)} className="w-4 h-4 accent-brand" />
@@ -1050,6 +1063,7 @@ function ExpenseCategoriesCard() {
               <th className="px-3 py-3 font-bold">{t("Nomi")}</th>
               <th className="px-3 py-3 font-bold">{t("Guruh")}</th>
               <th className="px-3 py-3 font-bold text-center">{t("Servis")}</th>
+              <th className="px-3 py-3 font-bold text-center">{t("Tannarxga")}</th>
               <th className="px-3 py-3 font-bold text-center">{t("Izoh majburiy")}</th>
               <th className="px-3 py-3 font-bold text-right">{t("Ishlatilgan")}</th>
               <th className="px-3 py-3 font-bold text-center">{t("Faol")}</th>
@@ -1076,6 +1090,12 @@ function ExpenseCategoriesCard() {
                     className="w-4 h-4 accent-brand" />
                 </td>
                 <td className="px-3 py-2 text-center">
+                  <input type="checkbox" checked={!!c.cogs}
+                    onChange={(e) => { updateExpenseCategory(c.key, { cogs: e.target.checked }); bump(); }}
+                    className="w-4 h-4 accent-brand"
+                    title={t("Tovar kelish xarajati: OPEX emas, tannarxga qo'shiladi")} />
+                </td>
+                <td className="px-3 py-2 text-center">
                   <input type="checkbox" checked={c.noteRequired}
                     onChange={(e) => { updateExpenseCategory(c.key, { noteRequired: e.target.checked }); bump(); }}
                     className="w-4 h-4 accent-brand" />
@@ -1093,7 +1113,7 @@ function ExpenseCategoriesCard() {
               </tr>
             ))}
             {!rows.length && (
-              <tr><td colSpan={7} className="px-3 py-6 text-center text-muted font-semibold">
+              <tr><td colSpan={8} className="px-3 py-6 text-center text-muted font-semibold">
                 {t("Turlar bazadan hali kelmadi")}
               </td></tr>
             )}

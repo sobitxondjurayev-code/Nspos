@@ -7,11 +7,16 @@ import ExportButton from "@/components/ExportButton";
 import TotalsRow from "@/components/TotalsRow";
 import ColumnSettings from "@/components/ColumnSettings";
 import { useColumns } from "@/components/useColumns";
-import { numberOf, textOf } from "@/lib/datasets";
 import { expensesInRange, SERVICE_CATEGORIES, categoryLabel } from "@/lib/expensesData";
-import { isServiceName, getServiceNames, getUsdRate } from "@/lib/companyData";
+import { getServiceNames, getUsdRate } from "@/lib/companyData";
 import { listStaff } from "@/lib/staffData";
-import { computeMonth, monthKey } from "@/lib/kpiData";
+import { computeMonth } from "@/lib/kpiData";
+import { servisKirim } from "@/lib/serviceIncome";
+import { salesPnl } from "@/lib/pnlData";
+import { listStores } from "@/lib/storesData";
+import PeriodPicker, { usePeriod } from "@/components/ui/PeriodPicker";
+import { useLive } from "@/components/DataProvider";
+import { ymd } from "@/lib/dates";
 import { AlertTriangle, SlidersHorizontal } from "lucide-react";
 
 // ══════════════════════════════════════════════════════════════
@@ -22,6 +27,14 @@ import { AlertTriangle, SlidersHorizontal } from "lucide-react";
 // KIRIM — Billz'da xizmat alohida bo'lim emas, u oddiy tovar kabi
 // sotiladi ("montaj"). Qaysi nomlar xizmat ekani Sozlamalarda
 // belgilanadi, shuning uchun kirim shu nomlar bo'yicha ajratiladi.
+//
+// 2026-09-05 dan kirim BAZADAN (`serviceIncome.servisKirim` — kassa
+// balansi ham shuni chaqiradigan yagona kirish nuqtasi). Ilgari u
+// Billz'ning "Эффективность товаров" EXCEL yuklamasidan o'qirdi va
+// hisobot `bazadan` bo'lmagani uchun Hisobotlar ro'yxatida UMUMAN
+// ko'rinmasdi (`app/(app)/reports/page.jsx` shuni filtrlaydi) —
+// ya'ni servis xarajati kiritilardi-yu, natijasi hech qayerda
+// ko'rinmasdi. Bu DAFTAR 19.2 dagi "Ombor qoplamasi" kasali.
 //
 // XARAJAT — ustalarning oyligi. U KPI modulida hisoblanadi (kamera ×
 // narx + davomat) va SO'MDA yuritiladi, shuning uchun kurs bo'yicha
@@ -34,27 +47,20 @@ import { AlertTriangle, SlidersHorizontal } from "lucide-react";
 // FOYDA = kirim − ustalar oyligi − material. Umumiy xarajatlar (ijara,
 // internet) bu yerga kirmaydi — ular butun korxonaga tegishli.
 
-const col = (header, ...names) =>
-  header.find((h) => names.some((n) => h.toLowerCase().includes(n.toLowerCase()))) ?? null;
-
-function periodMonths(header) {
-  // Ustun nomidagi davr: "Продажи товаров 2026-06-20 - 2026-08-04 · ..."
-  for (const h of header) {
-    const m = h.match(/(\d{4}-\d{2}-\d{2})\s*-\s*(\d{4}-\d{2}-\d{2})/);
-    if (!m) continue;
-    const out = [];
-    const d = new Date(m[1]); d.setDate(1);
-    const end = new Date(m[2]);
-    while (d <= end) {
-      out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
-      d.setMonth(d.getMonth() + 1);
-    }
-    return { months: out, from: m[1], to: m[2] };
+// Davrga tegishli oylar ro'yxati — ustalar oyligi KPI'da OY bo'yicha
+// hisoblanadi (`computeMonth`), shuning uchun davr oylarga bo'linadi.
+function oylarOraligi(from, to) {
+  if (!from || !to) return [];
+  const out = [];
+  const d = new Date(from.getFullYear(), from.getMonth(), 1);
+  while (d <= to) {
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    d.setMonth(d.getMonth() + 1);
   }
-  return { months: [monthKey(new Date())], from: null, to: null };
+  return out;
 }
 
-export default function ServiceReport({ dataset }) {
+export default function ServiceReport() {
   const { sort, toggle, sortRows } = useSort("revenue", "desc");
 
   // —— Ustunlar (Xizmat ustuni doim chapda qoladi) ————————
@@ -76,42 +82,32 @@ export default function ServiceReport({ dataset }) {
   const colPrefs = useColumns("report-service", ALL_COLS);
   const tableCols = colPrefs.columns;
 
-  const { header, rows } = dataset;
-  const period = useMemo(() => periodMonths(header), [header]);
+  const live = useLive();
+  const davr = usePeriod("Oy");
+  const period = useMemo(() => ({
+    months: oylarOraligi(davr.from, davr.to),
+    from: davr.from ? ymd(davr.from) : null,
+    to: davr.to ? ymd(davr.to) : null,
+  }), [davr.from, davr.to]);
   const rate = getUsdRate();
 
-  const cols = useMemo(() => ({
-    name:  header.find((h) => h === "Наименование") ?? col(header, "Наименование"),
-    store: col(header, "Магазин"),
-    qty:   header.find((h) => h.startsWith("Продажи товаров") && h.endsWith("Кол-во")),
-    cost:  header.find((h) => h.startsWith("Продажи товаров") && h.includes("цене поставки")),
-    rev:   header.find((h) => h.startsWith("Продажи товаров") && h.includes("скидк")),
-    revList: header.find((h) => h.startsWith("Продажи товаров")
-                             && h.includes("Сумма продажи") && !h.includes("скидк")),
-  }), [header]);
+  // —— Kirim: BAZADAN, yagona kirish nuqtasi orqali ——————
+  const kirim = useMemo(() => servisKirim(davr.from, davr.to), [davr.from, davr.to, live]);
+  const dokonNomi = useMemo(() => {
+    const m = Object.fromEntries(listStores().map((x) => [x.id, x.name]));
+    return (id) => m[id] ?? "—";
+  }, [live]);
 
-  // —— Kirim: xizmat deb belgilangan nomlar ————————————
-  const { service, goods } = useMemo(() => {
-    const svc = [], gds = [];
-    for (const r of rows) {
-      const qty = numberOf(r, cols.qty);
-      if (qty <= 0) continue;
-      const revenue = numberOf(r, cols.rev) || numberOf(r, cols.revList);
-      const item = {
-        name: textOf(r, cols.name), store: textOf(r, cols.store),
-        qty, revenue, cost: numberOf(r, cols.cost),
-      };
-      item.profit = revenue - item.cost;
-      (isServiceName(item.name) ? svc : gds).push(item);
-    }
-    return { service: svc, goods: gds };
-  }, [rows, cols]);
+  const service = useMemo(
+    () => (kirim.byName ?? []).map((x) => ({ ...x, store: dokonNomi(x.store), profit: x.revenue - x.cost })),
+    [kirim, dokonNomi]);
 
-  const inc = useMemo(() => service.reduce((a, x) => ({
-    qty: a.qty + x.qty, revenue: a.revenue + x.revenue, cost: a.cost + x.cost,
-  }), { qty: 0, revenue: 0, cost: 0 }), [service]);
+  const inc = useMemo(() => ({ qty: kirim.qty, revenue: kirim.revenue, cost: kirim.cost }), [kirim]);
 
-  const goodsRevenue = useMemo(() => goods.reduce((a, x) => a + x.revenue, 0), [goods]);
+  // Savdodagi ulush uchun — o'sha davrdagi butun tushum (xizmat ham ichida)
+  const goodsRevenue = useMemo(
+    () => Math.max(0, salesPnl(davr.from, davr.to).revenue - kirim.revenue),
+    [davr.from, davr.to, kirim, live]);
 
   // —— Xarajat: servis materiallari (gaz, avtol, shurup, samarez…) —
   const material = useMemo(() => {
@@ -151,17 +147,6 @@ export default function ServiceReport({ dataset }) {
       byStaff: byStaff.sort((a, b) => b.som - a.som) };
   }, [period, rate]);
 
-  if (!cols.qty || !cols.name) {
-    return (
-      <div className="card p-10 text-center">
-        <p className="font-extrabold mb-2">{t("Hisobot mos kelmadi")}</p>
-        <p className="text-muted font-semibold">
-          {t("Bu tahlil uchun Billz'ning \"Эффективность товаров\" hisoboti kerak.")}
-        </p>
-      </div>
-    );
-  }
-
   const wageUsd = wage.usd ?? 0;
   const cost = wageUsd + material.total;      // ustalar oyligi + material
   const profit = inc.revenue - inc.cost - cost;
@@ -179,13 +164,27 @@ export default function ServiceReport({ dataset }) {
 
   return (
     <div>
+      {/* Davr — HISOB PARAMETRI, shuning uchun kartochkalar tepasida
+          (CLAUDE.md 2026-09-04: bir o'lchov — bitta boshqaruv) */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <PeriodPicker {...davr} />
+        {kirim.manba === "excel" && (
+          <span className="text-sm font-bold text-warn bg-warn-soft rounded-full px-3 py-1">
+            {t("bu davrda chek yo'q — Excel yuklamasidan")}
+          </span>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-6">
         {card(t("Servis kirimi"), fmtUSD(Math.round(inc.revenue)),
           tt("{q} ta o'rnatish · savdoning {p}% i", { q: Math.round(inc.qty).toLocaleString("ru-RU"), p: sharePct.toFixed(1) }))}
         {card(t("Ustalar oyligi"), wage.usd != null ? fmtUSD(Math.round(wage.usd)) : "—",
           tt("{n} so'm · {c} kamera", { n: Math.round(wage.som).toLocaleString("ru-RU"), c: wage.cameras }),
           "text-danger")}
-        {card(t("Material va yoqilg'i"), fmtUSD(Math.round(material.total)),
+        {/* Ko'cha ustasiga to'langan pul ham SHU YERDA: u "Servis"
+            deb belgilangan xarajat turi (Sozlamalar). O'z ustasining
+            oyligi esa chapdagi "Ustalar oyligi" kartochkasida (KPI). */}
+        {card(t("Material, yoqilg'i, ko'cha ustasi"), fmtUSD(Math.round(material.total)),
           material.byCat.length
             ? material.byCat.slice(0, 3).map((c) => c.label).join(", ")
             : t("Xarajatlar bo'limiga kiritilmagan"),
@@ -211,9 +210,27 @@ export default function ServiceReport({ dataset }) {
       )}
 
       <div className="card p-5 mb-6 text-sm font-semibold text-muted">
-        {tt("Xizmat deb belgilangan nomlar: {n}. Sozlamalarda o'zgartiriladi. Davr: {d}.",
-          { n: getServiceNames().join(", ") || "—", d: period.from ? `${period.from} — ${period.to}` : period.months.join(", ") })}
+        {tt("Xizmat deb belgilangan nomlar: {n}. Sozlamalarda o'zgartiriladi. Davr: {d}. Manba: {m}.",
+          { n: getServiceNames().join(", ") || "—",
+            d: period.from ? `${period.from} — ${period.to}` : period.months.join(", "),
+            m: kirim.manba === "excel" ? "Excel yuklamasi" : `Billz cheklari (${kirim.cheklar} ta)` })}
       </div>
+
+      {/* Servis xarajatlari tur kesimida — "bepul montajga qancha ketdi"
+          degan savolga javob shu yerda ko'rinadi */}
+      {material.byCat.length > 0 && (
+        <div className="card p-5 mb-6">
+          <p className="font-extrabold mb-3">{t("Servis xarajatlari — tur bo'yicha")}</p>
+          <div className="space-y-2">
+            {material.byCat.map((c) => (
+              <div key={c.key} className="flex items-baseline justify-between">
+                <span className="font-semibold">{t(c.label)}</span>
+                <span className="font-extrabold tabular-nums">{fmtUSD(+c.amount.toFixed(2))}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Ustalar kesimi */}
       {wage.byStaff.length > 0 && (
