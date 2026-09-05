@@ -2851,7 +2851,9 @@ oy-yopilmagan/oy-muhri) — birinchi yurishda haqiqiy narsa aytadi.
    ko'rinadi. Ungacha `xarid-yozilmagan` sariq turadi.
 4. **Billz API kalitiga huquq** — Billz → Sozlamalar → Integratsiya → rolga
    "Списания" va "Кассовые смены" o'qish. Keyin spisanie P&L'ga, qarz to'lovi
-   qaysi do'konda olingani kassaga (J) — alohida ish.
+   qaysi do'konda olingani kassaga (J) — alohida ish. (23-bo'lim: ikkala
+   kalitning huquqi ham teng — kalitni almashtirish yordam bermaydi, huquq
+   aynan rolga berilishi kerak.)
 5. **Qarz muddati** — standart 30 kun; Optim/Namangan uchun alohida
    qo'yish mumkin (Sozlamalar).
 6. **Soliq zaxirasi foizi** — hohlasa; 0 bo'lsa ko'rinmaydi.
@@ -3131,3 +3133,70 @@ olindi: ularning yagona iste'molchisi `BillzCompare` edi va u 05.09 da
 olib tashlangan (21-bo'lim). Billz uchun Excel zaxira yo'li bo'lmaydi —
 ikki yo'l qolsa ertami-kechmi ikki xil raqam beradi. O'lchov: avgust
 raqamlarining hammasi o'zgarmadi (sof foyda 27 243.57).
+
+## 23. 2026-09-06 — Qaysi Billz kaliti bilan ishlaymiz (Dashboard ↔ tizim.enes.uz)
+
+Rahbar Billz'dagi ikkita faol integratsiya kalitini ko'rsatdi — **Dashboard**
+(19.08.2026) va **tizim.enes.uz** (24.08.2026) — va "hammasini shu ikkinchisi
+tortyapti" deb taxmin qildi. Taxminni tekshirish kerak edi, chunki DAFTAR
+20.5 (4) dagi ochiq band aynan kalitning roliga bog'liq: spisanie va kassa
+smenasi **403** qaytaradi. Agar o'lchov boshqa kalit bilan qilingan bo'lsa,
+rahbardan bekorga ish so'ralayotgan bo'lardi.
+
+Muammoning tagi: **qaysi kalit ishlatilayotgani hech qayerda yozilmagan edi.**
+`.env` da faqat `BILLZ_SECRET_TOKEN=<240 belgi>` turadi — u o'zini tanitmaydi.
+
+### 23.1 O'lchov vositasi: `scripts/billz-kalit.mjs`
+
+```
+node --import ./scripts/lib/register.mjs scripts/billz-kalit.mjs            # .env dagi kalit
+node --import ./scripts/lib/register.mjs scripts/billz-kalit.mjs --kalit=2  # .env dagi BILLZ_KALIT_2
+BILLZ_KALIT=<token> node --import ./scripts/lib/register.mjs scripts/billz-kalit.mjs
+```
+
+Kalitni **nomi bilan** aytadi: Billz login qaytargan JWT ichida `user_id`
+bor, Billz esa har integratsiya kaliti uchun `<nom> api` degan soxta xodim
+yaratadi — id `/v1/user` ro'yxatidagi qatorga tushiriladi. Keyin mavjud
+`probe()` (`lib/billzApi.js`) bilan nima ochiqligi ko'rsatiladi.
+
+Token ekranga chiqmaydi — faqat sha256 ning dastlabki 8 belgisi ("barmoq
+izi"), u ikki kalitni va lokal ↔ server sozlamasini solishtirishga yetadi.
+Faqat login + GET; Billz'ga hech narsa yozilmaydi.
+
+### 23.2 Natija: taxmin teskari, lekin farqi yo'q
+
+| Kalit | Barmoq izi | Billz'dagi xodim | Tizim ishlatadimi |
+|---|---|---|---|
+| Dashboard | `a8610a20` | `Dashboard api` (4d7992c8…) | **HA** — lokal `.env.local` ham, serverdagi `.env.production` ham |
+| tizim.enes.uz | `5540c7d1` | `tizim.enes.uz api` (f453a49f…) | yo'q — yaratilgan, ishlatilmaydi |
+
+Ya'ni tizim **Dashboard** kaliti bilan tortadi (nomi chalg'itadi: manzil
+`tizim.enes.uz` bo'lsa-da, kalit boshqasi). Serverdagi barmoq izi lokal
+bilan bir xil — cron ham, kompyuterdagi skriptlar ham bitta kalitda.
+
+**Ikkala kalitning huquqi ham TENG** (ikkalasi alohida sinaldi):
+
+```
+OCHIQ  company shops products(657) categories clients(5024)
+       suppliers users orders(1274) debts(11131) supplier-orders(1)
+403    write-off (spisanie) · cash-shifts (smena)
+```
+
+Xulosa: kalitni almashtirish **hech narsa bermaydi**. 403 kalitdan emas,
+uning roliga berilmagan huquqdan — DAFTAR 20.5 (4) o'z kuchida qoladi:
+Billz → Sozlamalar → Integratsiya → rolga "Списания" va "Кассовые смены"
+o'qish huquqi. `/v1/user` bu huquqni ko'rsatmaydi (API xodimlarida
+`roles: null`), shuning uchun yagona o'lchov — yuqoridagi jadval.
+
+Ko'ndalang tekshiruv: serverdagi `GET /api/billz/sync?probe=1` javobi
+skript natijasi bilan belgima-belgi bir xil chiqdi.
+
+### 23.3 Yo'l-yo'lakay topilgan xavf: `04-ilova.sh` sirlarni o'chiradi
+
+`scripts/server/04-ilova.sh` `.env.production` ni **ustidan yozadi**, ichida
+esa `BILLZ_SECRET_TOKEN` ham, `CRON_SECRET` ham yo'q — ular serverga qo'lda
+qo'yilgan (hozir joyida). O'sha qadam qayta yurgizilsa Billz sinxronizatsiyasi
+va cron jimgina o'ladi: `06-billz-cron.sh` sirni aynan shu fayldan o'qiydi,
+ilova esa "BILLZ_SECRET_TOKEN sozlanmagan" deb 500 qaytaradi va uni faqat
+jurnalga qaraganlar ko'radi. Tuzatilmadi — alohida ish (sirlar
+`/etc/nspos/sirlar.env` ga ko'chirilib, undan yozilishi kerak).
