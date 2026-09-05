@@ -230,8 +230,14 @@ export default function StaffModal({ initial = null, busy = false, lockRole = nu
                 <p className="text-sm text-muted font-semibold mb-3">
                   {t("Belgilanmagani ro'yxatda ko'rinmaydi. Hech biri belgilanmasa — hammasi ochiq.")}
                 </p>
+                {/* FAQAT ochiladigan hisobotlar (`bazadan`) — `reports/page.jsx`
+                    ham aynan shuni filtrlaydi. Ilgari bu yerda HAMMA tahlil
+                    turardi: rahbar "Sotuvchilar samaradorligi"ni belgilardi-yu,
+                    o'sha hisobotni hech kim ocha olmasdi (u Excel davridan
+                    qolgan va ro'yxatda ko'rinmaydi). Belgilanadigan narsa
+                    ochiladigan narsa bilan bir xil bo'lsin. */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {ANALYSES.map((a) => {
+                  {ANALYSES.filter((a) => a.bazadan).map((a) => {
                     const key = `/reports/${a.id}`;
                     // Alohida belgilanmagan bo'lsa — bo'lim ruxsatiga ergashadi
                     const on = perms[key] ?? true;

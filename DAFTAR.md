@@ -3098,3 +3098,36 @@ tayyor), NSPOS'ning parallel yozuvi emas.
 - `audit` → **`kelish-service`** (error) va **`kelish-kassa-ops`** (warn,
   bloklamaydi). Ikkalasi `scripts/tekshir.mjs` `KINDS` da — sog'lom holatda
   "✓" bo'lib turadi.
+
+### 22.9 Yo'l-yo'lakay: 7 ta tahlilni HECH KIM ocha olmaydi
+
+2026-09-05 da `service` ni bazaga ko'chirgach butun ro'yxat o'lchandi:
+`bazadan: true` bo'lmagan tahlil **umuman ochilmaydi** —
+`app/(app)/reports/page.jsx:15` faqat `bazadan` ni chizadi va boshqa
+kirish nuqtasi yo'q (`ANALYSES` faqat o'sha sahifada va `StaffModal`
+huquqlar ro'yxatida o'qiladi; `app/(app)/data/` bo'sh).
+
+Shunday 7 ta bor: `abc_clients`, `abc_products`, `sellers`,
+`sales_dynamics`, `stock_value`, `imports`, `writeoffs`.
+
+**Yangisi yasalmadi** — har biri bugungi bazadan ishlaydigan tahlil bilan
+qoplangan yoki ma'lumoti yo'q (sabab `lib/analyses.js` sarlavhasida
+qatorma-qator yozildi). Ayniqsa `sellers`: o'lchov ko'rsatdiki sotuvchilar
+aynan do'kon kassirlari (Abduvohid = Optim 88 071.39; Abdulahad + Akramjon
+= Namangan 59 017.54), ya'ni "Sotuvchilar samaradorligi" do'kon kesimini
+takrorlagan bo'lardi (CLAUDE.md 2026-09-04: bir xil ro'yxatga ikkinchi
+karta yasalmaydi).
+
+**Tuzatilgani:** `components/StaffModal.jsx` huquqlar ro'yxati endi faqat
+ochiladigan hisobotlarni ko'rsatadi. Ilgari rahbar "Sotuvchilar
+samaradorligi"ni belgilardi-yu, o'sha hisobotni hech kim ocha olmasdi —
+belgilanadigan narsa ochiladigan narsa bilan bir xil bo'lishi kerak.
+
+### 22.10 Excel davridagi P&L kodi olib tashlandi
+
+`lib/pnlData.js` dan `sinceLedgerStart`, `pnlSource`, `billzPnlIsUploaded`,
+`pnlSourceGap`, `billzPnl`, `billzPnlTotals`, `billzCashflow` (~130 qator)
+olindi: ularning yagona iste'molchisi `BillzCompare` edi va u 05.09 da
+olib tashlangan (21-bo'lim). Billz uchun Excel zaxira yo'li bo'lmaydi —
+ikki yo'l qolsa ertami-kechmi ikki xil raqam beradi. O'lchov: avgust
+raqamlarining hammasi o'zgarmadi (sof foyda 27 243.57).
