@@ -7,12 +7,11 @@ import {
 import { fmtUSD } from "@/lib/demoData";
 import { PERIODS, periodRange, fmtDate } from "@/lib/dates";
 import DateRangePicker from "@/components/DateRangePicker";
-import { profitAndLoss, cashFlow, billzPnl, billzPnlTotals, billzCashflow, foydaPulKoprigi } from "@/lib/pnlData";
+import { profitAndLoss, cashFlow, foydaPulKoprigi } from "@/lib/pnlData";
 import { useLive } from "@/components/DataProvider";
-import DataTable from "@/components/ui/DataTable";
+import BillzMuhr from "@/components/BillzMuhr";
 import PnlWaterfall from "@/components/finance/PnlWaterfall";
 import { foiz } from "@/lib/format";
-import { demoStores } from "@/lib/demoData";
 import StatCard from "@/components/finance/StatCard";
 import Manfiy from "@/components/ui/Manfiy";
 
@@ -276,130 +275,21 @@ function CashFlowView({ range, rows }) {
   );
 }
 
-/* ——— Billz bilan solishtirish ——————————————————— */
-function BillzCompare({ uploads }) {
-  const rows = useMemo(() => billzPnl(), [uploads]);
-  const tot = useMemo(() => billzPnlTotals(), [uploads]);
-  const cf = useMemo(() => billzCashflow(), [uploads]);
-  const storeName = (id) => demoStores.find((s) => s.id === id)?.name;
+/* ——— "Billz bilan solishtirish" OLIB TASHLANDI (2026-09-05) ————
+   Bu yerda `BillzCompare` komponenti turardi: Billz Excel EKSPORTIGA
+   tayanib P&L va pul oqimini yonma-yon ko'rsatardi. U tab ro'yxatida
+   (`tabs`) allaqachon chaqirilmasdi, ya'ni ekranda ko'rinmasdi.
 
-  // Hisob boshlanish sanasidan oldingi oylar sanalmaydi. Eksport eski
-  // davrniki bo'lsa, bu bo'limda ko'rsatadigan narsa qolmaydi — nolni
-  // raqam sifatida ko'rsatmay, nima qilish kerakligini aytamiz.
-  if (!rows.length) {
-    return (
-      <div className="card p-10 text-center">
-        <AlertTriangle size={40} className="mx-auto text-muted mb-4" />
-        <p className="text-xl font-extrabold mb-2">{t("Bu davr uchun Billz raqamlari yo'q")}</p>
-        <p className="text-muted font-semibold max-w-xl mx-auto">
-          {t("Hisob 1-avgustdan yuritiladi, yuklangan eksport esa undan oldingi davrni qamragan. Billz'dan \"Прибыли и убытки\" hisobotini shu davr uchun chiqarib, \"Ma'lumot yuklash\" bo'limiga tashlang.")}
-        </p>
-      </div>
-    );
-  }
+   Nega qaytarilmaydi: 2026-08-19 dan Billz ma'lumoti API orqali
+   keladi va CLAUDE.md (2026-09-03) qoidasi aniq — Billz uchun
+   Excel/demo ZAXIRA YO'LI YO'Q, ko'zgu bitta. Ikki yo'l qolsa
+   ertami-kechmi ikki xil raqam beradi va qaysi biri to'g'riligi
+   bilinmaydi. Solishtiruv endi boshqa joyda: farq detektori
+   (`billzSync.moslikTekshir` → `BillzMuhr`) va `npm run billz:solishtir`.
 
-  return (
-    <div>
-      <div className="card p-5 mb-6 flex items-start gap-3 bg-brand-soft">
-        <AlertTriangle size={20} className="text-brand shrink-0 mt-0.5" />
-        <div>
-          <p className="font-bold mb-1">{t("Billz eksportidan olingan haqiqiy raqamlar")}</p>
-          <p className="text-sm font-semibold text-muted">
-            {t("Billz operatsion xarajatlarni (ish haqi, ijara) hisobga olmaydi — uning \"sof foyda\"si aslida yalpi foyda. NSPOS'da ular ham chegiriladi.")}
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
-        <StatCard icon={TrendingUp} label="Billz: tushum" value={fmtUSD(tot.revenue)}
-          hint={tt("{d} sanasiga", { d: tot.date.split("-").reverse().join(".") })} />
-        <StatCard icon={TrendingUp} label="Billz: sof tushum" tone="green" value={fmtUSD(tot.netRevenue)}
-          hint={tt("Chegirma {a}, qaytarish {b}", { a: fmtUSD(tot.discounts), b: fmtUSD(tot.returns) })} />
-        <StatCard icon={TrendingDown} label="Billz: tannarx" tone="red" value={fmtUSD(tot.cogs)} />
-        <StatCard icon={Landmark} label="Billz: yalpi foyda" tone="green" value={fmtUSD(tot.grossProfit)}
-          hint={tt("Marja {n}%", { n: tot.grossMarginPct })} />
-      </div>
-
-      <h2 className="text-2xl font-extrabold mb-4">{t("Do'konlar kesimida")}</h2>
-
-      {/* Do'kon kesimi. Ilgari bu jadvalda "Jami" ham, saralash ham,
-          Excel ham yo'q edi — holbuki rahbar birinchi navbatda
-          do'konlarni bir-biri bilan solishtiradi. */}
-      <DataTable
-        id="pnl-stores"
-        name={t("Foyda va zarar — do'kon kesimi")}
-        rows={rows}
-        rowKey={(r) => r.store}
-        boshSort={{ key: "netRevenue", dir: "desc" }}
-        minWidth="64rem"
-        className="mb-8"
-        jamiIzoh={tt("{n} ta do'kon", { n: rows.length })}
-        empty={{ title: "Bu davrda savdo yo'q" }}
-        columns={[
-          { key: "store", label: "Do'kon", locked: true,
-            value: (r) => storeName(r.storeId) ?? r.store,
-            cell: (r) => <span className="font-bold">{storeName(r.storeId) ?? r.store}</span> },
-          { key: "revenue", label: "Tushum", right: true, value: (r) => r.revenue,
-            cell: (r) => <span className="font-semibold">{fmtUSD(r.revenue)}</span>,
-            total: (rs) => fmtUSD(rs.reduce((a, r) => a + r.revenue, 0)) },
-          { key: "discounts", label: "Chegirma", right: true, value: (r) => r.discounts,
-            cell: (r) => <span className="font-semibold text-muted">{fmtUSD(r.discounts)}</span>,
-            total: (rs) => <span className="text-muted">{fmtUSD(rs.reduce((a, r) => a + r.discounts, 0))}</span> },
-          { key: "returns", label: "Qaytarish", right: true, value: (r) => r.returns,
-            cell: (r) => <span className="font-semibold text-muted">{fmtUSD(r.returns)}</span>,
-            total: (rs) => <span className="text-muted">{fmtUSD(rs.reduce((a, r) => a + r.returns, 0))}</span> },
-          { key: "netRevenue", label: "Sof tushum", right: true, value: (r) => r.netRevenue,
-            cell: (r) => <span className="font-extrabold">{fmtUSD(r.netRevenue)}</span>,
-            total: (rs) => fmtUSD(rs.reduce((a, r) => a + r.netRevenue, 0)) },
-          { key: "cogs", label: "Tannarx", right: true, value: (r) => r.cogs,
-            cell: (r) => <span className="font-semibold text-danger">{fmtUSD(r.cogs)}</span>,
-            total: (rs) => <span className="text-danger">{fmtUSD(rs.reduce((a, r) => a + r.cogs, 0))}</span> },
-          { key: "grossProfit", label: "Yalpi foyda", right: true, value: (r) => r.grossProfit,
-            cell: (r) => <span className="font-extrabold text-ok">{fmtUSD(r.grossProfit)}</span>,
-            total: (rs) => <span className="text-ok">{fmtUSD(rs.reduce((a, r) => a + r.grossProfit, 0))}</span> },
-          { key: "marja", label: "Marja", right: true, value: (r) => r.grossMarginPct ?? 0,
-            cell: (r) => <span className="font-bold">{foiz(r.grossMarginPct ?? 0)}</span>,
-            // Marja JAMISI ustun yig'indisi EMAS — u yalpi foydaning sof
-            // tushumga nisbati. Qo'shib chiqarsak "o'rtachaning o'rtachasi"
-            // degan yolg'on raqam chiqadi.
-            total: (rs) => {
-              const net = rs.reduce((a, r) => a + r.netRevenue, 0);
-              const gp = rs.reduce((a, r) => a + r.grossProfit, 0);
-              return <span>{foiz(net > 0 ? (gp / net) * 100 : 0)}</span>;
-            } },
-        ]}
-      />
-
-      <h2 className="text-2xl font-extrabold mb-4">{t("Billz ДДС: pul oqimi")}</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
-        <div className="card p-8">
-          <Row label={t("Naqd")} value={cf.cash} />
-          <Row label="Payme" value={cf.payme} />
-          {cf.card > 0 && <Row label={t("Karta")} value={cf.card} />}
-          {cf.service > 0 && <Row label={t("Servis")} value={cf.service} />}
-          <Divider />
-          <Row label={t("Jami kirim")} value={cf.total} bold tone="text-ok" />
-          <p className="text-sm text-muted font-semibold mt-3">
-            {tt("{n} ta operatsiya", { n: cf.count })}
-          </p>
-        </div>
-        <div className="card p-8">
-          <p className="font-extrabold mb-4">{t("Davr")}</p>
-          <div className="flex justify-between font-semibold py-2.5">
-            <span className="text-muted">{t("Kunlar")}</span>
-            <span className="font-bold">{cf.days}</span>
-          </div>
-          <div className="flex justify-between font-semibold py-2.5">
-            <span className="text-muted">{t("Operatsiyalar")}</span>
-            <span className="font-bold">{cf.count}</span>
-          </div>
-          <Divider />
-          <Row label={t("Kunlik o'rtacha")} value={cf.days > 0 ? +(cf.total / cf.days).toFixed(2) : 0} bold />
-        </div>
-      </div>
-    </div>
-  );
-}
+   `lib/pnlData.js` dagi `billzPnl` / `billzPnlTotals` / `billzCashflow`
+   endi hech kim chaqirmaydi — ular keyingi tozalashda olinadi (pul
+   moduli, alohida o'lchov bilan). */
 
 /* ——— Foyda → Pul ko'prigi ————————————————————————
    "Foyda bor, pul yo'q" degan savolga javob (DAFTAR 20 R). Har qator
@@ -462,6 +352,10 @@ export default function FinancePnl() {
   return (
     <div>
       <h1 className="text-4xl font-extrabold tracking-tight mb-2">{t("Foyda va pul oqimi")}</h1>
+      {/* Savdo, tannarx va qaytarish — hammasi Billz ko'zgusidan.
+          Muhr ko'zgu qachon yangilanganini va Billz bilan mosligini
+          aytadi; busiz eskirgan raqam "ishonarli yolg'on" bo'lardi. */}
+      <BillzMuhr className="mb-4" />
       <p className="text-muted font-semibold mb-7">
         {t("Hisobot NSPOS modullaridan yig'iladi: sotuv, tannarx, xizmat, xarajat va ish haqi")}
       </p>

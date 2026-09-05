@@ -14,6 +14,7 @@ import StatCard from "@/components/finance/StatCard";
 import DataTable from "@/components/ui/DataTable";
 import Button from "@/components/ui/Button";
 import { useLive } from "@/components/DataProvider";
+import BillzMuhr from "@/components/BillzMuhr";
 
 const fmtDay = (iso) => {
   const d = new Date(iso);
@@ -113,13 +114,18 @@ export default function FinancePayables() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-7">
+      <div className="flex items-center justify-between mb-3">
         <h1 className="text-4xl font-extrabold tracking-tight">{t("Yetkazib beruvchilar")}</h1>
         <button onClick={() => setInvModal(true)}
           className="flex items-center gap-2 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold px-5 py-3">
           <Plus size={20} /> {t("Yangi faktura")}
         </button>
       </div>
+
+      {/* Ochiq faktura Billz xarid hujjatidan (`/v2/supplier-order` →
+          `supplier_invoices`, `source='billz'`) keladi — muhr o'sha
+          bosqichning vaqtini ko'rsatadi. */}
+      <BillzMuhr entity="supplierOrders" className="mb-7" />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-7">
         <StatCard icon={Truck} label="Kreditor qarz (biz qarzdormiz)" tone="red"

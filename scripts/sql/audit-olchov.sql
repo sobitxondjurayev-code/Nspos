@@ -40,8 +40,26 @@ from hs join stores st on st.id=hs.store_id left join it on it.sale_id=hs.id
 group by 1,2 order by 1,2;
 
 \echo '=== 2. Oy yakuni: yalpi savdo, qaytarish, sof savdo, tannarx (servissiz), yalpi foyda'
+-- ALMASHUV CHEKI ISHORASI (DAFTAR 20.6 "N", 2026-09-05 da o'lchandi)
+-- Billz almashuv chekida `total` ishorasini TESKARI berishi mumkin:
+-- avgustda 28 chekdan 8 tasi shunday (113.18 $ ikki barobar bo'lib
+-- 226.36 $ farq beradi). Ilova buni `salesData.ishorali()` bilan
+-- o'qiydi: ishora `subtotal` dan olinadi, chunki `subtotal` chek
+-- qatorlari yig'indisiga AYNAN teng (28/28, farq 0.00).
+--
+-- Bu yerda formula ILOVANIKIGA ALMASHTIRILMAYDI — bu fayl ataylab
+-- xom bazani o'lchaydi va ikkalasi bir-birini tekshiradi. Lekin
+-- xom raqam yolg'iz tursa har safar "ekranda boshqacha" degan
+-- yolg'on shubha tug'diradi, shuning uchun ikkala qiymat ham
+-- chiqariladi: `sof_savdo` (xom `total`) va `sof_savdo_ishorali`
+-- (ekrandagi raqam). Ular orasidagi farq = `almashuv_ishora_farqi`;
+-- u NOLDAN farq qilsa sabab shu, boshqa narsa emas.
 with hs as (
-  select s.id, s.type, s.total from sales s where s.sold_at >= :'oy_a' and s.sold_at < :'oy_b' and s.superseded_by is null
+  select s.id, s.type, s.total, s.subtotal,
+         case when s.total = 0 or s.subtotal = 0 then s.total
+              when sign(s.total) = sign(s.subtotal) then s.total
+              else -s.total end as total_ishorali
+  from sales s where s.sold_at >= :'oy_a' and s.sold_at < :'oy_b' and s.superseded_by is null
 ), it as (
   select i.sale_id,
          sum(i.qty*coalesce(i.cost_price,0)) filter (where not coalesce(p.is_service,false)) cogs
@@ -51,11 +69,20 @@ select round(sum(total) filter (where type='sale'),2) yalpi_savdo,
        round(sum(total) filter (where type='return'),2) qaytarish,
        round(sum(total) filter (where type='exchange'),2) almashuv,
        round(sum(total),2) sof_savdo,
+       round(sum(total_ishorali),2) sof_savdo_ishorali,
+       round(sum(total)-sum(total_ishorali),2) almashuv_ishora_farqi,
        round(100*abs(sum(total) filter (where type='return'))/nullif(sum(total) filter (where type='sale'),0),1) qaytarish_pct,
        round(sum(it.cogs),2) tannarx,
        round(sum(total)-sum(it.cogs),2) yalpi_foyda,
        round(100*(sum(total)-sum(it.cogs))/nullif(sum(total),0),1) marja_pct
 from hs left join it on it.sale_id=hs.id;
+
+\echo '  ── almashuv cheklari: ishorasi teskari bo''lganlari'
+select count(*) filter (where total <> 0 and subtotal <> 0 and sign(total) <> sign(subtotal)) as ishora_teskari,
+       count(*) as almashuv_cheki,
+       round(sum(case when total <> 0 and subtotal <> 0 and sign(total) <> sign(subtotal)
+                      then 2*total else 0 end),2) as farq_summa
+from sales where type='exchange' and sold_at >= :'oy_a' and sold_at < :'oy_b' and superseded_by is null;
 
 \echo '=== 3. Pul tushumi (kassa nuqtai nazaridan)'
 select 'chek naqd' k, round(sum(cash),2) v from sales where type='sale' and sold_at>=:'oy_a' and sold_at<:'oy_b'

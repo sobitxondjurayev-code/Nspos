@@ -107,6 +107,9 @@ quyidagi fidbek qoidalarini o'qing va so'ralmasdan qo'llang.
 - [2026-09-05] Billz xarid hujjati (`/v2/supplier-order`) ko'zgusi `supplier_invoices` da (`source='billz'`, to'langani Billz'niki); kompaniya modulni hali ishlatmaydi (1 hujjat) — audit `xarid-yozilmagan` 30 kun tannarx ↔ yozilgan xarid (< 1/2 → sariq). `/v2/write-off`, `/v1/order/cash-shifts` API kalit roliga huquq berilmagan (403) — Sozlamalar tashxisida ko'rinadi.
 - [2026-09-05] `upsert … on conflict (a, b)` QISMAN unique indeks bilan ishlamaydi — to'liq `unique (a, b)` cheklov (NULL bir-biriga teng emas). `yuk.mjs` ichma-ich jadval tekshiruvi: bola jadvalda qator BOR-u hech biriga yopishmasa xato; jadvalning o'zi bo'sh bo'lsa — haqiqatan bo'sh. Yangi modul (`oyMuhri`) skript yuklovchisi ro'yxatiga ham qo'shilsin — aks holda uning tekshiruvi skriptda doim qizil turadi.
 
+- [2026-09-05] **"Billz sahifasi" — SARLAVHA raqami bilan aniqlanadi.** Sahifaning bosh raqami Billz ko'zgusidan kelsa, `BillzMuhr` MAJBURIY. Bosh sahifa 9 ta muhr qo'yilgani holda muhrsiz qolgan edi — ya'ni eng ko'p ochiladigan ekranda ma'lumot qachonligi va ko'zgu mosligi ko'rinmasdi. Endi `dashboard`, `finance/pnl`, `finance/payables` da ham bor. Muhr ATAYLAB qo'yilmaydigan sahifalar: `finance/cost`, `finance/expenses`, `finance/payroll`, `products/operations`, `services` — ularning sarlavha raqami NSPOS'niki, Billz moduli faqat yon ma'lumot uchun chaqiriladi.
+- [2026-09-05] Xom SQL o'lchovi (`scripts/sql/audit-olchov.sql`) ekran raqamidan farq qilsa, **formulasi ilovanikiga ALMASHTIRILMAYDI** — bu fayl ataylab xom bazani o'lchaydi va ikkalasi bir-birini tekshiradi. O'rniga IKKALA qiymat ham, farqi ham chiqariladi (`sof_savdo` ↔ `sof_savdo_ishorali` ↔ `almashuv_ishora_farqi`). Aks holda tushuntirilgan farq har safar "ekranda boshqacha" degan yolg'on shubha tug'diradi va haqiqiy farq shu shovqinda ko'rinmay ketadi.
+
 ## Loyiha haqida
 
 NSPOS — NScamera uchun boshqaruv platformasi. Billz bermaydigan narsalar

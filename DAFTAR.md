@@ -2880,3 +2880,84 @@ oy-yopilmagan/oy-muhri) — birinchi yurishda haqiqiy narsa aytadi.
 - Tekshiruvlar chiqarishdan keyin serverda yurgizildi (`tekshir:server`
   joylashgan kodni yurgizadi) — har bosqich: kommit → push → chiqar →
   tekshir → olchov.
+
+## 21. 2026-09-05 — "Billz'dan nima noto'g'ri kelyapti?": javob — hech narsa
+
+Rahbar: *"Billzdagi qaysi ma'lumotlar bilan ishlamoqchi edik, nimalar
+qilishimiz kerak edi? Tizim ma'lumotni to'g'ri ko'rsatmoqdami, Billz'dan
+olinganda nima noto'g'ri ko'rsatilmoqda?"*
+
+Javob taxmin bilan emas, o'sha kuni haqiqiy VPS bazasi va Billz API'sidan
+o'lchab berildi (`scripts/sql.mjs` faqat `select`, `npm run audit:olchov`,
+`billz-sync.mjs --probe`, `npm run olchov:server -- --oy=2026-08`).
+
+### 21.1 O'lchov: ko'zgu tiyinigacha mos
+
+16:20 dagi farq detektori (`billz_sync_log`, `entity='moslik'`):
+
+| | Billz | NSPOS |
+|---|---:|---:|
+| Tovar | 657 | 657 |
+| Mijoz | 5 024 | 5 024 |
+| Ochiq qarz (soni) | 407 | 407 |
+| Ochiq qarz (summa) | 53 252.94 $ | 53 252.94 $ |
+| 7 kun chek | 336 | yo'q: 0 |
+| 7 kun savdo (do'kon × kun) | — | farqli: 0 (16 kun) |
+
+Qo'shimcha: sentabrda tannarxsiz sotilgan qator 0, tannarxi 0 bo'lgan
+qoldiqli tovar 0, `debts.source` da bitta ham `'nspos'` qolmagan
+(11 122 `billz` + 659 `excel`; `excel` — iyuldagi surat, `listDebts()`
+uni ataylab sanamaydi). Ya'ni **"Billz'dan noto'g'ri olinyapti" degan
+muammo yo'q.** Muammo — Billz'da UMUMAN yo'q oqimlar, va ular rahbar
+qadamini kutadi (20.5 dagi 4 band; hammasi 05.09 da ham ochiq edi:
+kapital yo'q, `oy_muhri` bo'sh, xarid 1 hujjat, write-off/cash-shifts 403).
+
+### 21.2 Topilgan uchta jim bo'shliq
+
+| Nima | Dalil | Qilindi |
+|---|---|---|
+| **Bosh sahifada `BillzMuhr` yo'q edi** | muhr 9 sahifada bor, `dashboard` da yo'q — eng ko'p ochiladigan ekranda ma'lumot qachonligi ko'rinmasdi | `dashboard` (`entity="orders"`), `finance/pnl`, `finance/payables` (`entity="supplierOrders"`) ga qo'yildi |
+| **O'lik `BillzCompare`** | `finance/pnl/page.jsx` da Excel eksportiga tayanadigan komponent; `tabs` da chaqirilmasdi | Olib tashlandi (sabab fayl ichida yozildi). `billzPnl`/`billzPnlTotals`/`billzCashflow` endi hech kim chaqirmaydi — keyingi tozalash |
+| **NPS 36 kundan beri kiritilmagan** | oxirgi 2026-07-31 → `stale-nps` **error** | Kod ishi yo'q, tekshiruv allaqachon aytyapti; rahbarga bildirildi |
+
+`BillzMuhr` ATAYLAB qo'yilmagan sahifalar: `finance/cost`,
+`finance/expenses`, `finance/payroll`, `products/operations`, `services` —
+ularning sarlavha raqami NSPOS'niki, Billz moduli faqat yon ma'lumot uchun.
+
+### 21.3 Almashuv cheki (20.6 "N") — yopildi, lekin kod tegilmadi
+
+O'lchov: avgustda 28 almashuv cheki, **28/28 da qatorlar yig'indisi
+`subtotal` ga AYNAN teng** (farq 0.00); 8 tasida Billz `total` ishorasini
+teskari beradi → 2 × 113.18 = **226.36 $**. Ya'ni `salesData.ishorali()`
+bilan o'qilgan ekran raqami (131 857.83) TO'G'RI, xom SQL (132 084.19)
+noto'g'ri.
+
+Shuning uchun pul yo'liga tegilmadi. O'rniga `scripts/sql/audit-olchov.sql`
+2-bo'limi ikkala qiymatni ham chiqaradi — `sof_savdo` (xom) va
+`sof_savdo_ishorali` (ekran), farq `almashuv_ishora_farqi` — hamda
+ishorasi teskari cheklar sanog'i. Xom SQL formulasi ILOVANIKIGA
+ALMASHTIRILMADI: bu fayl ataylab xom bazani o'lchaydi va ikkalasi
+bir-birini tekshiradi; endi farq har safar sababi bilan ko'rinadi va
+"ekranda boshqacha" degan yolg'on shubha tug'dirmaydi.
+
+### 21.4 Bot `/xulosa` to'ldirildi
+
+Yetishmayotgani qo'shildi: **yalpi savdo**, **qaytarilgan (%)** va
+**o'tgan oy yopilganmi**. Ikkalasi ham allaqachon hisoblangan raqam —
+`pnlData` `revenue.gross`/`revenue.returnsPct` va `lib/oyMuhri.js`
+(`otganOy`, `muhr`); API ularni chiqarmayotgan edi. `oyMuhri` moduli
+`scripts/api/server.mjs` modullar ro'yxatiga qo'shildi.
+
+`scripts/bot/format.mjs` da HISOB YOZILMADI (faylning bosh qoidasi) —
+faqat matnga o'girish. "Oy yopilmagan" XATO ro'yxatiga qo'shilmadi: u
+xato emas, bajarilmagan ish — alohida qatorda turadi va yopilgan
+holatda ham ko'rinadi, aks holda "qator yo'q" bilan "tekshirilmadi"
+bir xil bo'lib qolardi.
+
+`/api/v1/savdo` ham `yalpi` va `qaytarish_foiz` oladi — `format.savdo()`
+qaytarilgan summani foizi bilan ko'rsatadi.
+
+### 21.5 O'lchov (avgust) — oldin ↔ keyin
+
+Kutilgan farq **0.00**: hech bir pul formulasi o'zgarmadi (UI muhri,
+o'lik kod, API'ga yangi maydon, o'lchov SQL'iga yangi ustun).

@@ -35,6 +35,8 @@ export function xulosa(d) {
   q.push("");
   q.push("SHU OY");
   q.push(`  tushum: ${pul(d.shu_oy?.tushum)}`);
+  q.push(`  yalpi savdo: ${pul(d.shu_oy?.yalpi_savdo)}`);
+  q.push(`  qaytarilgan: ${pul(d.shu_oy?.qaytarilgan)} (${foiz(d.shu_oy?.qaytarish_foiz)})`);
   q.push(`  yalpi foyda: ${pul(d.shu_oy?.yalpi_foyda)}`);
   q.push(`  sof foyda: ${pul(d.shu_oy?.sof_foyda)} (marja ${foiz(d.shu_oy?.marja_foiz)})`);
   q.push("");
@@ -42,6 +44,15 @@ export function xulosa(d) {
   q.push(`  90 kundan eski: ${pul(d.qarz_90_kundan_eski)}`);
   q.push(`Tugagan tovar: ${dona(d.tugagan_tovar)} ta`);
   q.push(`Kuniga yo'qotilayotgan foyda: ${pul(d.kuniga_yoqotilayotgan_foyda)}`);
+  // "Oy yopilmagan" — bu XATO emas, bajarilmagan ish. Shuning uchun
+  // XATO ro'yxatida emas, alohida qatorda turadi; yopilgan bo'lsa ham
+  // ko'rinadi, aks holda "qator yo'q" bilan "tekshirilmadi" bir xil
+  // bo'lib qolardi.
+  if (d.oy_yopilgan) {
+    q.push(d.oy_yopilgan.yopilgan
+      ? `${d.oy_yopilgan.oy} yopilgan: ${pul(d.oy_yopilgan.sof_foyda)} sof foyda`
+      : `${d.oy_yopilgan.oy} HALI YOPILMAGAN — Balans → Oy muhri`);
+  }
   if (d.xatolar?.length) {
     q.push("");
     q.push(`XATO (${d.xatolar.length}):`);
@@ -61,7 +72,8 @@ export function savdo(d) {
     `Tushum: ${pul(t.jami)}`,
     `  tovar: ${pul(t.tovar)}`,
     `  xizmat: ${pul(t.xizmat)}`,
-    `  qaytarilgan: ${pul(t.qaytarilgan)}`,
+    `  yalpi savdo: ${pul(t.yalpi)}`,
+    `  qaytarilgan: ${pul(t.qaytarilgan)} (${foiz(t.qaytarish_foiz)})`,
     `  chegirma: ${pul(t.chegirma)}`,
     "",
     `Tannarx: ${pul(d.tannarx)}`,

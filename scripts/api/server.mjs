@@ -53,6 +53,7 @@ async function tayyorla(majburiy = false) {
       boshqaruv: await import("../../lib/managementData.js"),
       moslik: await import("../../lib/moslik.js"),
       audit: await import("../../lib/audit.js"),
+      muhr: await import("../../lib/oyMuhri.js"),
       dokon: await import("../../lib/storesData.js"),
       sana: await import("../../lib/dates.js"),
     };
@@ -103,8 +104,13 @@ const YOLLAR = {
     const p = a.pnl.profitAndLoss(dan, gacha);
     return {
       davr: { dan: iso(dan), gacha: iso(gacha) },
+      // Yalpi savdo → (−) qaytarilgan → sof savdo. Foizni BU YER
+      // hisoblamaydi — `revenue.returnsPct` P&L ekranidagi aynan
+      // o'sha raqam (`lib/pnlData.js`), aks holda Telegram'dagi %
+      // bir kun saytdagidan farq qilib qolardi.
       tushum: { jami: p.revenue.total, tovar: p.revenue.goods, xizmat: p.revenue.services,
-                qaytarilgan: p.revenue.returns, chegirma: p.revenue.discounts },
+                yalpi: p.revenue.gross, qaytarilgan: p.revenue.returns,
+                qaytarish_foiz: p.revenue.returnsPct, chegirma: p.revenue.discounts },
       tannarx: p.cogs.total,
       yalpi_foyda: p.grossProfit,
       yalpi_marja_foiz: p.grossMargin,
@@ -253,11 +259,21 @@ const YOLLAR = {
     const qarz = a.tahlil.arAging();
     const buyurtma = a.tahlil.reorderList();
     const xato = a.moslik.runChecks().flatMap((g) => g.problems).filter((x) => x.level === "error");
+    // O'tgan oy yopilganmi (`oy_muhri`). Rahbar buni har oy 5-sanagacha
+    // qiladi; yopilmasa hisob keyin jimgina o'zgarib ketishi mumkin.
+    // Ekranda bu `audit` → `oy-yopilmagan` bo'lib turadi — bot ham
+    // aynan shu holatni ko'rsatadi, o'zicha sana hisoblamaydi.
+    const otganOy = a.muhr.otganOy(bugun);
+    const otganMuhr = a.muhr.muhr(otganOy);
     return {
       sana: iso(bugun),
       bugun: { tushum: kun.revenue.total, sof_foyda: kun.netProfit },
-      shu_oy: { tushum: p.revenue.total, yalpi_foyda: p.grossProfit,
+      shu_oy: { tushum: p.revenue.total, yalpi_savdo: p.revenue.gross,
+                qaytarilgan: p.revenue.returns, qaytarish_foiz: p.revenue.returnsPct,
+                yalpi_foyda: p.grossProfit,
                 sof_foyda: p.netProfit, marja_foiz: p.netMargin },
+      oy_yopilgan: { oy: otganOy, yopilgan: !!otganMuhr,
+                     sof_foyda: otganMuhr?.sofFoyda ?? null },
       ochiq_qarz: a.qarz.jamiQarz().jami,
       qarz_90_kundan_eski: qarz.buckets.find((b) => b.id === "d90p")?.open ?? 0,
       tugagan_tovar: a.tahlil.reorderSummary(buyurtma).tugagan,

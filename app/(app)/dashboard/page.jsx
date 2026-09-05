@@ -12,6 +12,7 @@ import { salesSeries, storeTotalsInRange, granularityFor, MONTHS_SHORT } from "@
 import { MONTHS } from "@/lib/dates";
 import PeriodPicker, { usePeriod } from "@/components/ui/PeriodPicker";
 import { useLive, useToliq } from "@/components/DataProvider";
+import BillzMuhr from "@/components/BillzMuhr";
 
 function ChartTooltip({ active, payload, label, granularity, combined, brand }) {
   if (!active || !payload?.length) return null;
@@ -68,9 +69,16 @@ export default function Dashboard() {
 
   return (
     <div>
-      <button className="flex items-center gap-3 text-4xl font-extrabold tracking-tight mb-8">
+      <button className="flex items-center gap-3 text-4xl font-extrabold tracking-tight mb-3">
         {t("Barcha do'konlar")} <ChevronDown size={30} className="text-muted" />
       </button>
+
+      {/* Grafikdagi savdo Billz ko'zgusidan keladi — demak bu sahifada
+          ham muhr turishi SHART (CLAUDE.md 2026-09-03). Ilgari muhr
+          9 sahifada bor edi-yu, aynan eng ko'p ochiladiganida yo'q
+          edi: ma'lumot eskirsa yoki ko'zgu Billz'dan ajralsa, buni
+          birinchi ko'radigan odam aynan shu ekranda ko'rmasdi. */}
+      <BillzMuhr entity="orders" className="mb-8" />
 
       {/* Davr tanlash — standart komponent (`ui/PeriodPicker`).
           Ilgari bu yerda o'z nusxasi bor edi va telefonda "Yil" tabi
