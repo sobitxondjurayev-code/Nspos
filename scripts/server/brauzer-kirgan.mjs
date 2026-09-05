@@ -45,6 +45,9 @@ const YOLLAR = process.env.NSPOS_YOLLAR ? process.env.NSPOS_YOLLAR.split(",") : 
   "/finance/balance", "/finance/payroll", "/finance/plan", "/products", "/clients",
   "/sales", "/services", "/kpi", "/installers", "/nps", "/management", "/settings",
   "/reports", "/reports/product_profit", "/reports/stock_health", "/reports/rfm", "/reports/ar_aging",
+  // 2026-09-05 dan bazadan ishlaydi — ro'yxatga qo'shildi, aks holda
+  // u jimgina sinsa boshqa sahifalar ishlayotgani buni yashirardi.
+  "/reports/service",
 ];
 
 const b64 = (s) => Buffer.from(s).toString("base64url");
