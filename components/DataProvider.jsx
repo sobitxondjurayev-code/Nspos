@@ -37,6 +37,7 @@ import "@/lib/payoutsData";
 import "@/lib/ratesData";
 import "@/lib/billzLogData";
 import "@/lib/transfersData";
+import "@/lib/stocktakingsData";
 import "@/lib/permsData";
 
 const DataCtx = createContext({ ready: DEMO_MODE, demo: DEMO_MODE, version: 0 });

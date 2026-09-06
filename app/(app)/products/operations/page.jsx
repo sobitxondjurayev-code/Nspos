@@ -13,6 +13,8 @@ import {
   computeOperation, applyOperation, warehouseSummary, OP_TYPES, WRITEOFF_REASONS,
 } from "@/lib/warehouseData";
 import StatCard from "@/components/finance/StatCard";
+import { useLive, useToliq } from "@/components/DataProvider";
+import { oxirgiSanoq, sanoqlar, transferJarayonSummary } from "@/lib/stocktakingsData";
 import Manfiy from "@/components/ui/Manfiy";
 import { pul, son, foiz } from "@/lib/format";
 
@@ -324,6 +326,20 @@ export default function WarehouseOperations() {
   const ops = useMemo(() => listOperations(), [tick]);
   const sum = useMemo(() => warehouseSummary(), [tick]);
 
+  // Billz inventarizatsiyasi — ko'zgu (DAFTAR 24). Bu sahifaning
+  // SARLAVHA raqami NSPOS'niki, shuning uchun `BillzMuhr` qo'yilmaydi
+  // (CLAUDE.md 2026-09-05) — Billz bloki yon ma'lumot sifatida turadi.
+  const live = useLive();
+  // Ko'zgu to'liq yuklanmaguncha bu blok CHIZILMAYDI. Yuklanish paytida
+  // ro'yxat bo'sh bo'ladi va blok "Billz ro'yxatida 0 ta yozuv bor" deb
+  // turardi — ishonarli, lekin YOLG'ON (CLAUDE.md 2026-09-03).
+  const toliq = useToliq();
+  const billz = useMemo(() => ({
+    oxirgi: oxirgiSanoq(),
+    soni: sanoqlar().length,
+    transferlar: transferJarayonSummary(),
+  }), [live, tick]);
+
   const rows = ops.filter((o) => filter === "all" || o.type === filter);
   const storeName = (id) => demoStores.find((s) => s.id === id)?.name ?? "—";
 
@@ -366,6 +382,65 @@ export default function WarehouseOperations() {
         <StatCard icon={PackageMinus} label="Hisobdan chiqarilgan" tone="red"
           value={fmtUSD(sum.writtenOff)} hint={t("Tannarxda")} />
       </div>
+
+      {/* ── Billz inventarizatsiyasi ────────────────────────────
+          Yuqoridagi kartochkalar NSPOS'ning O'Z ombor modulidan
+          (u hozircha bo'sh — operatsiyalar Billz'da yuritiladi).
+          Bu blok esa Billz ko'zgusi: sanoq bo'lgan-bo'lmagani va
+          kamomad/ortiqcha. Ikkisi ATAYLAB ajratilgan — bir joyda
+          aralashtirilsa qaysi raqam qayerdan kelgani bilinmaydi. */}
+      {toliq && (
+      <div className="card p-5 mb-7">
+        <div className="flex items-center gap-2 mb-2">
+          <ClipboardCheck size={18} className="text-brand" />
+          <p className="font-extrabold">{t("Billz inventarizatsiyasi")}</p>
+        </div>
+        {billz.oxirgi ? (
+          <>
+            <p className="font-semibold">
+              {tt("Oxirgi sanoq: {sana} · {dokon}", {
+                sana: fmtDay(billz.oxirgi.at),
+                dokon: billz.oxirgi.shopName ?? storeName(billz.oxirgi.storeId),
+              })}
+            </p>
+            <p className="text-sm text-muted font-semibold mt-1">
+              {tt("Kamomad {k} dona · ortiqcha {o} dona · farq {s}", {
+                k: billz.oxirgi.shortage, o: billz.oxirgi.surplus,
+                s: fmtUSD(billz.oxirgi.differenceSum),
+              })}
+            </p>
+            <p className="text-sm text-muted font-semibold">
+              {tt("Jami {n} ta sanoq", { n: billz.soni })}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="font-semibold">
+              {t("Billz'da haqiqiy sanoq (inventarizatsiya) hali qilinmagan")}
+            </p>
+            <p className="text-sm text-muted font-semibold mt-1">
+              {tt("Billz ro'yxatida {n} ta yozuv bor, lekin hammasi transferga bog'liq jarayon — sanoq emas.", { n: billz.transferlar.soni })}
+            </p>
+          </>
+        )}
+
+        {/* Kamomad transfer jarayonida ham yoziladi — sanoq bo'lmasa
+            ham ko'rsatiladi, aks holda haqiqiy yo'qotish "sanoq
+            qilinmagan" degan xabar ostida ko'rinmay ketardi. */}
+        {billz.transferlar.shortage > 0 && (
+          <p className="text-sm font-semibold mt-2 text-rose-600 dark:text-rose-400">
+            {tt("Qabulda kamomad: {k} dona · {s} · oxirgisi {sana}", {
+              k: billz.transferlar.shortage,
+              s: fmtUSD(billz.transferlar.differenceSum),
+              sana: fmtDay(billz.transferlar.oxirgiKamomad),
+            })}
+          </p>
+        )}
+        <p className="text-sm text-muted font-semibold mt-2">
+          {t("Tovar kesimi yo'q: Billz API inventarizatsiya qatorlarini bermaydi (sarlavha darajasida)")}
+        </p>
+      </div>
+      )}
 
       {/* Yangi operatsiya tugmalari */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">

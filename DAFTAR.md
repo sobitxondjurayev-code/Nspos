@@ -3319,3 +3319,63 @@ created_at, finished_at, items[]`.
 
 Ochiq metodlar (inventarizatsiya, kassalar, spisanie sabablari) esa hozirning
 o'zida ko'zguga qo'shilishi mumkin — bu alohida ish.
+
+## 25. 2026-09-06 — Inventarizatsiya ko'zgusi (`/v2/stocktaking`)
+
+24-bo'limda topilgan ochiq metod ishga solindi. Ilgari bu modul "Billz'da
+yo'q" deb hisoblanardi — aslida bor edi, nomi boshqacha (`stocktaking`,
+"inventarizatsiya" emas).
+
+**Qurildi:** `scripts/sql/stocktakings.sql` (jadval + RLS + grant),
+`billzApi.stocktakingPages`, `billzMap.stocktakingRow`,
+`billzSync.syncStocktakings` (yangi bosqich, `STAGES` ga qo'shildi),
+`lib/stocktakingsData.js` (ko'zgu moduli), Ombor operatsiyalari
+sahifasida blok. Ro'yxat kichik — bosqich DOIM to'liq tortadi,
+inkremental murakkablik bu yerda foyda bermaydi.
+
+### 25.1 O'lchov: "8 ta inventarizatsiya" — aslida 0 ta
+
+Jadvalda 8 hujjat, lekin **hammasi `type=TRANSFER`**: bular transfer
+qabulida ochiladigan jarayonlar, sanoq emas. Ya'ni kompaniya haqiqiy
+inventarizatsiyani (`INVENTORY`) hech qachon qilmagan.
+
+Shuning uchun modul `sanoqlar()` (transferdan tozalangan) va
+`transferJarayonSummary()` ni AJRATIB beradi. Bo'lmasa ekranda
+"8 ta inventarizatsiya" degan yolg'on turardi.
+
+### 25.2 Lekin ichida haqiqiy kamomad bor edi
+
+Transfer jarayonlarida yozilgan kamomad — **329 dona, −2 540.50 $**:
+
+| Sana | Do'kon | Dona | Kamomad | Farq summasi |
+|---|---|---|---|---|
+| 09.11.2024 | NScamera Optim | 325 | 325 | −2 484.50 $ |
+| 13.12.2024 | NScamera Optim | 4 | 4 | −56.00 $ |
+
+2025–2026 da kamomad **yo'q** (eng kattasi 29.12.2025 — 6 200 dona,
+farqsiz). Ikkala kamomad ham hisob boshlanishidan oldin, shuning uchun
+P&L ga qo'shilmadi — lekin ekranda **ko'rsatiladi**: "sanoq qilinmagan"
+xabari ostida yashirilsa, o'sha 2 540 $ hech qachon ko'rinmasdi.
+
+### 25.3 Ikki tuzoq — ikkalasi ham tutildi
+
+1. **Yuklanish paytidagi yolg'on.** Blok birinchi chizilganda "Billz
+   ro'yxatida **0 ta** yozuv bor" derdi — ma'lumot hali kelmagan edi.
+   Skrinshotda ko'rindi, `useToliq()` bilan to'sildi (CLAUDE.md
+   2026-09-03 qoidasi: og'ir ma'lumotdan hisoblangan blok `toliq`
+   bo'lmaguncha chizilmaydi).
+2. **Muhr.** Sahifa `BillzMuhr` ATAYLAB qo'yilmaydiganlar ro'yxatida
+   (CLAUDE.md 2026-09-05): sarlavha raqami NSPOS'niki, Billz bloki yon
+   ma'lumot. Qoida buzilmadi.
+
+RLS alohida tekshirildi (`set local role nspos_app` + rahbar da'volari →
+8 qator ko'rinadi): PostgREST huquqsizlikni bo'sh ro'yxat bilan
+bildiradi, ya'ni tekshirilmasa blok jimgina bo'sh turardi.
+
+### 25.4 Nima QILINMADI
+
+- **Tovar kesimi yo'q**: `items` API'da doim `null`, `/v2/stocktaking/{id}`
+  yopiq. "Qaysi tovar yetishmadi" degan savolga javob yo'q — faqat dona
+  va summa. Bu ekranda yozib qo'yilgan.
+- **P&L ga ulanmadi**: sanoq yo'q, mavjud kamomad esa 2024-yilda.
+  Haqiqiy sanoq boshlangan kuni bu qaror qayta ko'riladi.

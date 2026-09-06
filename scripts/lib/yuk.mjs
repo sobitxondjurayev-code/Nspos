@@ -279,7 +279,7 @@ export async function loadApp() {
     "kassaData", "payoutsData", "payrollData", "datasets", "debtsData",
     "customersData", "salesData", "productsData", "categoriesData", "servicesData",
     "warehouseData", "suppliersData", "financeData", "ratesData", "npsData",
-    "transfersData", "oyMuhri",
+    "transfersData", "stocktakingsData", "oyMuhri",
   ].map((m) => import(`../../lib/${m}.js`)));
 
   const mods = listModules();
