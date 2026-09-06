@@ -2849,11 +2849,11 @@ oy-yopilmagan/oy-muhri) — birinchi yurishda haqiqiy narsa aytadi.
 3. **Billz'da xaridni yuritish** — «Заказ поставщику / Приход». Ko'zgu
    tayyor: hujjat kirgan zahoti balansda ta'minotchi qarzi va ombor kirimi
    ko'rinadi. Ungacha `xarid-yozilmagan` sariq turadi.
-4. **Billz API kalitiga huquq** — Billz → Sozlamalar → Integratsiya → rolga
-   "Списания" va "Кассовые смены" o'qish. Keyin spisanie P&L'ga, qarz to'lovi
-   qaysi do'konda olingani kassaga (J) — alohida ish. (23-bo'lim: ikkala
-   kalitning huquqi ham teng — kalitni almashtirish yordam bermaydi, huquq
-   aynan rolga berilishi kerak.)
+4. ~~**Billz API kalitiga huquq**~~ — **BEKOR (24-bo'lim, 2026-09-06).**
+   O'lchov ko'rsatdi: rol katakchalari integratsiya kalitiga umuman ta'sir
+   qilmaydi (huquqi o'chiq «Поставщики» ochiq, huquqi yoqilgan «Списание»
+   403). Rahbar kabinetda hech narsa qilmasligi kerak; yopiq metodlarni
+   Billz'ning o'zidan so'rash kerak.
 5. **Qarz muddati** — standart 30 kun; Optim/Namangan uchun alohida
    qo'yish mumkin (Sozlamalar).
 6. **Soliq zaxirasi foizi** — hohlasa; 0 bo'lsa ko'rinmaydi.
@@ -3241,3 +3241,81 @@ Serverda `04-ilova.sh` QAYTA YURGIZILMADI: u nginx sozlamasini ham
 qaytadan yozadi va domensiz chaqirilsa `09-domen.sh` qo'ygan sertifikat
 sozlamasi buziladi. Shuning uchun tekshiruv blokni ajratib olib, aynan
 serverdagi kalitlar ro'yxati ustida yurgizildi.
+
+## 24. 2026-09-06 — "Kalit roliga huquq bering" xulosasi NOTO'G'RI edi
+
+23-bo'limdan keyin rahbar Billz kabinetiga login berdi: "o'zing kirib
+keraklilarini belgilab saqla". Belgilash o'rniga **o'lchov** chiqdi va u
+ochiq bandni (20.5 №4) butunlay bekor qildi.
+
+Vosita: `scripts/billz-huquq.mjs` — Chrome + xom CDP (naqsh
+`scripts/server/brauzer-kirgan.mjs` dan; loyihada playwright yo'q).
+Skript **hech narsa bosmaydi**: kiradi, o'qiydi, kabinet o'zi qaysi
+manzilga borayotganini yozib oladi.
+
+### 24.1 Rol allaqachon berilgan edi — lekin 403 baribir turardi
+
+Kalitlar sahifasidagi havoladan (taxmin emas) rol topildi:
+Dashboard → `916a7ed7-…`, tizim.enes.uz → `2d42b63f-…`.
+
+Dashboard rolida «Списание» ning **hamma** ichki huquqi yoqilgan.
+Billz'ning O'Z metodi bilan tasdiqlandi — `/api/v2/user/4d7992c8-…/permissions`:
+`write-off-cost`, `write-off-delete`, `write-off-list` → `is_active: true`.
+Shunga qaramay integratsiya kaliti `/v2/write-off` da **403** oladi.
+
+Hal qiluvchi dalil esa teskari tomondan keldi: «Поставщики» ning **hamma**
+huquqi o'chiq (`supplier-list: is_active false`) — lekin `/v1/supplier`
+kalitga **ochiq** (count=2).
+
+> **Rol katakchalari integratsiya kalitiga umuman ta'sir qilmaydi.**
+> Kalitda qat'iy ro'yxat (whitelist) bor va u kabinetdan boshqarilmaydi.
+
+Ya'ni 20.5 №4 ("rolga Списания va Кассовые смены o'qish huquqini bering")
+bajarilsa ham hech narsa o'zgarmasdi. Uni bajarish uchun sarflangan vaqt —
+noto'g'ri xulosa narxi. Xulosa noto'g'ri edi, chunki 403 ni ko'rib
+"huquq yetishmayapti" deb **taxmin qilingan**, o'lchanmagan.
+
+### 24.2 Yo'llarning bir qismi ham noto'g'ri edi
+
+Ilgari yo'llar 45 ta nomzodni sinab topilgandi (`billz-probe-xarid.mjs`).
+Endi kabinetning o'zi kuzatildi va **haqiqiy** yo'llar ma'lum bo'ldi:
+
+| Modul | Bizda yozilgani | Haqiqiy yo'l | Kalitga |
+|---|---|---|---|
+| Inventarizatsiya | «topilmadi» | `/v2/stocktaking` | **OCHIQ — 8 hujjat** |
+| Spisanie sabablari | — | `/v2/write-off-reason` | **OCHIQ — 6 ta** |
+| Kassalar | — | `/v1/cash-box` | **OCHIQ — 3 ta** |
+| Mijozlar (qarz filtri bilan) | — | `/v1/customers-list` | **OCHIQ — 5024** |
+| Qarz statistikasi | — | `/v1/debt-stats` | **OCHIQ** |
+| Spisanie hujjatlari | `/v2/write-off` | o'sha | 403 (**765 hujjat**) |
+| Kassa smenasi | `/v1/order/cash-shifts` | `/v1/cashbox-shifts` | 403 |
+| Qayta narxlash | «topilmadi» | `/v2/repricing` | 403 |
+| Kassa kirim/chiqimi | — | `/v1/gl-transaction` | 403 |
+| Qarz to'lovlari (do'kon bilan) | — | `/v1/debt-transactions` | 403 |
+| Moliya kategoriyalari | — | `/v1/account` | 403 |
+
+Ikkita xulosa bir vaqtda: **kutilganidan ko'prog'i ochiq** (inventarizatsiya
+umuman yo'q deb hisoblanardi) va **yopig'i huquq bilan ochilmaydi**.
+
+### 24.3 Spisanie ichida nima bor (ko'zgu uchun o'lchandi)
+
+765 hujjat, maydonlari: `id, external_id, name, reason_id, reason,
+status_id, shop_id, shop, comment, total_loaded/arrived_measurement_value,
+total_retail_price, total_supply_price, created_by, created_at,
+finished_at, write_off_items[]`. Ya'ni **tannarx bilan** (`total_supply_price`)
+— P&L uchun aynan kerakli raqam. Inventarizatsiya (`/v2/stocktaking`):
+`shop_name, shortage, surplus, difference_sum, type, status_id,
+created_at, finished_at, items[]`.
+
+### 24.4 Yopiq ma'lumotni olishning ikki yo'li (qaror rahbarniki)
+
+1. **Billz'dan so'rash** — kalitga `/v2/write-off`, `/v1/cashbox-shifts`,
+   `/v1/gl-transaction`, `/v1/debt-transactions` metodlarini ochib berish.
+   Toza yo'l: hech qanday parol saqlanmaydi, sinish ehtimoli past.
+2. **Foydalanuvchi sessiyasi** — kabinet `POST /api/v2/auth/web/login`
+   bilan kiradi va o'sha token hamma metodni ochadi. Ishlaydi, lekin
+   rahbarning **paroli serverda** turishi kerak va Billz UI'sini
+   o'zgartirsa sinadi. Faqat birinchi yo'l bo'lmasa.
+
+Ochiq metodlar (inventarizatsiya, kassalar, spisanie sabablari) esa hozirning
+o'zida ko'zguga qo'shilishi mumkin — bu alohida ish.
