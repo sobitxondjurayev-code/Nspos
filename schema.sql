@@ -110,7 +110,7 @@ create table products (
   -- Narxlar. cost_price faqat egasi ko'radi (RLS emas, ustun darajasida
   -- ruxsat: pastdagi "column privileges" bo'limiga qarang).
   sale_price   numeric(12,2) not null default 0,
-  cost_price   numeric(12,2) not null default 0,
+  cost_price   numeric(14,4) not null default 0,
   is_service   boolean not null default false,  -- montaj kabi: qoldiq yuritilmaydi
   is_active    boolean not null default true,
   created_at   timestamptz not null default now(),
@@ -215,7 +215,7 @@ create table sale_items (
   name        text not null,        -- o'sha paytdagi nom (keyin o'zgarsa ham chek o'zgarmasin)
   qty         numeric(12,3) not null,
   price       numeric(12,2) not null,
-  cost_price  numeric(12,2) not null default 0,   -- sotilgan paytdagi tannarx
+  cost_price  numeric(14,4) not null default 0,   -- sotilgan paytdagi tannarx
   total       numeric(12,2) not null
 );
 create index on sale_items (sale_id);

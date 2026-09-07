@@ -7,6 +7,7 @@ import { useLive } from "@/components/DataProvider";
 import { stockCoverage, coverageLevel } from "@/lib/analytics";
 import { categoryName } from "@/lib/categoriesData";
 import { listStores } from "@/lib/storesData";
+import { listProducts } from "@/lib/productsData";
 import { sozlama } from "@/lib/companyData";
 import DataTable from "@/components/ui/DataTable";
 import MultiSelect from "@/components/ui/MultiSelect";
@@ -96,6 +97,10 @@ export default function StockReport() {
   // keyin kelgan do'kon unga tushmaydi
   const doKonlar = useMemo(
     () => listStores().map((s) => ({ value: s.id, label: s.name })), [live]);
+
+  // Xizmat tovari (montaj) Billz katalogida bor, lekin ombor qoplamasiga kirmaydi
+  const xizmatSoni = useMemo(
+    () => listProducts().filter((p) => p.isService).length, [live]);
 
   const FIELDS = useMemo(() => {
     const brend = variantlar(barcha, "brand");
@@ -223,7 +228,9 @@ export default function StockReport() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Kartochka label="Tovar" value={son(rows.length)} icon={Boxes}
-          hint={tt("{n} ta katalogda", { n: son(barcha.length) })} />
+          hint={xizmatSoni > 0
+            ? tt("{n} ta katalogda ({s} ta xizmat chiqarilgan)", { n: son(barcha.length), s: son(xizmatSoni) })
+            : tt("{n} ta katalogda", { n: son(barcha.length) })} />
         <Kartochka label="Tugagan" value={son(yig.tugagan)} rang="text-danger" icon={PackageX}
           hint={t("qoldiq yo'q, lekin sotilyapti")} />
         <Kartochka label="7 kundan kam qoldi" value={son(yig.kritik)} rang="text-warn" icon={TriangleAlert}

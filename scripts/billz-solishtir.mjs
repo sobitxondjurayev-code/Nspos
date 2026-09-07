@@ -73,17 +73,31 @@ const natija = (n, matn) => { if (n) farqBor = true; console.log(`${n ? "✗" : 
 if (only.includes("tovar")) {
   sarlavha("Tovar va qoldiq (id bo'yicha)");
   const billz = new Map();
+  let billzTotalSupply = 0;
   for await (const p of api.productPages(null)) {
     const act = (p.shop_measurement_values ?? []).reduce((a, s) => a + Number(s.active_measurement_value || 0), 0);
-    billz.set(p.id, { name: (p.name || "").trim(), qoldiq: act });
+    let pSupply = 0;
+    if (p.product_supplier_stock?.length) {
+      for (const ss of p.product_supplier_stock) {
+        const q = Number(ss.measurement_value || 0);
+        const cost = Number(ss.max_supply_price || ss.min_supply_price || 0);
+        pSupply += q * cost;
+      }
+    }
+    billzTotalSupply += pSupply;
+    billz.set(p.id, { name: (p.name || "").trim(), qoldiq: act, supply: pSupply });
   }
-  const rows = await readAll("products", "id,billz_id,name,is_active,stock(qty)", (q) => q.not("billz_id", "is", null));
+  const rows = await readAll("products", "id,billz_id,name,is_active,cost_price,is_service,stock(qty)", (q) => q.not("billz_id", "is", null));
   const farq = [], yoq = [];
+  let nsposTotalSupply = 0;
   for (const r of rows) {
     const b = billz.get(r.billz_id);
     if (!b) { if (r.is_active) yoq.push(r.name); continue; }
     const dbq = (r.stock ?? []).reduce((a, s) => a + Number(s.qty || 0), 0);
     if (Math.abs(dbq - b.qoldiq) > 0.001) farq.push({ tovar: r.name, nspos: dbq, billz: b.qoldiq });
+    if (r.is_active && !r.is_service) {
+      nsposTotalSupply += dbq * Number(r.cost_price || 0);
+    }
   }
   const dbIds = new Set(rows.map((r) => r.billz_id));
   const bazadaYoq = [...billz.entries()].filter(([id]) => !dbIds.has(id)).map(([, b]) => b.name);
@@ -92,6 +106,7 @@ if (only.includes("tovar")) {
   for (const f of farq.slice(0, 15)) console.log(`   ${f.tovar} — NSPOS ${f.nspos}, Billz ${f.billz}`);
   natija(bazadaYoq.length, `Billz'da bor, bazada yo'q: ${bazadaYoq.length}${bazadaYoq.length ? " — " + bazadaYoq.slice(0, 5).join(", ") : ""}`);
   natija(yoq.length, `bazada faol, Billz'da yo'q: ${yoq.length}${yoq.length ? " — " + yoq.slice(0, 5).join(", ") : ""}`);
+  console.log(`Qoldiq qiymati: Billz $${billzTotalSupply.toFixed(2)} · NSPOS $${nsposTotalSupply.toFixed(2)} (farq: $${Math.abs(billzTotalSupply - nsposTotalSupply).toFixed(2)})`);
 }
 
 // ── 2. QARZ ──────────────────────────────────────────────────
