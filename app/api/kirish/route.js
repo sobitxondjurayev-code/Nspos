@@ -41,12 +41,18 @@ export async function POST(req) {
     return Response.json({ xato: "Telefon yoki parol noto'g'ri" }, { status: 401 });
   }
 
+  let role = "owner";
+  try {
+    const prof = await sorov("select role from profiles where id = $1", [id]);
+    if (prof[0]?.role) role = prof[0].role;
+  } catch {}
+
   // Rol va do'kon tokenga qo'yilmaydi — ular BAZADAN o'qiladi.
   // Tokenga yozilsa, xodimning roli o'zgarganda eski token
   // eski rol bilan ishlayverardi.
   const token = imzola({ sub: id });
 
-  const res = Response.json({ ok: true });
+  const res = Response.json({ ok: true, role });
   res.headers.set("set-cookie", [
     `${COOKIE}=${token}`,
     "Path=/",

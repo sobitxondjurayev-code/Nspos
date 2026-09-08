@@ -18,20 +18,25 @@ export default function Login() {
 
   async function onSubmit() {
     setError(""); setInfo("");
-    if (DEMO_MODE) { router.push("/dashboard"); return; }
+    if (DEMO_MODE) {
+      const savedRole = typeof window !== "undefined" ? localStorage.getItem("nspos-role") : null;
+      router.push(savedRole === "installer" ? "/installers" : "/dashboard");
+      return;
+    }
     if (password.length < 6) { setError(t("Parol kamida 6 belgi bo'lishi kerak")); return; }
     setLoading(true);
 
     // Telefon bo'lsa ichkarida email'ga o'giriladi, "@" bo'lsa email deb olinadi
     const cred = toCredential(login, password);
-    const { error } = await kirish(cred.email, cred.password);
+    const { error, role } = await kirish(cred.email, cred.password);
     setLoading(false);
     if (error) { setError(t("Telefon yoki parol noto'g'ri")); return; }
     // `router.push` EMAS: `lib/db.js` baza mijozini modul
     // yuklanganda tokendan yaratadi. Yumshoq o'tishda modul
     // qaytadan yuklanmaydi va mijoz eski (bo'sh) token bilan
     // qolib ketardi — sahifa ochiladi, lekin ma'lumot bo'sh.
-    window.location.href = "/dashboard";
+    const dest = role === "installer" ? "/installers" : "/dashboard";
+    window.location.href = dest;
   }
 
   return (

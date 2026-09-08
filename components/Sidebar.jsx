@@ -7,7 +7,7 @@ import {
   Wallet, Briefcase, Settings, ChevronRight, ChevronsLeft, MessageCircle,
   Sun, Moon, LogOut, Target, Trophy, Star, LayoutDashboard, Users,
 } from "lucide-react";
-import { canOpen, ROLES } from "@/lib/auth";
+import { canOpen, ROLES, defaultRouteFor } from "@/lib/auth";
 import { useAuth } from "@/components/AuthProvider";
 import { LANGS } from "@/lib/i18n";
 import { useLang } from "@/components/LangProvider";
@@ -120,7 +120,7 @@ export default function Sidebar({ mobileOpen = false, onClose }) {
         lg:sticky lg:top-0 lg:translate-x-0
         ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
       <div className="flex items-center justify-between px-6 py-6">
-        <Link href="/dashboard" onClick={onClose} className="flex items-center gap-3">
+        <Link href={canOpen("/dashboard", user) ? "/dashboard" : defaultRouteFor(user)} onClick={onClose} className="flex items-center gap-3">
           <span className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center text-white font-extrabold text-xl">N</span>
           <span className="tracking-[.35em] font-extrabold text-lg">NSPOS</span>
         </Link>
