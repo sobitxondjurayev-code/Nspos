@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { t } from "@/lib/i18n";
 import { AlertTriangle, X } from "lucide-react";
-import { bootstrap, subscribeAll, onDbError, onBackgroundReady, onXotira, DEMO_MODE } from "@/lib/db";
+import { bootstrap, subscribeAll, onDbError, onBackgroundReady, onOyna, oynaHolat, onXotira, DEMO_MODE } from "@/lib/db";
 import { useAuth } from "@/components/AuthProvider";
 
 // Barcha modullar o'zini db.js ga qayd qilishi uchun shu yerda
@@ -53,6 +53,31 @@ export const useLive = () => useContext(DataCtx).version;
 // "yuklanmoqda" ko'rsatilsin.
 export const useToliq = () => useContext(DataCtx).toliq;
 
+// ══════════════════════════════════════════════════════════════
+// DAVRI KELIB BO'LGAN SAHIFA KUTIB O'TIRMAYDI
+// ══════════════════════════════════════════════════════════════
+// Cheklar ikki to'lqinda keladi: avval oxirgi 120 kun, keyin qolgan
+// tarix (`lib/db.js` → `oyna`). Bosh sahifa "Oy" davrini ko'rsatadi,
+// ya'ni unga kerakli ma'lumot BIRINCHI to'lqinda allaqachon bor —
+// ikkinchisini kutish behuda kutish bo'lardi.
+//
+// Qoida: davri kesim sanasidan KEYIN boshlanadigan sahifa darrov
+// chiziladi; oldin boshlanadigani (Yil, butun tarix) avvalgidek
+// to'liq yuklanishni kutadi. Ya'ni "tez" deb noto'g'ri raqam
+// ko'rsatilmaydi — bu ikkovi orasidagi farq CLAUDE.md dagi
+// "ishonarli yolg'on" qoidasining o'zi.
+//
+// `dan` — davr boshi (Date yoki "YYYY-MM-DD"). Berilmasa (davr
+// cheksiz) faqat to'liq yuklanish yetadi.
+export function useDavrToliq(dan) {
+  const { toliq, oyna } = useContext(DataCtx);
+  if (toliq) return true;
+  if (!oyna?.tayyor) return false;
+  if (!oyna.dan) return true;          // kesim yo'q — hammasi keldi
+  if (!dan) return false;
+  return new Date(dan) >= new Date(oyna.dan);
+}
+
 // Ma'lumot bazadan bir marta yuklanadi va modullarning xotirasiga
 // tushadi — shundan keyin barcha sahifalar ilgarigidek sinxron ishlaydi.
 // Realtime hodisasi kelganda `version` o'zgaradi va daraxt qayta
@@ -66,6 +91,9 @@ export default function DataProvider({ children }) {
   // `toliq` shu holatni bildiradi va sahifa 0 o'rniga "yuklanmoqda"
   // deb turadi (CLAUDE.md: xato bo'sh ekran emas, ishonarli yolg'on).
   const [toliq, setToliq] = useState(DEMO_MODE);
+  // Birinchi to'lqin: qaysi sanadan beri ma'lumot to'liq
+  // ({ tayyor, dan }) — `useDavrToliq` shuni o'qiydi.
+  const [oyna, setOyna] = useState(() => (DEMO_MODE ? { tayyor: true, dan: null } : oynaHolat()));
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
   // Sessiya aniqlanmaguncha so'ramaymiz: RLS kirmagan foydalanuvchiga
@@ -88,6 +116,9 @@ export default function DataProvider({ children }) {
     // effekt bilan birga bekor qilinadi (`ochirBg`), shuning
     // uchun qo'shimcha bayroq kerak emas.
     const ochirBg = onBackgroundReady(() => { setToliq(true); setVersion((v) => v + 1); });
+    // Birinchi to'lqin tugaganda ham ekran yangilanadi: bosh sahifa
+    // shu payt "Oy" raqamini chizadi va qolgan tarixni kutmaydi.
+    const ochirOyna = onOyna(() => { setOyna(oynaHolat()); setVersion((v) => v + 1); });
     bootstrap().then((res) => {
       if (!alive) return;
       setReady(true);
@@ -106,11 +137,11 @@ export default function DataProvider({ children }) {
     // Baza yozuvni rad etib xotira orqaga qaytganda ham qayta chiziladi —
     // aks holda ekranda "saqlangan" turib, F5 da yo'qolardi
     const offXotira = onXotira(() => setVersion((v) => v + 1));
-    return () => { alive = false; ochirBg(); stop(); off(); offXotira(); };
+    return () => { alive = false; ochirBg(); ochirOyna(); stop(); off(); offXotira(); };
   }, [authReady, authed, user.id]);
 
   return (
-    <DataCtx.Provider value={{ ready, demo: DEMO_MODE, version, stats, toliq }}>
+    <DataCtx.Provider value={{ ready, demo: DEMO_MODE, version, stats, toliq, oyna }}>
       {!ready && pathname !== "/login" && (
         <div className="fixed inset-0 z-[100] bg-surface flex items-center justify-center">
           <div className="text-center">

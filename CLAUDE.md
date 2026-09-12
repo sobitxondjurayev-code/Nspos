@@ -115,6 +115,26 @@ quyidagi fidbek qoidalarini o'qing va so'ralmasdan qo'llang.
 - [2026-09-05] Tahlil Excel yuklamasidan bazaga ko'chirilganda UCH joy birga o'zgaradi: `lib/analyses.js` (`source` → `bazadan: true`), `reports/[id]/page.jsx` dagi shox `bazadan` blokiga ko'chadi, komponent ma'lumotni ilovaning O'Z funksiyasidan oladi. "Servis foydasi" 2026-09-05 gacha aynan shu sababdan Hisobotlar ro'yxatida umuman ko'rinmasdi (19.2 kasali) va kirimni iyuldagi Excel'dan o'qirdi.
 - [2026-09-05] Billz ko'zgusi maydoniga (`products.cost_price`, `stock`) NSPOS tomonidan yozadigan yo'l QOLDIRILMASIN: `mergeProduct` eski qiymatni faqat Billz 0 qaytarganda saqlaydi, ya'ni yozilgan raqam keyingi sinxronda (5 daqiqa) jimgina o'chadi va ekran "qo'llandi" deb turaveradi. "Import va tannarx" moduli shu sababdan uzildi (sahifa va jadvallar o'chirilmadi).
 
+- [2026-09-12] Ilova ochilganda cheklar IKKI TO'LQINDA keladi
+  (`lib/db.js` → modul `oyna`, hozircha faqat `sales`, 120 kun): avval
+  oxirgi kunlar, keyin qolgan tarix. Shuning uchun DAVR bo'yicha
+  hisoblaydigan sahifa `useDavrToliq(range.from)` ishlatsin (bosh
+  sahifa shunday) — u davri kesim sanasidan keyin boshlansa darrov
+  chizadi. Snapshot ("hozirgi qarz") yoki butun tarix ko'rsatadigan
+  sahifa avvalgidek `useToliq()` bilan kutadi. Yangi jadvalga `oyna`
+  qo'yilsa, uni O'QIYDIGAN sahifalar ham qayta ko'riladi — aks holda
+  oraliqdagi kam raqam "ishonarli yolg'on" bo'lib chiqadi.
+- [2026-09-12] Jonli yangilanish BITTA chaqiriqda
+  (`jadval_yangilanish` RPC, `scripts/sql/jadval-yangilanish.sql`) —
+  ilgari har 20 soniyada 21 ta jadval uchun alohida, ketma-ket so'rov
+  ketardi. Yangi jadval qo'shilganda o'sha migratsiyadagi
+  `updated_at` indeks ro'yxatiga ham qo'shilsin. Funksiya bazada
+  bo'lmasa ilova eski yo'lga tushadi va buni konsolda AYTADI —
+  jimgina sekinlashmaydi.
+- [2026-09-12] Tezlik ustida ishlashdan OLDIN o'lchanadi: saytda
+  konsolda `__nsposYuklash()` — har jadval uchun qator, so'rov, bayt
+  va soniya. "Sekin" degan gapdan kelib chiqib kod o'zgartirilmaydi.
+
 ## Loyiha haqida
 
 NSPOS — NScamera uchun boshqaruv platformasi. Billz bermaydigan narsalar

@@ -11,7 +11,7 @@ import { demoStores, fmtUSD } from "@/lib/demoData";
 import { salesSeries, storeTotalsInRange, granularityFor, MONTHS_SHORT } from "@/lib/salesData";
 import { MONTHS } from "@/lib/dates";
 import PeriodPicker, { usePeriod } from "@/components/ui/PeriodPicker";
-import { useLive, useToliq } from "@/components/DataProvider";
+import { useLive, useDavrToliq } from "@/components/DataProvider";
 import BillzMuhr from "@/components/BillzMuhr";
 
 function ChartTooltip({ active, payload, label, granularity, combined, brand }) {
@@ -60,7 +60,12 @@ export default function Dashboard() {
   // sahifa bazadagi 9 032 chekni emas, iyulda to'xtagan nusxani
   // ko'rsatardi va buni hech narsa bildirmasdi.
   const live = useLive();
-  const toliq = useToliq();
+  // `useToliq()` emas: bu sahifa FAQAT tanlangan davrni ko'rsatadi va
+  // cheklar birinchi to'lqinda oxirgi 120 kun bilan keladi. Ya'ni
+  // "Oy" davri uchun ma'lumot allaqachon to'liq — qolgan tarixni
+  // kutib turish behuda kutish edi. "Yil" tanlansa esa avvalgidek
+  // "yuklanmoqda" turadi (`lib/db.js` → `oyna`).
+  const toliq = useDavrToliq(range.from);
 
   const data = useMemo(() => salesSeries(range.from, range.to), [range, live]);
   const totals = useMemo(() => storeTotalsInRange(range.from, range.to), [range, live]);

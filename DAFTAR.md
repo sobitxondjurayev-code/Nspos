@@ -869,7 +869,14 @@ statistika nolga tushib qolardi.
 - [ ] Zaxira uchun Telegram bot tokeni va Google Drive havolasi
 - [ ] Oflayn rejim: PWA + yozuvlar navbati (foydalanuvchi "yozish ham
       kerak" dedi)
-- [ ] Tezlik: ilova ochilganda hamma jadvalni yuklamasin
+- [x] ~~Tezlik: ilova ochilganda hamma jadvalni yuklamasin~~ — cheklar
+      ikki to'lqinda, kuzatuv 30+ so'rovdan bittaga tushdi, sahifalar
+      barobar olinadi (26-bo'lim). **Saytda o'lchanmagan** — migratsiya
+      (`scripts/sql/jadval-yangilanish.sql`) va chiqarish qoldi.
+- [ ] Jonli yangilanish o'zgargan qatorni XOTIRAGA ham olsin
+      (`updated_at` bo'yicha inkremental) — hozir faqat ekran qayta
+      chiziladi, shuning uchun "Yangilash" sahifani qayta yuklaydi
+      (26.5).
 - [ ] "Ustunlar" sozlamasi qolgan hisobotlarga (Hisobdan chiqarishlar,
       Ombor qiymati, Import partiyalari). Tayyor: Ombor qoplamasi,
       Buyurtma taklifi, Servis foydasi, ABC tahlil.
@@ -3379,3 +3386,118 @@ bildiradi, ya'ni tekshirilmasa blok jimgina bo'sh turardi.
   va summa. Bu ekranda yozib qo'yilgan.
 - **P&L ga ulanmadi**: sanoq yo'q, mavjud kamomad esa 2024-yilda.
   Haqiqiy sanoq boshlangan kuni bu qaror qayta ko'riladi.
+
+## 26. 2026-09-12 — Ilova ochilishi: nima sekin edi va nima o'lchanmagan
+
+7-bo'limdagi ochiq ish ("ilova ochilganda hamma jadvalni yuklamasin")
+qo'lga olindi. Ishni boshlashdan oldin KOD o'qildi, keyin raqam
+qo'yildi — 24-bo'limdagi xato (403 ni ko'rib "huquq yetishmayapti" deb
+TAXMIN qilish) shundan chiqqan edi.
+
+### 26.1 Topilgan uchinchi yuk: kuzatuv so'rovlari
+
+`lib/db.js` → `subscribeAll` har 20 soniyada "qaysi jadval o'zgardi"
+deb so'raydi. Uch narsa ustma-ust tushgan edi:
+
+1. So'rov HAR JADVAL uchun alohida — 21 ta (`syncTable` bilan qayd
+   etilganlar; `registerModule` bilan to'g'ridan-to'g'ri qayd
+   etilganlar — xarajat, KPI, NPS, huquq — UMUMAN so'ralmaydi, ya'ni
+   ularda jonli yangilanish yo'qligi ham shu yerda ko'rindi).
+2. Ular KETMA-KET (`for … await`) — har biri ~250 ms, ya'ni bir
+   aylanish ~5 soniya uzluksiz so'rov, har ochiq oynadan, kun bo'yi.
+3. Birinchi aylanish ILOVA OCHILAYOTGANDA boshlanardi va brauzerning
+   bitta manzilga ochadigan 6 ta ulanishini og'ir jadvallar bilan
+   bo'lishib olardi.
+
+Ya'ni "jonli yangilanish" aynan yuklanishni sekinlashtirardi.
+
+Endi bitta chaqiriq: `jadval_yangilanish(jadvallar text[])`
+(`scripts/sql/jadval-yangilanish.sql`), `security invoker` — RLS o'z
+kuchida qoladi, xodim ko'ra olmaydigan qator uni bezovta qilmaydi.
+Kuzatuv og'ir jadvallar kelgandan KEYIN boshlanadi. Funksiya bazada
+bo'lmasa ilova eski yo'lga tushadi, lekin konsolda AYTADI: jimgina
+sekin ishlab turgan tizim eng yomon holat.
+
+`max(updated_at)` indekssiz butun jadvalni o'qiydi — eski yo'l
+(`order by updated_at desc limit 1`) ham xuddi shunday edi, ya'ni bu
+xarajat ilgari ham bor edi, faqat ko'rinmasdi. Migratsiya kuzatiladigan
+jadvallarga indeks qo'yadi; bola jadvallar (chek qatorlari, qoldiq,
+to'lovlar) ataylab ro'yxatda yo'q — ular so'ralmaydi, sinxron esa
+ularga minglab qator yozadi.
+
+### 26.2 Cheklar ikki to'lqinda
+
+Eng og'ir yuk — cheklar va ular ichidagi qatorlar (9 600 chek,
+35 000 qator): qolgan hamma jadval yig'indisidan katta. Endi avval
+oxirgi **120 kun** keladi, qolgan tarix orqadan (`oyna` sozlamasi).
+
+Qiyini — oraliqdagi holat. Ikki oson yo'lning ikkalasi ham xato:
+
+- butun sahifani "yuklanmoqda" qilish — ma'lumot aslida bor,
+  foydalanuvchi behuda kutadi;
+- bor ma'lumotni ko'rsatib qo'yish — "Yil" tanlangan bo'lsa raqam
+  KAM chiqadi va buni hech narsa bildirmaydi (9.6 dagi ishonarli
+  yolg'onning aynan o'zi).
+
+Shuning uchun ilova qaysi SANADAN beri ma'lumot to'liq ekanini biladi
+(`oynaHolat()` → `{ tayyor, dan }`) va sahifa o'z DAVRI bilan
+solishtiradi: `useDavrToliq(range.from)`. Bosh sahifa ("Oy") darrov
+chiziladi, "Yil" esa avvalgidek kutadi. Qolgan sahifalar tegilmadi —
+ular snapshot yoki butun tarix ko'rsatadi va `useToliq()` bilan kutadi.
+
+Bir tuzoq yo'lda tutildi: `restore()` xotirani ALMASHTIRADI, ya'ni
+ikkinchi to'lqin birinchisini o'chirib yuborardi — shuning uchun
+ikkala to'lqin birga beriladi. Ikkinchisi: shu paytda xodim yangi
+yozuv kiritsa (hali bazaga yozilmagan, `creating`), almashtirish uni
+ekrandan yo'qotardi. `sync.js` endi saqlanayotgan yozuvni ro'yxatda
+qoldiradi.
+
+### 26.3 Sahifalar barobar olinadi
+
+`readAll` sahifalarni ketma-ket olardi (11 752 qarz = 3 ta
+borib-kelish). Jami son birinchi sahifa bilan BIRGA keladi
+(`count=exact`), ya'ni qolganini kutib o'tirmasdan barobar so'rash
+mumkin. Oxirgi ketma-ket halqa ATAYLAB qoldirildi: yuklash paytida
+Billz sinxroni yangi chek yozsa jami son eskiradi va oxirida qolgan
+qatorlar baribir olinadi — busiz chek jimgina tushib qolardi.
+
+Sinov (soxta PostgREST, 12 300 qator): 1-to'lqin 4 000 qator bitta
+so'rovda, 2-to'lqin 8 300 qator ikkita so'rovda, xotirada 12 300
+noyob qator — dublikat ham, tushib qolgan qator ham yo'q.
+
+### 26.4 O'lchov ilovaning ichida
+
+"Sekin" degan gapni kod bilan emas, raqam bilan tekshirish uchun har
+jadvalning qatori, so'rovi, tarmoqdan o'tgan bayti va soniyasi
+yig'iladi. Saytda konsolda:
+
+```
+__nsposYuklash()     // { jadvallar: [...], sorovlar: {...} }
+```
+
+Bayt `content-length` dan olinadi (nginx gzip'dan keyingi hajm).
+Sarlavha bo'lmasa `null` yoziladi — 0 yozilsa "hech narsa kelmadi"
+degan yolg'on bo'lardi.
+
+### 26.5 Nima QILINMADI
+
+- **Saytda o'lchanmadi.** Bu sessiya yopiq muhitda ketdi: serverga
+  SSH yo'q, `tizim.enes.uz` va Billz manzillari yopiq, `.env.local`
+  yo'q. Ya'ni migratsiya qo'llanmadi, `npm run tekshir:server`
+  yurgizilmadi va saytga chiqarilmadi — "har o'zgarishdan keyin
+  saytga chiqariladi" qoidasi bu safar BAJARILMADI. Kutilgan farq
+  o'lchanishi kerak: ochilishdagi soniya va 20 soniyalik aylanishdagi
+  so'rov soni (30+ → 1).
+- **Jadvallar talab bo'yicha yuklanmaydi.** Qaralgan va rad etilgan:
+  faqat bitta sahifa o'qiydigan jadvallar (`stocktakings`,
+  `stock_transfers`, `shipments`, `invites`) KICHIK — ular parallel
+  kelgani uchun kutish vaqtiga qo'shmaydi, sahifa esa hookni unutsa
+  jimgina bo'sh ro'yxat ko'rsatardi. Og'irlari (chek, qarz, mijoz,
+  tovar) esa bosh sahifaning o'ziga kerak.
+- **Jonli yangilanish hali ham ma'lumotni QAYTA O'QIMAYDI.**
+  `subscribeAll` o'zgarishni sezadi-yu, faqat ekranni qayta chizadi;
+  xotiraga yangi qator kelmaydi (shuning uchun "Yangilash" tugmasi
+  sahifani butunlay qayta yuklaydi). To'g'ri yechim — `updated_at`
+  bo'yicha inkremental o'qish; butun modulni qayta tortish esa
+  Billz sinxroni har 5 daqiqada yozgani uchun teskari natija berardi.
+  Alohida ish sifatida ochiq ishlar ro'yxatida.
