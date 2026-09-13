@@ -3508,3 +3508,42 @@ degan yolg'on bo'lardi.
   bo'yicha inkremental o'qish; butun modulni qayta tortish esa
   Billz sinxroni har 5 daqiqada yozgani uchun teskari natija berardi.
   Alohida ish sifatida ochiq ishlar ro'yxatida.
+
+## 27. 2026-09-13 — Qoldiq salomatligiga kesim filtri
+
+Rahbar so'rovi: Ombor qiymati hisobotidagi kabi **Kategoriya · Brend ·
+Yetkazib beruvchi** filtri "Qoldiq salomatligi" da ham bo'lsin.
+
+### 27.1 Filtr jadvalga emas, HISOBGA beriladi
+
+Oson yo'l — qatorlarni `applyFilters` bilan kesish — bu yerda YOLG'ON
+beradi: sahifaning bosh raqamlari (Muzlab qolgan pul, Kuniga
+yo'qotilayotgan foyda, Buyurtma ro'yxati) va grafik jadvaldan emas,
+`deadStock()` / `reorderSummary()` dan chiqadi. Jadval kesilib, kartochka
+butun katalog bo'yicha qolsa — ekranda "3 pozitsiya, 41 000 $" turardi.
+
+Shuning uchun tanlov `stockCoverage({ kesim })` ga beriladi va u
+mahsulotlarni ENG BOSHIDA filtrlaydi: `reorderList`, `deadStock`,
+kartochkalar, grafik, jadval — hammasi o'z-o'zidan bitta tanlov bo'yicha.
+Filtrsiz chaqiruvchilar (REST API, Telegram bot, "Buyurtma taklifi"
+kartasi) avvalgidek ishlaydi — `kesim = null`.
+
+### 27.2 Bo'sh qiymat ham variant
+
+`tovarKesim()` — bitta ta'rif: `Kategoriyasiz`, `Brendsiz`,
+`Yetkazib beruvchisiz`. Bo'sh qiymat tashlab yuborilsa, brendsiz tovarlar
+hech bir tanlovga tushmay ko'rinmay qolardi (Ombor qoplamasida 118 ta
+shunday tovar bor edi). Kesim endi `stockCoverage` qatorining O'ZIDA
+keladi — `StockReport` dagi nusxa olib tashlandi.
+
+### 27.3 Uch joyda bitta filtr
+
+`useKesimFiltri()` (`components/KesimFiltri.jsx`) — Qoldiq salomatligi va
+Buyurtma taklifi kartasi AYNAN shu hook'ni chaqiradi. Bir sahifada
+filtr bor-u ikkinchisida yo'qligi foydalanuvchi uchun tushunarsiz
+bo'lardi (CLAUDE.md: bir qoida — tegishli hamma joyga).
+
+Sinov (soxta katalog + cheklar, bazasiz): variantlar ro'yxati,
+har filtr alohida va birga (AND), bo'sh/`null` filtr = filtrsiz,
+xizmat tovari kirmasligi, bucket yig'indisi kartochka puliga tengligi —
+hammasi o'tdi. `next build` va `npm run nomlar` toza.

@@ -142,6 +142,16 @@ quyidagi fidbek qoidalarini o'qing va so'ralmasdan qo'llang.
   holat ("chiqarilmagan"). Nusxasi Drive'dagi "NSPOS — o'zgarishlar"
   papkasiga hujjat bo'lib qo'yiladi. Push qilinmagan ish — topshirilmagan
   ish; xabarsiz push — ko'rilmaydigan push.
+- [2026-09-13] **Kategoriya / brend / yetkazib beruvchi filtri — bitta
+  hook:** `components/KesimFiltri.jsx` → `useKesimFiltri()` (`kesim` +
+  `panel`). U jadvalga EMAS, HISOBGA beriladi
+  (`analytics.stockCoverage/reorderList/deadStock` → `kesim`) — shunda
+  kartochka, grafik va jadval bitta tanlov bo'yicha chiqadi.
+  `applyFilters` bilan faqat jadval kesilsa, "Muzlab qolgan pul" butun
+  katalog bo'yicha qolib ketardi. Kesim nomi va bo'sh qiymati
+  (`"Brendsiz"`) — `analytics.tovarKesim`, qatorning O'ZIDA keladi;
+  komponentda qayta hisoblanmaydi. Do'kon avvalgidek yuqorida (hisob
+  parametri), bu uchtasi panelda (qator filtri).
 
 ## Loyiha haqida
 

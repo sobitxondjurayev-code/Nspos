@@ -28,7 +28,9 @@ import BillzMuhr from "@/components/BillzMuhr";
 // bitta funksiya", CLAUDE.md 2026-08-14).
 //
 // Do'kon tanlash BU YERDA EMAS — chaqiruvchi beradi (Qoldiq
-// salomatligida bitta tanlagich ikkala tabga xizmat qiladi).
+// salomatligida bitta tanlagich ikkala tabga xizmat qiladi). Kesim
+// filtri (kategoriya/brend/yetkazib beruvchi) ham shunday: berilmasa
+// butun katalog — "Buyurtma taklifi" kartasi avvalgidek ishlaydi.
 
 // "NScamera Optim" → "Optim" — bo'linma satrida qisqa
 const qisqaNom = (n) => String(n ?? "").replace(/^NScamera\s+/i, "");
@@ -46,14 +48,14 @@ export function Kartochka({ label, value, hint, rang = "text-ink", icon: Icon })
   );
 }
 
-export default function ReorderPanel({ storeId = "all" }) {
+export default function ReorderPanel({ storeId = "all", kesim = null }) {
   const live = useLive();
   const { user } = useAuth();
   // Muddatni faqat rahbar o'zgartiradi; boshqalar qiymatni ko'radi
   const rahbar = can("staff.manage", user);
   const [tick, setTick] = useState(0);
 
-  const buyurtma = useMemo(() => reorderList({ storeId }), [storeId, live, tick]);
+  const buyurtma = useMemo(() => reorderList({ storeId, kesim }), [storeId, kesim, live, tick]);
   // Filial tanlanganmi (Sklad emas, "Barcha" emas) — "Skladda" ustuni shunda
   const sklad = skladId();
   const filial = storeId !== "all" && !!sklad && storeId !== sklad;

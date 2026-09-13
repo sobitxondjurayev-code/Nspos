@@ -5,7 +5,6 @@ import { t, tt } from "@/lib/i18n";
 import { pul, son } from "@/lib/format";
 import { useLive } from "@/components/DataProvider";
 import { stockCoverage, coverageLevel } from "@/lib/analytics";
-import { categoryName } from "@/lib/categoriesData";
 import { listStores } from "@/lib/storesData";
 import { listProducts } from "@/lib/productsData";
 import { sozlama } from "@/lib/companyData";
@@ -80,11 +79,9 @@ export default function StockReport() {
     ...r,
     id: r.product.id,
     name: r.product.name,
-    category: categoryName(r.product.categoryId) ?? "Kategoriyasiz",
-    // Bo'sh brend/ta'minotchi ham TANLANADIGAN variant — aks holda
-    // brendsiz 118 tovarni filtr bilan ajratib bo'lmasdi
-    brand: r.product.brand || "Brendsiz",
-    supplier: r.product.supplier || "Yetkazib beruvchisiz",
+    // Kategoriya / brend / ta'minotchi qatorning O'ZIDA keladi
+    // (`analytics.tovarKesim`) — bo'sh qiymat ham tanlanadigan variant
+    // ("Brendsiz"), ta'rif bitta joyda turadi.
     daraja: coverageLevel(r.daysLeft, r),
   })), [storeIds, live]);
 

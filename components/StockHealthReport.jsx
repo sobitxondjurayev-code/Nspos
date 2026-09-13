@@ -10,6 +10,7 @@ import { deadStock, storeOptions } from "@/lib/analytics";
 import { sana } from "@/lib/format";
 
 import DataTable from "@/components/ui/DataTable";
+import { useKesimFiltri } from "@/components/KesimFiltri";
 // Buyurtma bloki IKKI joyda chiziladi (bu tab va Hisobotlardagi
 // "Buyurtma taklifi" kartasi) — nusxa emas, bitta komponent.
 import ReorderPanel, { Kartochka } from "@/components/ReorderPanel";
@@ -38,12 +39,16 @@ export default function StockHealthReport() {
   const [storeId, setStoreId] = useState("all");
   const { chart } = useTheme();
   const live = useLive();
+  // Kategoriya / brend / yetkazib beruvchi — IKKALA tab uchun bitta
+  // filtr: "shu ta'minotchining tovarlari qanday turibdi" degan savol
+  // buyurtmaga ham, o'lik qoldiqqa ham bir xil beriladi.
+  const { kesim, panel } = useKesimFiltri();
 
   // Buyurtma bloki (ro'yxat, kartochkalar, muddat, transferlar) —
   // `ReorderPanel` ichida. Bu yerda QAYTA hisoblanmaydi: `reorderList()`
   // og'ir (butun katalog × chek tarixi) va ikki marta chaqirilsa
   // sahifa ikki barobar sekinlashardi.
-  const olik = useMemo(() => deadStock({ storeId }), [storeId, live]);
+  const olik = useMemo(() => deadStock({ storeId, kesim }), [storeId, kesim, live]);
 
   const grafik = useMemo(
     () => olik.buckets.filter((b) => b.count > 0)
@@ -71,8 +76,13 @@ export default function StockHealthReport() {
         </select>
       </div>
 
+      {/* Do'kon — HISOB PARAMETRI (yuqorida), kategoriya/brend/ta'minotchi
+          esa qator FILTRI (panelda): CLAUDE.md 2026-09-04, "bir o'lchov —
+          bitta boshqaruv". */}
+      {panel}
+
       {bolim === "reorder" ? (
-        <ReorderPanel storeId={storeId} />
+        <ReorderPanel storeId={storeId} kesim={kesim} />
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">

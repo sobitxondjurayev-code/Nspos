@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "@/lib/i18n";
 import { storeOptions } from "@/lib/analytics";
 import ReorderPanel from "@/components/ReorderPanel";
+import { useKesimFiltri } from "@/components/KesimFiltri";
 
 // ══════════════════════════════════════════════════════════════
 // BUYURTMA TAKLIFI — Hisobotlardagi alohida karta
@@ -20,6 +21,10 @@ import ReorderPanel from "@/components/ReorderPanel";
 // darrov buyurtma ro'yxati ochiladi.
 export default function ReorderReport() {
   const [storeId, setStoreId] = useState("all");
+  // Filtr "Qoldiq salomatligi" dagi bilan AYNAN bir xil (bitta hook):
+  // bir joyda kategoriya bo'yicha qarab, ikkinchisida qarab bo'lmasligi
+  // foydalanuvchi uchun tushunarsiz bo'lardi.
+  const { kesim, panel } = useKesimFiltri();
 
   return (
     <div>
@@ -32,7 +37,9 @@ export default function ReorderReport() {
         </select>
       </div>
 
-      <ReorderPanel storeId={storeId} />
+      {panel}
+
+      <ReorderPanel storeId={storeId} kesim={kesim} />
     </div>
   );
 }
