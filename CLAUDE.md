@@ -134,6 +134,14 @@ quyidagi fidbek qoidalarini o'qing va so'ralmasdan qo'llang.
 - [2026-09-12] Tezlik ustida ishlashdan OLDIN o'lchanadi: saytda
   konsolda `__nsposYuklash()` — har jadval uchun qator, so'rov, bayt
   va soniya. "Sekin" degan gapdan kelib chiqib kod o'zgartirilmaydi.
+- [2026-09-13] **Ish topshirish tartibi.** Deployni ASOSIY DASTURCHI
+  qiladi, men emas (serverga SSH yo'q). Har ish oxirida uch qadam:
+  kommit → `git push -u origin <branch>` → asosiy dasturchiga xabar.
+  Xabar Gmail orqali **techjadid2@gmail.com** ga: nima o'zgardi, branch
+  va kommit havolasi, saytga chiqarish qadamlari (migratsiya avval) va
+  holat ("chiqarilmagan"). Nusxasi Drive'dagi "NSPOS — o'zgarishlar"
+  papkasiga hujjat bo'lib qo'yiladi. Push qilinmagan ish — topshirilmagan
+  ish; xabarsiz push — ko'rilmaydigan push.
 
 ## Loyiha haqida
 

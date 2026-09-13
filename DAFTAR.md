@@ -925,6 +925,13 @@ statistika nolga tushib qolardi.
 
 ## 8. Muloqot uslubi
 
+- **Ish topshirish (2026-09-13 dan):** deployni asosiy dasturchi qiladi.
+  Men kod yozaman → kommit → push (`claude/…` branchiga) → Gmail orqali
+  `techjadid2@gmail.com` ga xabar + nusxasi Drive'dagi "NSPOS —
+  o'zgarishlar" papkasiga. Sabab: bu muhitdan serverga SSH ham,
+  `tizim.enes.uz` ga chiqish ham yopiq (o'lchandi, 12–13.09), ya'ni
+  "ish oxirigacha o'zim bajaraman" qoidasi endi CHIQARISHDA to'xtaydi.
+  Xabarda migratsiya qadami ALOHIDA aytiladi — u chiqarishdan oldin.
 - Javob **qisqa** — bir necha qator. Uzun xususiyat tavsiflari yozilmaydi.
 - Ish oxirigacha o'zim bajaraman: migratsiya, tekshiruv, saytga chiqarish.
   Foydalanuvchiga faqat jismonan qila olmaydigan qadam qoldiriladi.
