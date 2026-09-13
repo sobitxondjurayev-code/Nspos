@@ -152,6 +152,14 @@ quyidagi fidbek qoidalarini o'qing va so'ralmasdan qo'llang.
   (`"Brendsiz"`) — `analytics.tovarKesim`, qatorning O'ZIDA keladi;
   komponentda qayta hisoblanmaydi. Do'kon avvalgidek yuqorida (hisob
   parametri), bu uchtasi panelda (qator filtri).
+- [2026-09-13] **Sotuv oynasi ("kunlik o'rtacha necha kunlik tarixdan")
+  — `companyData.getStockWindow/setStockWindow`**, eng kami 7 kun,
+  zaxira oyna shuning uch barobari. Ikki joydan o'zgartiriladi va ikkalasi
+  ham AYNAN shu funksiyani chaqiradi: Sozlamalar → Biznes qoidalari va
+  "Qoldiq salomatligi" dagi "Buyurtma miqdori qanday hisoblanadi" bloki
+  (rahbar raqamni ishlatadigan ekranda ko'radi). Formulani tushuntiruvchi
+  matnda raqam QOTIRIB yozilmaydi — sozlama o'zgargan kuni matn jimgina
+  yolg'on bo'lib qolardi.
 
 ## Loyiha haqida
 

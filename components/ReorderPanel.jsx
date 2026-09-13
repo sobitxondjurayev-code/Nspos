@@ -9,7 +9,7 @@ import { can } from "@/lib/auth";
 import { reorderList, reorderSummary, storeOptions } from "@/lib/analytics";
 import { skladId } from "@/lib/storesData";
 import { transferSummary } from "@/lib/transfersData";
-import { getReorderDays, setReorderDays } from "@/lib/companyData";
+import { getReorderDays, setReorderDays, getStockWindow, setStockWindow } from "@/lib/companyData";
 import NumberField from "@/components/NumberField";
 import DataTable from "@/components/ui/DataTable";
 import BillzMuhr from "@/components/BillzMuhr";
@@ -76,10 +76,16 @@ export default function ReorderPanel({ storeId = "all", kesim = null }) {
   // Kartochkalar — API va bot bilan BITTA yig'indi (`reorderSummary`)
   const yig = useMemo(() => reorderSummary(buyurtma), [buyurtma]);
   const muddat = yig.muddat;
+  // Sotuv oynasi — "kunlik o'rtacha necha kunlik tarixdan". Sozlamalar
+  // → Biznes qoidalari bilan AYNAN bir qiymat (`companyData`), shu yerda
+  // ham o'zgartiriladi: rahbar raqamni aynan shu ekranda ko'radi
+  // (2026-09-13 fidbegi — "shuni o'zim o'zgartira oladigan qil").
+  const oyna = useMemo(() => getStockWindow(), [live, tick]);
 
   // Muddat `companies` da saqlanadi (`setReorderDays`) — ekran, API va
   // bot bir xil kun bilan hisoblaydi. Kiritilgan zahoti qayta hisob.
   const muddatQoy = (patch) => { setReorderDays(patch); setTick((v) => v + 1); };
+  const oynaQoy = (v) => { setStockWindow(v); setTick((x) => x + 1); };
 
   return (
     <>
@@ -119,7 +125,11 @@ export default function ReorderPanel({ storeId = "all", kesim = null }) {
         <p className="text-sm font-semibold text-muted mb-3">
           {tt("kunlik o'rtacha sotuv × ({a} kun yetkazish + {b} kun zaxira) − hozirgi qoldiq", { a: muddat.lead, b: muddat.cover })}
           {". "}
-          {t("Kunlik o'rtacha — oxirgi 30 kun; 30 kunda sotuv bo'lmasa 90 kunlik oyna (jadvalda \"Oyna\" ustuni).")}
+          {/* Raqamlar QOTIRIB yozilmaydi: oyna o'zgargan kuni matn
+              jimgina yolg'on bo'lib qolardi. Zaxira oyna — uch barobari
+              (`analytics.stockCoverage`), shu yerda ham shundan chiqadi. */}
+          {tt("Kunlik o'rtacha — oxirgi {n} kun; {n} kunda sotuv bo'lmasa {m} kunlik oyna (jadvalda \"Oyna\" ustuni).",
+              { n: oyna, m: oyna * 3 })}
         </p>
         {rahbar ? (
           <div className="flex flex-wrap items-end gap-4 max-w-xl">
@@ -131,8 +141,15 @@ export default function ReorderPanel({ storeId = "all", kesim = null }) {
               <span className="block text-sm font-bold mb-2">{t("Zaxira (kun)")}</span>
               <NumberField value={muddat.cover} onChange={(v) => muddatQoy({ cover: v })} />
             </label>
+            {/* Sotuv tarixi (oyna) — ilgari faqat Sozlamalarda edi va uni
+                topib borish kerak bo'lardi. Qiymat O'SHA joyda saqlanadi
+                (`stock.windowDays`), ya'ni ikki joyda ikki raqam emas. */}
+            <label className="block">
+              <span className="block text-sm font-bold mb-2">{t("Sotuv tarixi (kun)")}</span>
+              <NumberField value={oyna} onChange={oynaQoy} />
+            </label>
             <p className="text-sm font-semibold text-muted pb-3">
-              {t("Boshqa qoidalar (sotuv oynasi, kam qoldiq chegarasi) — Sozlamalar → Biznes qoidalari.")}
+              {t("Eng kami 7 kun. Kam qoldiq chegarasi va boshqa qoidalar — Sozlamalar → Biznes qoidalari.")}
             </p>
           </div>
         ) : (

@@ -3547,3 +3547,37 @@ Sinov (soxta katalog + cheklar, bazasiz): variantlar ro'yxati,
 har filtr alohida va birga (AND), bo'sh/`null` filtr = filtrsiz,
 xizmat tovari kirmasligi, bucket yig'indisi kartochka puliga tengligi —
 hammasi o'tdi. `next build` va `npm run nomlar` toza.
+
+### 27.4 Sotuv oynasi — o'sha ekranda o'zgartiriladi (2026-09-13)
+
+Fidbek: "kunlik o'rtacha 30 kunlik tarixdan olinadi — shuni o'zim
+o'zgartira oladigan qil".
+
+Raqam allaqachon sozlama edi (`stock.windowDays`), lekin uch muammo bilan:
+
+1. **Uzoqda.** Uni Sozlamalar → Biznes qoidalaridan qidirib topish kerak
+   edi, formulani o'qiyotgan ekranda esa faqat "boshqa qoidalar — u yerda"
+   degan yozuv turardi.
+2. **Matn qotirib yozilgan edi.** "oxirgi 30 kun; 30 kunda sotuv bo'lmasa
+   90 kunlik oyna" — sozlama 60 ga o'zgartirilsa matn baribir 30 deb
+   turaverardi, ya'ni ekran jimgina yolg'on gapirardi.
+3. **Chegara ikki joyda.** Sozlamalar sahifasi 7–365 ni o'zi qisardi,
+   `analytics` esa standart 30 ni o'zi olardi.
+
+Endi: `companyData.getStockWindow/setStockWindow` (7–365, eng kami 7 —
+undan qisqa oynada bitta katta chek "kuniga 5 dona" degan yolg'on tezlik
+beradi), maydon "Buyurtma miqdori qanday hisoblanadi" blokida
+(Yetkazish/Zaxira yonida, faqat rahbarga), matndagi raqamlar sozlamadan
+chiqadi (zaxira oyna — uch barobari). `deadStock` dagi qotirib yozilgan
+30 ham olib tashlandi.
+
+O'lchandi (soxta ma'lumot: 50 kun oldin 10 dona sotilgan):
+
+| Oyna | Qator oynasi | Kunlik o'rtacha | Buyurtma |
+|---|---|---|---|
+| 30 (standart) | 90 (zaxira) | 0.111 | 5 |
+| 60 | 60 | 0.167 | 8 |
+| 90 | 90 | 0.111 | 5 |
+
+3 va 400 kun kiritilganda qiymat O'ZGARMADI (chegara ishlaydi), 7 kun
+qabul qilindi.

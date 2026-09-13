@@ -7,7 +7,7 @@ import { useLive } from "@/components/DataProvider";
 import { stockCoverage, coverageLevel } from "@/lib/analytics";
 import { listStores } from "@/lib/storesData";
 import { listProducts } from "@/lib/productsData";
-import { sozlama } from "@/lib/companyData";
+import { getStockWindow } from "@/lib/companyData";
 import DataTable from "@/components/ui/DataTable";
 import MultiSelect from "@/components/ui/MultiSelect";
 import FilterBar, { applyFilters } from "@/components/FilterBar";
@@ -73,7 +73,7 @@ export default function StockReport() {
   // Qisqa oyna — `stockCoverage` bilan BIR XIL manbadan (sozlama).
   // Qotirib yozilsa sozlama o'zgargan kuni "zaxira oyna" belgisi
   // jimgina yolg'on ko'rsatardi.
-  const oyna = sozlama("stock.windowDays", 30);
+  const oyna = getStockWindow();
 
   const barcha = useMemo(() => stockCoverage({ storeIds }).map((r) => ({
     ...r,

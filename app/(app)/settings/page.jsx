@@ -25,7 +25,8 @@ import { TIERS, tiers } from "@/lib/loyaltyData";
 import { saveRate } from "@/lib/ratesData";
 import { getUsdRate, isRateAuto, setRateAuto, refreshUsdRate, getRateDate,
   getServiceNames, setServiceNames, getLedgerStart, setLedgerStart,
-  sozlama, setSozlama, sonlarRoyxati, getReorderDays, setReorderDays } from "@/lib/companyData";
+  sozlama, setSozlama, sonlarRoyxati, getReorderDays, setReorderDays,
+  getStockWindow, setStockWindow } from "@/lib/companyData";
 import NumberField from "@/components/NumberField";
 import StaffModal from "@/components/StaffModal";
 import {
@@ -600,7 +601,16 @@ function BusinessRulesCard() {
       <Qator label="Sotuv tezligi oynasi (kun)" kalit="stock.windowDays"
         izoh="Qoldiq salomatligi: kunlik o'rtacha shu oxirgi kunlardan hisoblanadi (zaxira oyna — 3 barobar).">
         <NumberField value={oyna} onChange={setOyna} className="inp w-28" />
-        <Tugma onClick={() => saqla("stock.windowDays", Math.min(365, Math.max(7, Math.round(Number(oyna) || 30))))} />
+        {/* Chegara (7–365) `companyData.setStockWindow` da — Qoldiq
+            salomatligi sahifasidagi maydon ham aynan o'shani chaqiradi */}
+        <Tugma onClick={async () => {
+          const r = await setStockWindow(oyna);
+          // Chegaradan chiqqan raqam saqlanmaydi — maydon saqlangan
+          // qiymatga qaytadi, aks holda ekranda 3 turib, hisob 30 bilan
+          // ketardi
+          setOyna(getStockWindow());
+          setHolat((h) => ({ ...h, "stock.windowDays": r?.ok === false ? "xato" : "saqlandi" }));
+        }} />
       </Qator>
       <Qator label="Buyurtma muddati (kun)" kalit="reorder"
         izoh="Yetkazish + zaxira: buyurtma miqdori = kunlik o'rtacha × (yetkazish + zaxira) − qoldiq.">
